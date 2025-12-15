@@ -1,20 +1,21 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import type { CreatePromiseInput, PromiseStatus, PromiseUpdate, UserPromise } from '@/lib/promises/types';
+import {
+  cancelAllNotifications,
+  cancelPromiseReminders,
+  scheduleDailyCheckIn,
+  schedulePromiseReminders,
+} from '@/lib/notifications/scheduler';
 import {
   clearAllPromises,
+  listPromises,
   createPromise as repoCreatePromise,
   deletePromise as repoDeletePromise,
-  listPromises,
   setPromiseStatus as repoSetPromiseStatus,
   updatePromise as repoUpdatePromise,
 } from '@/lib/promises/repo';
-import {
-  schedulePromiseReminders,
-  cancelPromiseReminders,
-  cancelAllNotifications,
-  scheduleDailyCheckIn,
-} from '@/lib/notifications/scheduler';
+import type { CreatePromiseInput, PromiseStatus, PromiseUpdate, UserPromise } from '@/lib/promises/types';
+import { clearWidgetData, syncToWidget } from '@/lib/widgets';
 
 type PromiseStore = {
   promises: UserPromise[];
@@ -50,6 +51,20 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh().catch(() => {});
   }, [refresh]);
+
+  // Sync to iOS widget whenever promises change
+  const didHydrate = useRef(false);
+  useEffect(() => {
+    if (!isHydrated) return;
+    
+    // Only sync after initial hydration
+    if (!didHydrate.current) {
+      didHydrate.current = true;
+    }
+    
+    // Sync promises to widget
+    syncToWidget(promises).catch(console.error);
+  }, [promises, isHydrated]);
 
   const createPromise = useCallback(async (input: CreatePromiseInput) => {
     setIsWorking(true);
@@ -120,6 +135,8 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
       // Cancel all scheduled notifications before clearing promises
       await cancelAllNotifications();
       await clearAllPromises();
+      // Clear widget data
+      await clearWidgetData();
       setPromises([]);
     } finally {
       setIsWorking(false);

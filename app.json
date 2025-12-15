@@ -10,8 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.oopsfee.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "OopsFee needs mic access to record your promise. (For evidence.)"
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.oopsfee.app"]
       }
     },
     "android": {
@@ -42,7 +46,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+"@bacons/apple-targets",
+      "./plugins/withWidgetKitModule"
     ],
     "experiments": {
       "typedRoutes": true,
