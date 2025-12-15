@@ -1,24 +1,36 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { PromiseStoreProvider } from '@/context/promise-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { initializeNotifications } from '@/lib/notifications/setup';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  // Initialize notifications on app start
+  useEffect(() => {
+    initializeNotifications().catch(console.error);
+  }, []);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <PromiseStoreProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ animation: 'fade' }} />
+          <Stack.Screen name="landing" options={{ animation: 'fade' }} />
+          <Stack.Screen name="home" options={{ animation: 'fade_from_bottom' }} />
+          <Stack.Screen name="stats" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="check-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="promise/new" options={{ animation: 'fade_from_bottom' }} />
+          <Stack.Screen name="promise/[id]" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="promise/success" options={{ animation: 'fade', gestureEnabled: false }} />
+        </Stack>
+        <StatusBar style="light" />
+      </ThemeProvider>
+    </PromiseStoreProvider>
   );
 }
