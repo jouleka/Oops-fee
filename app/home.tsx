@@ -221,6 +221,11 @@ function GraveyardPreview() {
     []
   );
 
+  const handleGraveyardPress = useCallback(() => {
+    hapticLight();
+    router.push('/graveyard' as any);
+  }, []);
+
   return (
     <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.graveyardSection}>
       <View style={styles.sectionHeader}>
@@ -228,7 +233,13 @@ function GraveyardPreview() {
         <Text style={styles.sectionTitle}>{COPY.graveyardTitle}</Text>
       </View>
 
-      <View style={styles.graveyardCard}>
+      <Pressable
+        onPress={handleGraveyardPress}
+        style={({ pressed }) => [
+          styles.graveyardCard,
+          pressed && styles.graveyardCardPressed,
+        ]}
+      >
         <View style={styles.graveyardContent}>
           <Text style={styles.graveyardRip}>RIP</Text>
           <Text style={styles.graveyardText}>&ldquo;{entry.text}&rdquo;</Text>
@@ -236,10 +247,15 @@ function GraveyardPreview() {
             Lasted {entry.lasted} &middot; Lost ${entry.lost}
           </Text>
         </View>
-        <Text style={styles.graveyardSkull}>💀</Text>
-      </View>
+        <View style={styles.graveyardRight}>
+          <Text style={styles.graveyardSkull}>💀</Text>
+          <Text style={styles.graveyardChevron}>›</Text>
+        </View>
+      </Pressable>
 
-      <Text style={styles.graveyardWarning}>{COPY.graveyardWarning}</Text>
+      <Pressable onPress={handleGraveyardPress}>
+        <Text style={styles.graveyardWarning}>{COPY.graveyardWarning}</Text>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -595,6 +611,11 @@ export default function HomeScreen() {
     router.push('/stats');
   }, []);
 
+  const handleGraveyardPress = useCallback(() => {
+    hapticLight();
+    router.push('/graveyard' as any);
+  }, []);
+
   const handleCheckInPress = useCallback(() => {
     hapticLight();
     router.push('/check-in');
@@ -647,6 +668,14 @@ export default function HomeScreen() {
           >
             <View style={styles.headerButtonInner}>
               <Text style={styles.headerCheckIcon}>✓</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={handleGraveyardPress}
+            style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
+          >
+            <View style={styles.headerButtonInner}>
+              <Text style={styles.graveyardIcon}>⚰️</Text>
             </View>
           </Pressable>
           <Pressable
@@ -765,6 +794,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.success,
+  },
+  graveyardIcon: {
+    fontSize: 14,
   },
   statsIconBars: {
     flexDirection: 'row',
@@ -987,9 +1019,22 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginTop: Spacing.sm,
   },
+  graveyardCardPressed: {
+    backgroundColor: 'rgba(255, 69, 58, 0.08)',
+    borderColor: 'rgba(255, 69, 58, 0.18)',
+  },
   graveyardContent: {
     flex: 1,
     gap: 3,
+  },
+  graveyardRight: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  graveyardChevron: {
+    fontSize: 18,
+    color: Colors.textMuted,
+    fontWeight: '300',
   },
   graveyardRip: {
     ...Typography.label,

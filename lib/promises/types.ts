@@ -23,6 +23,18 @@ export interface UserPromise {
 
   /** Streak count at the time of completion */
   streakAtCompletion?: number;
+
+  // ─── Virality: Sponsor My Failure ───
+  /** Additional $ added by sponsors betting against you */
+  sponsorAmount?: number;
+  /** Number of people who sponsored your potential failure */
+  sponsorCount?: number;
+
+  // ─── Virality: I Told You So ───
+  /** Friend's roast message revealed on failure */
+  iToldYouSoMessage?: string;
+  /** Who wrote the roast */
+  iToldYouSoFrom?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -75,6 +87,11 @@ export type CreatePromiseInput = {
   moneyDestination: MoneyDestination;
   friendName?: string;
   voiceNoteUri?: string;
+  // Virality fields (optional at creation, can be added later)
+  sponsorAmount?: number;
+  sponsorCount?: number;
+  iToldYouSoMessage?: string;
+  iToldYouSoFrom?: string;
 };
 
 export type PromiseUpdate = Partial<
@@ -91,6 +108,10 @@ export type PromiseUpdate = Partial<
     | 'failedAt'
     | 'expiredAt'
     | 'streakAtCompletion'
+    | 'sponsorAmount'
+    | 'sponsorCount'
+    | 'iToldYouSoMessage'
+    | 'iToldYouSoFrom'
   >
 >;
 

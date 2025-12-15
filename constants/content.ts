@@ -222,3 +222,94 @@ export const CHECKIN_COPY = {
   missedMultiple: "You've missed {n} check-ins. That's concerning.",
   autoFailWarning: "3 missed check-ins = auto-fail",
 } as const;
+
+// ─────────────────────────────────────────────────────────────
+// GRAVEYARD FULL SCREEN
+// Where broken promises go to rest. In shame.
+// ─────────────────────────────────────────────────────────────
+
+export const GRAVEYARD_COPY = {
+  // Page header
+  title: "The Graveyard",
+  subtitle: "Where promises come to die.",
+  
+  // Empty state (clean record)
+  emptyTitle: "Nothing here. Yet.",
+  emptySubtitle: "Either you're a saint or you haven't started. We know which.",
+  emptyHint: "Clean records are suspicious.",
+  
+  // Tombstone labels
+  ripLabel: "RIP",
+  lastedLabel: "Lasted",
+  lostLabel: "Lost",
+  
+  // Footer
+  footerText: "Every failure is a lesson. A very expensive lesson.",
+  
+  // Total lost
+  totalLostLabel: "TOTAL LOST",
+  totalLostEmpty: "Nothing lost. Nothing learned?",
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// SHARE COMMITMENT
+// For sharing active commitments to get accountability
+// ─────────────────────────────────────────────────────────────
+
+export const SHARE_COPY = {
+  // Share modal
+  title: "Share commitment",
+  subtitle: "Send this to friends who'll hold you accountable.",
+  
+  // Share card text
+  cardLabel: "I BET",
+  cardPromise: "I'll",
+  cardDeadline: "by",
+  cardCta: "HOLD ME TO IT",
+  
+  // Sponsor section
+  sponsorTitle: "ADD FRIEND'S PLEDGE",
+  sponsorSubtitle: "Did a friend pledge extra $ if you fail? Track it here.",
+  sponsorPlaceholder: "0",
+  sponsorNote: "Example: Your friend says 'I'll add $20 if you fail' — enter $20.",
+  sponsorTotal: "Total at stake",
+  
+  // I Told You So section
+  iToldYouSoTitle: "FRIEND'S MESSAGE",
+  iToldYouSoSubtitle: "Let a friend write a message you'll only see if you fail.",
+  iToldYouSoPlaceholder: "Their message to you if you fail...",
+  iToldYouSoFromPlaceholder: "Friend's name",
+  iToldYouSoHint: "Hand your phone to them. This stays hidden until you lose.",
+  
+  // Actions
+  shareButton: "Share commitment",
+  copyLinkButton: "Copy link",
+  
+  // Toast messages
+  shared: "Commitment shared. No backing out now.",
+  linkCopied: "Link copied. Accountability incoming.",
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// FAILURE REVEAL
+// When they fail and the roast drops
+// ─────────────────────────────────────────────────────────────
+
+export const FAILURE_COPY = {
+  // I Told You So reveal
+  iToldYouSoRevealTitle: "A message was left for you...",
+  iToldYouSoFromLabel: "From",
+  
+  // Sponsor reveal
+  sponsorLossTitle: "Plus {amount} from sponsors",
+  sponsorLossSubtitle: "They saw it coming.",
+  
+  // General failure messages
+  failureMessages: [
+    "It happens. To you, specifically.",
+    "Statistics needed a data point.",
+    "The Graveyard awaits.",
+    "Your wallet sends its regards.",
+    "At least you were honest about it.",
+  ],
+} as const;

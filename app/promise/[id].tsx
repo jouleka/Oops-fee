@@ -16,7 +16,9 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LoadingState } from '@/components/ui/loading-state';
+import { ShareModal } from '@/components/share';
 import { VoicePlayback } from '@/components/voice';
+import { FAILURE_COPY } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
 import { formatShortDateTime, getTimeRemaining, type Urgency } from '@/lib/promises/time';
@@ -176,16 +178,23 @@ function ConfirmActionModal({
 /**
  * FailConfirmModal - The guilt-trip modal
  * If there's a voice recording, makes the user listen before they can confirm failure.
+ * Shows "I Told You So" message reveal with dramatic animation.
  */
 function FailConfirmModal({
   visible,
   voiceNoteUri,
+  iToldYouSoMessage,
+  iToldYouSoFrom,
+  sponsorAmount,
   onCancel,
   onConfirm,
   working,
 }: {
   visible: boolean;
   voiceNoteUri?: string;
+  iToldYouSoMessage?: string;
+  iToldYouSoFrom?: string;
+  sponsorAmount?: number;
   onCancel: () => void;
   onConfirm: () => void;
   working: boolean;
@@ -246,6 +255,8 @@ function FailConfirmModal({
   // Allow confirmation if: no voice note, already listened, or voice failed to load
   const canConfirm = !voiceNoteUri || hasListened || voiceError;
   const hasVoice = !!voiceNoteUri && !voiceError;
+  const hasIToldYouSo = !!iToldYouSoMessage;
+  const hasSponsor = (sponsorAmount ?? 0) > 0;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
@@ -298,6 +309,31 @@ function FailConfirmModal({
                   No voice commitment recorded. (Next time, guilt-trip yourself.)
                 </Text>
               </View>
+            )}
+
+            {/* I Told You So preview - show sealed envelope before confirming */}
+            {hasIToldYouSo && (
+              <Animated.View entering={FadeInDown.delay(100).duration(250)} style={styles.sealedEnvelope}>
+                <View style={styles.envelopeIcon}>
+                  <Text style={styles.envelopeEmoji}>💌</Text>
+                </View>
+                <View style={styles.envelopeContent}>
+                  <Text style={styles.envelopeTitle}>A message awaits...</Text>
+                  <Text style={styles.envelopeHint}>
+                    Someone left you a note. It will be revealed after you confirm.
+                  </Text>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* Sponsor warning */}
+            {hasSponsor && (
+              <Animated.View entering={FadeIn.delay(150).duration(200)} style={styles.sponsorWarning}>
+                <Text style={styles.sponsorWarningIcon}>👀</Text>
+                <Text style={styles.sponsorWarningText}>
+                  +${sponsorAmount} from sponsors is also on the line.
+                </Text>
+              </Animated.View>
             )}
 
             {/* Action buttons */}
@@ -384,6 +420,12 @@ export default function PromiseDetailScreen() {
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmFail, setConfirmFail] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Calculate total stake including sponsors
+  const totalStake = promise ? promise.stake + (promise.sponsorAmount ?? 0) : 0;
+  const hasSponsor = promise && (promise.sponsorAmount ?? 0) > 0;
+  const hasIToldYouSo = promise && !!promise.iToldYouSoMessage;
 
   const handleBack = useCallback(() => {
     hapticLight();
@@ -437,15 +479,28 @@ export default function PromiseDetailScreen() {
           <Text style={styles.headerSubtitle}>Your move.</Text>
         </View>
 
-        <Pressable
-          onPress={() => {
-            hapticLight();
-            setConfirmDelete(true);
-          }}
-          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.iconButtonText}>⋯</Text>
-        </Pressable>
+        <View style={styles.headerButtons}>
+          {canChangeStatus && (
+            <Pressable
+              onPress={() => {
+                hapticLight();
+                setShowShareModal(true);
+              }}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.iconButtonText}>↗</Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              setConfirmDelete(true);
+            }}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.iconButtonText}>⋯</Text>
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -456,8 +511,15 @@ export default function PromiseDetailScreen() {
         <Animated.View entering={FadeInDown.duration(220)} style={styles.hero}>
           <View style={styles.heroTop}>
             <StatusPill status={promise.status} />
-            <View style={[styles.moneyChip, { backgroundColor: Colors.dangerDim, borderColor: Colors.danger + '55' }]}>
-              <Text style={styles.moneyChipText}>${promise.stake}</Text>
+            <View style={styles.stakeChipContainer}>
+              {hasSponsor && (
+                <View style={[styles.sponsorChip, { backgroundColor: Colors.warningDim, borderColor: Colors.warning + '44' }]}>
+                  <Text style={styles.sponsorChipText}>+${promise.sponsorAmount} sponsored</Text>
+                </View>
+              )}
+              <View style={[styles.moneyChip, { backgroundColor: Colors.dangerDim, borderColor: Colors.danger + '55' }]}>
+                <Text style={styles.moneyChipText}>${totalStake}</Text>
+              </View>
             </View>
           </View>
 
@@ -511,8 +573,39 @@ export default function PromiseDetailScreen() {
             <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.failBanner}>
               <Text style={styles.failIcon}>💸</Text>
               <Text style={styles.failText}>
-                You failed. Payment is “coming soon”. Convenient timing, I know.
+                You failed. Payment is "coming soon". Convenient timing, I know.
               </Text>
+            </Animated.View>
+          )}
+
+          {/* I Told You So reveal - only shown after failure */}
+          {promise.status === 'failed' && hasIToldYouSo && (
+            <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.iToldYouSoCard}>
+              <View style={styles.iToldYouSoHeader}>
+                <Text style={styles.iToldYouSoEmoji}>💌</Text>
+                <Text style={styles.iToldYouSoTitle}>{FAILURE_COPY.iToldYouSoRevealTitle}</Text>
+              </View>
+              <View style={styles.iToldYouSoContent}>
+                <Text style={styles.iToldYouSoMessage}>"{promise.iToldYouSoMessage}"</Text>
+                {promise.iToldYouSoFrom && (
+                  <Text style={styles.iToldYouSoFrom}>
+                    — {promise.iToldYouSoFrom}
+                  </Text>
+                )}
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Sponsor loss notification */}
+          {promise.status === 'failed' && hasSponsor && (
+            <Animated.View entering={FadeIn.delay(350).duration(250)} style={styles.sponsorLossBanner}>
+              <Text style={styles.sponsorLossIcon}>👀</Text>
+              <View style={styles.sponsorLossContent}>
+                <Text style={styles.sponsorLossTitle}>
+                  {FAILURE_COPY.sponsorLossTitle.replace('{amount}', `$${promise.sponsorAmount}`)}
+                </Text>
+                <Text style={styles.sponsorLossSubtitle}>{FAILURE_COPY.sponsorLossSubtitle}</Text>
+              </View>
             </Animated.View>
           )}
         </Animated.View>
@@ -578,6 +671,9 @@ export default function PromiseDetailScreen() {
       <FailConfirmModal
         visible={confirmFail}
         voiceNoteUri={promise.voiceNoteUri}
+        iToldYouSoMessage={promise.iToldYouSoMessage}
+        iToldYouSoFrom={promise.iToldYouSoFrom}
+        sponsorAmount={promise.sponsorAmount}
         onCancel={() => setConfirmFail(false)}
         onConfirm={handleFail}
         working={isWorking}
@@ -593,6 +689,15 @@ export default function PromiseDetailScreen() {
         onConfirm={handleDelete}
         working={isWorking}
       />
+
+      {/* Share Modal */}
+      {promise && (
+        <ShareModal
+          visible={showShareModal}
+          promise={promise}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </View>
   );
 }
@@ -641,6 +746,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconButtonText: { color: Colors.textSecondary, fontSize: 18, fontWeight: '700', marginTop: -2 },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
 
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, gap: Spacing.xl },
@@ -661,6 +770,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   moneyChipText: { ...Typography.bodySemibold, color: Colors.danger, fontFamily: Fonts.mono },
+  stakeChipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sponsorChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  sponsorChipText: { ...Typography.caption, color: Colors.warning, fontWeight: '600' },
 
   promiseText: {
     ...Typography.h2,
@@ -717,6 +838,70 @@ const styles = StyleSheet.create({
   },
   failIcon: { fontSize: 14, marginTop: 1 },
   failText: { ...Typography.caption, color: Colors.danger, flex: 1 },
+
+  // I Told You So card
+  iToldYouSoCard: {
+    backgroundColor: 'rgba(255, 159, 10, 0.08)',
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.warning + '33',
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  iToldYouSoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  iToldYouSoEmoji: {
+    fontSize: 20,
+  },
+  iToldYouSoTitle: {
+    ...Typography.label,
+    color: Colors.warning,
+    flex: 1,
+  },
+  iToldYouSoContent: {
+    gap: Spacing.sm,
+  },
+  iToldYouSoMessage: {
+    ...Typography.h3,
+    color: Colors.text,
+    fontStyle: 'italic',
+    lineHeight: 24,
+  },
+  iToldYouSoFrom: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: 'right',
+  },
+
+  // Sponsor loss banner
+  sponsorLossBanner: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+  },
+  sponsorLossIcon: {
+    fontSize: 20,
+  },
+  sponsorLossContent: {
+    flex: 1,
+    gap: 2,
+  },
+  sponsorLossTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  sponsorLossSubtitle: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    fontStyle: 'italic',
+  },
 
   actions: { gap: Spacing.md, paddingTop: Spacing.md },
   actionBtn: {
@@ -822,6 +1007,62 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+
+  // Sealed envelope (I Told You So preview)
+  sealedEnvelope: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    backgroundColor: 'rgba(255, 159, 10, 0.08)',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.warning + '33',
+    borderStyle: 'dashed',
+    padding: Spacing.lg,
+  },
+  envelopeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.warningDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  envelopeEmoji: {
+    fontSize: 20,
+  },
+  envelopeContent: {
+    flex: 1,
+    gap: 2,
+  },
+  envelopeTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.warning,
+  },
+  envelopeHint: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+  },
+
+  // Sponsor warning in fail modal
+  sponsorWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+  },
+  sponsorWarningIcon: {
+    fontSize: 16,
+  },
+  sponsorWarningText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    flex: 1,
   },
 
   secondaryBtn: {
