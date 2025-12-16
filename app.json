@@ -15,11 +15,16 @@
         "NSMicrophoneUsageDescription": "OopsFee needs mic access to record your promise. (For evidence.)"
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.oopsfee.app"]
+        "com.apple.security.application-groups": [
+          "group.com.oopsfee.app"
+        ]
       }
     },
     "android": {
-      "permissions": ["RECORD_AUDIO"],
+      "permissions": [
+        "RECORD_AUDIO",
+        "RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,7 +32,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.oopsfee.app"
     },
     "web": {
       "output": "static",
@@ -47,8 +53,9 @@
           }
         }
       ],
-"@bacons/apple-targets",
-      "./plugins/withWidgetKitModule"
+      "@bacons/apple-targets",
+      "./plugins/withWidgetKitModule",
+      "./plugins/withAndroidWidget"
     ],
     "experiments": {
       "typedRoutes": true,
