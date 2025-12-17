@@ -1,0 +1,8 @@
+# Supabase local development
+.branches/
+.temp/
+
+# Local environment (secrets should never be committed)
+.env
+.env.local
+

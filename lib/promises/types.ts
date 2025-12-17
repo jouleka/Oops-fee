@@ -9,6 +9,20 @@ export type MoneyDestination = 'charity' | 'anti_charity' | 'friend' | 'oopsfee'
 /** How the user proves they completed their promise */
 export type VerificationType = 'honor' | 'photo' | 'partner' | 'healthkit' | 'location';
 
+// ─────────────────────────────────────────────────────────────
+// PARTNER VERIFICATION STATE (Supabase sync)
+// ─────────────────────────────────────────────────────────────
+
+/** Partner verification state machine */
+export type PartnerState = 'awaiting' | 'approved' | 'rejected' | 'expired';
+
+// ─────────────────────────────────────────────────────────────
+// PAYMENT STATUS (Supabase sync)
+// ─────────────────────────────────────────────────────────────
+
+/** Payment processing status for failed promise charges */
+export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'requires_action' | 'abandoned';
+
 export interface UserPromise {
   id: string;
   text: string;
@@ -50,6 +64,24 @@ export interface UserPromise {
   verificationProof?: string;
   /** Timestamp when verification was submitted */
   verificationTimestamp?: number;
+
+  // ─── Partner Verification (Supabase sync) ───
+  /** Partner verification state machine */
+  partnerState?: PartnerState;
+  /** Deadline for partner to respond (24h after user claims completion) */
+  partnerDeadlineAt?: number;
+
+  // ─── Payment Tracking (Supabase sync) ───
+  /** Status of failure charge payment */
+  paymentStatus?: PaymentStatus;
+  /** Stripe client secret for SCA resolution in-app */
+  paymentClientSecret?: string;
+
+  // ─── Remote Sync ───
+  /** Timestamp of last sync with Supabase */
+  syncedAt?: number;
+  /** Confirms promise exists on server (same as id) */
+  remoteId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -132,8 +164,31 @@ export type PromiseUpdate = Partial<
     | 'verificationType'
     | 'verificationProof'
     | 'verificationTimestamp'
+    // Partner verification
+    | 'partnerState'
+    | 'partnerDeadlineAt'
+    // Payment tracking
+    | 'paymentStatus'
+    | 'paymentClientSecret'
+    // Sync
+    | 'syncedAt'
+    | 'remoteId'
   >
 >;
+
+// ─────────────────────────────────────────────────────────────
+// USER PAYMENT STATE (from profile)
+// ─────────────────────────────────────────────────────────────
+
+/** User payment state from their profile */
+export interface UserPaymentState {
+  /** Whether user has a valid payment method on file */
+  hasPaymentMethod: boolean;
+  /** Whether user must resolve failed payments before creating new staked promises */
+  paymentBlocked: boolean;
+  /** Number of abandoned/failed payments */
+  failedPaymentCount: number;
+}
 
 // ─────────────────────────────────────────────────────────────
 // FACTORIES
