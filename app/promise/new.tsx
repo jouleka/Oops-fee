@@ -26,12 +26,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { VerificationPicker } from '@/components/verification';
 import { VoiceRecorder } from '@/components/voice';
-import { PROMISE_TEMPLATES, STATS_COPY, type PromiseTemplate } from '@/constants/content';
+import { PROMISE_TEMPLATES, STAKES_THRESHOLDS, STATS_COPY, VERIFICATION_COPY, type PromiseTemplate } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
 import { clampInt, formatShortDateTime } from '@/lib/promises/time';
-import type { MoneyDestination } from '@/lib/promises/types';
+import type { MoneyDestination, VerificationType } from '@/lib/promises/types';
 import { getFailureMultiplier, getMultiplierResetProgress } from '@/lib/stats/store';
 
 const STAKE_PRESETS = [5, 10, 25, 50] as const;
@@ -684,6 +685,9 @@ export default function NewPromiseScreen() {
   const [moneyDestination, setMoneyDestination] = useState<MoneyDestination>('oopsfee');
   const [friendName, setFriendName] = useState('');
   const [voiceNoteUri, setVoiceNoteUri] = useState<string | undefined>(undefined);
+  const [verificationType, setVerificationType] = useState<VerificationType>(
+    () => initialTemplate?.defaultVerification ?? 'photo'
+  );
   const [deadlineAt, setDeadlineAt] = useState<number>(() => {
     if (initialTemplate) return defaultDeadlineForTemplate(initialTemplate, nowMs);
     const d = new Date(nowMs);
@@ -704,6 +708,13 @@ export default function NewPromiseScreen() {
   // Effective stake with multiplier applied
   const effectiveStake = stake * failureMultiplier;
 
+  // Stakes gating: if honor is selected and stake goes above threshold, switch to photo
+  useEffect(() => {
+    if (verificationType === 'honor' && effectiveStake >= STAKES_THRESHOLDS.honorDisabled) {
+      setVerificationType('photo');
+    }
+  }, [effectiveStake, verificationType]);
+
   const friendOk = moneyDestination !== 'friend' || friendName.trim().length > 0;
   const canLock = text.trim().length > 0 && stake >= 0 && deadlineAt > nowMs && friendOk;
   const warningFree = stake === 0;
@@ -720,8 +731,9 @@ export default function NewPromiseScreen() {
       setStake(t.stake);
       setStakeInput(String(t.stake));
       setDeadlineAt(defaultDeadlineForTemplate(t, Date.now()));
+      setVerificationType(t.defaultVerification);
     },
-    [setText, setStake, setStakeInput, setDeadlineAt]
+    [setText, setStake, setStakeInput, setDeadlineAt, setVerificationType]
   );
 
   const openConfirm = useCallback(() => {
@@ -741,6 +753,7 @@ export default function NewPromiseScreen() {
         moneyDestination,
         friendName: moneyDestination === 'friend' ? friendName.trim() : undefined,
         voiceNoteUri,
+        verificationType,
       });
       hapticMedium();
       setConfirmOpen(false);
@@ -748,7 +761,7 @@ export default function NewPromiseScreen() {
     } finally {
       setConfirming(false);
     }
-  }, [canLock, createPromise, deadlineAt, effectiveStake, friendName, moneyDestination, text, voiceNoteUri]);
+  }, [canLock, createPromise, deadlineAt, effectiveStake, friendName, moneyDestination, text, verificationType, voiceNoteUri]);
 
   return (
     <View style={styles.screen}>
@@ -951,8 +964,20 @@ export default function NewPromiseScreen() {
             </View>
           </Animated.View>
 
+          {/* Verification */}
+          <Animated.View entering={FadeInDown.delay(170).duration(220)} style={styles.section}>
+            <Text style={styles.sectionLabel}>{VERIFICATION_COPY.sectionTitle}</Text>
+            <Text style={styles.sectionHint}>{VERIFICATION_COPY.sectionHint}</Text>
+
+            <VerificationPicker
+              value={verificationType}
+              onChange={setVerificationType}
+              stake={effectiveStake}
+            />
+          </Animated.View>
+
           {/* Where money goes */}
-          <Animated.View entering={FadeInDown.delay(180).duration(220)} style={styles.section}>
+          <Animated.View entering={FadeInDown.delay(190).duration(220)} style={styles.section}>
             <Text style={styles.sectionLabel}>WHERE THE MONEY GOES</Text>
             <Text style={styles.sectionHint}>UI-only for now. But your guilt can have preferences.</Text>
 
@@ -1006,7 +1031,7 @@ export default function NewPromiseScreen() {
           </Animated.View>
 
           {/* Voice commitment */}
-          <Animated.View entering={FadeInDown.delay(200).duration(220)} style={styles.section}>
+          <Animated.View entering={FadeInDown.delay(210).duration(220)} style={styles.section}>
             <Text style={styles.sectionLabel}>OPTIONAL: VOICE COMMITMENT</Text>
             <Text style={styles.sectionHint}>Say it out loud. We'll haunt you with it later.</Text>
 
@@ -1060,7 +1085,7 @@ export default function NewPromiseScreen() {
           )}
 
           {/* Lock in */}
-          <Animated.View entering={FadeInDown.delay(200).duration(220)} style={styles.lockSection}>
+          <Animated.View entering={FadeInDown.delay(230).duration(220)} style={styles.lockSection}>
             <Pressable
               disabled={!canLock || isWorking}
               onPress={openConfirm}

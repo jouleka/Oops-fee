@@ -78,7 +78,7 @@ function TombstoneCard({ promise, index }: { promise: UserPromise; index: number
 
       {/* Promise text */}
       <Text style={styles.tombstoneText} numberOfLines={3}>
-        "{promise.text}"
+        &quot;{promise.text}&quot;
       </Text>
 
       {/* Epitaph: duration and loss */}
@@ -488,4 +488,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

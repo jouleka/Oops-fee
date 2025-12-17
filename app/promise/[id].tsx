@@ -17,8 +17,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LoadingState } from '@/components/ui/loading-state';
 import { ShareModal } from '@/components/share';
+import { PhotoCaptureModal } from '@/components/verification';
 import { VoicePlayback } from '@/components/voice';
-import { FAILURE_COPY } from '@/constants/content';
+import { FAILURE_COPY, VERIFICATION_COPY } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
 import { formatShortDateTime, getTimeRemaining, type Urgency } from '@/lib/promises/time';
@@ -401,7 +402,7 @@ export default function PromiseDetailScreen() {
     const raw = params.id;
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
-  const { promises, setPromiseStatus, deletePromise, isWorking, isHydrated } = usePromiseStore();
+  const { promises, setPromiseStatus, updatePromise, deletePromise, isWorking, isHydrated } = usePromiseStore();
 
   const promise: UserPromise | null = useMemo(() => {
     if (!id) return null;
@@ -421,11 +422,13 @@ export default function PromiseDetailScreen() {
   const [confirmFail, setConfirmFail] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
 
   // Calculate total stake including sponsors
   const totalStake = promise ? promise.stake + (promise.sponsorAmount ?? 0) : 0;
   const hasSponsor = promise && (promise.sponsorAmount ?? 0) > 0;
   const hasIToldYouSo = promise && !!promise.iToldYouSoMessage;
+  const needsPhotoProof = promise?.verificationType === 'photo';
 
   const handleBack = useCallback(() => {
     hapticLight();
@@ -434,6 +437,39 @@ export default function PromiseDetailScreen() {
 
   const canChangeStatus = promise?.status !== 'completed' && promise?.status !== 'failed';
 
+  // Handler for initiating completion - checks if photo proof is needed
+  const handleInitiateComplete = useCallback(() => {
+    if (!promise) return;
+    hapticLight();
+    
+    if (needsPhotoProof) {
+      // Photo verification required - show photo capture modal
+      setShowPhotoCapture(true);
+    } else {
+      // No photo needed - show regular confirmation
+      setConfirmComplete(true);
+    }
+  }, [promise, needsPhotoProof]);
+
+  // Handler for completing with photo proof
+  const handlePhotoCapture = useCallback(async (photoUri: string) => {
+    if (!promise) return;
+    hapticMedium();
+    
+    // Store photo proof and mark as completed
+    await updatePromise(promise.id, {
+      status: 'completed',
+      completedAt: Date.now(),
+      verificationProof: photoUri,
+      verificationTimestamp: Date.now(),
+    });
+    
+    setShowPhotoCapture(false);
+    // Navigate to success celebration screen
+    router.replace({ pathname: '/promise/success', params: { promiseId: promise.id } });
+  }, [promise, updatePromise]);
+
+  // Handler for completing without photo (honor system)
   const handleComplete = useCallback(async () => {
     if (!promise) return;
     hapticMedium();
@@ -551,6 +587,26 @@ export default function PromiseDetailScreen() {
                 </View>
               </>
             )}
+            <View style={styles.metaDivider} />
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>VERIFICATION</Text>
+              <Text style={styles.metaValue}>
+                {promise.verificationType === 'photo' && '📷 Photo proof'}
+                {promise.verificationType === 'partner' && '👥 Friend confirms'}
+                {promise.verificationType === 'honor' && '🤞 Honor system'}
+                {promise.verificationType === 'healthkit' && '⌚ Health data'}
+                {promise.verificationType === 'location' && '📍 Location check'}
+              </Text>
+            </View>
+            {promise.verificationProof && promise.status === 'completed' && (
+              <>
+                <View style={styles.metaDivider} />
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>PROOF</Text>
+                  <Text style={[styles.metaValue, { color: Colors.success }]}>✓ {VERIFICATION_COPY.verifiedBadge}</Text>
+                </View>
+              </>
+            )}
           </View>
 
           {isExpiredView && (
@@ -613,10 +669,7 @@ export default function PromiseDetailScreen() {
         {canChangeStatus && (
           <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.actions}>
             <Pressable
-              onPress={() => {
-                hapticLight();
-                setConfirmComplete(true);
-              }}
+              onPress={handleInitiateComplete}
               style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed, styles.actionSuccess]}
             >
               <LinearGradient
@@ -625,7 +678,9 @@ export default function PromiseDetailScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.actionBtnText}>I did it ✓</Text>
+                <Text style={styles.actionBtnText}>
+                  {needsPhotoProof ? 'I did it 📷' : 'I did it ✓'}
+                </Text>
               </LinearGradient>
             </Pressable>
 
@@ -696,6 +751,16 @@ export default function PromiseDetailScreen() {
           visible={showShareModal}
           promise={promise}
           onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {/* Photo Capture Modal for verification */}
+      {promise && (
+        <PhotoCaptureModal
+          visible={showPhotoCapture}
+          promiseText={promise.text}
+          onCapture={handlePhotoCapture}
+          onCancel={() => setShowPhotoCapture(false)}
         />
       )}
     </View>

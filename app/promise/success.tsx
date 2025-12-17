@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -20,7 +20,7 @@ import ViewShot from 'react-native-view-shot';
 
 import { Confetti } from '@/components/celebration';
 import { LoadingState } from '@/components/ui/loading-state';
-import { SUCCESS_COPY } from '@/constants/content';
+import { SUCCESS_COPY, VERIFICATION_COPY } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
 import { computeStats } from '@/lib/stats/store';
@@ -253,6 +253,26 @@ export default function SuccessScreen() {
           </Animated.View>
         )}
 
+        {/* Verification proof */}
+        {promise.verificationProof && (
+          <Animated.View entering={FadeIn.delay(850).duration(400)} style={styles.verificationCard}>
+            <View style={styles.verificationProofContainer}>
+              <Image
+                source={{ uri: promise.verificationProof }}
+                style={styles.verificationThumbnail}
+                resizeMode="cover"
+              />
+              <View style={styles.verificationBadgeOverlay}>
+                <Text style={styles.verificationCheckmark}>✓</Text>
+              </View>
+            </View>
+            <View style={styles.verificationInfo}>
+              <Text style={styles.verificationLabel}>{VERIFICATION_COPY.proofLabel}</Text>
+              <Text style={styles.verificationText}>{VERIFICATION_COPY.verifiedBadge}</Text>
+            </View>
+          </Animated.View>
+        )}
+
         {/* Hidden share card for capture */}
         <View style={styles.shareCardContainer}>
           <ViewShot
@@ -398,6 +418,62 @@ const styles = StyleSheet.create({
   streakText: {
     ...Typography.bodySemibold,
     color: Colors.warning,
+  },
+
+  // Verification proof
+  verificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.successDim,
+    borderWidth: 1,
+    borderColor: Colors.success + '33',
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  verificationProofContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  verificationThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  verificationBadgeOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.bgElevated,
+  },
+  verificationCheckmark: {
+    color: Colors.text,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  verificationInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  verificationLabel: {
+    ...Typography.label,
+    color: Colors.success,
+    fontSize: 10,
+  },
+  verificationText: {
+    ...Typography.bodySemibold,
+    color: Colors.success,
+    fontSize: 14,
   },
 
   // Share card (hidden, for capture)

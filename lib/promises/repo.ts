@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { CreatePromiseInput, MoneyDestination, PromiseStatus, PromiseUpdate, UserPromise } from './types';
+import type { CreatePromiseInput, MoneyDestination, PromiseStatus, PromiseUpdate, UserPromise, VerificationType } from './types';
 
 const STORAGE_KEY = 'oopsfee.promises.v1';
 const STORAGE_VERSION = 1 as const;
@@ -57,6 +57,28 @@ function coercePromise(raw: unknown): UserPromise | null {
     typeof raw.voiceNoteUri === 'string' && raw.voiceNoteUri.length > 0 ? raw.voiceNoteUri : undefined;
   const streakAtCompletion = typeof raw.streakAtCompletion === 'number' ? raw.streakAtCompletion : undefined;
 
+  // Verification fields - backwards compatible (default to 'honor' for old promises)
+  const verificationTypeRaw = typeof raw.verificationType === 'string' ? raw.verificationType : null;
+  const verificationType: VerificationType =
+    verificationTypeRaw === 'honor' ||
+    verificationTypeRaw === 'photo' ||
+    verificationTypeRaw === 'partner' ||
+    verificationTypeRaw === 'healthkit' ||
+    verificationTypeRaw === 'location'
+      ? verificationTypeRaw
+      : 'honor'; // Default for old promises without verification
+  const verificationProof =
+    typeof raw.verificationProof === 'string' && raw.verificationProof.length > 0 ? raw.verificationProof : undefined;
+  const verificationTimestamp = typeof raw.verificationTimestamp === 'number' ? raw.verificationTimestamp : undefined;
+
+  // Virality fields
+  const sponsorAmount = typeof raw.sponsorAmount === 'number' ? raw.sponsorAmount : undefined;
+  const sponsorCount = typeof raw.sponsorCount === 'number' ? raw.sponsorCount : undefined;
+  const iToldYouSoMessage =
+    typeof raw.iToldYouSoMessage === 'string' && raw.iToldYouSoMessage.length > 0 ? raw.iToldYouSoMessage : undefined;
+  const iToldYouSoFrom =
+    typeof raw.iToldYouSoFrom === 'string' && raw.iToldYouSoFrom.length > 0 ? raw.iToldYouSoFrom : undefined;
+
   if (!['active', 'completed', 'failed', 'expired'].includes(status)) return null;
 
   return {
@@ -74,6 +96,13 @@ function coercePromise(raw: unknown): UserPromise | null {
     failedAt,
     expiredAt,
     streakAtCompletion,
+    verificationType,
+    verificationProof,
+    verificationTimestamp,
+    sponsorAmount,
+    sponsorCount,
+    iToldYouSoMessage,
+    iToldYouSoFrom,
   };
 }
 
@@ -151,6 +180,11 @@ export async function createPromise(input: CreatePromiseInput): Promise<UserProm
     moneyDestination: input.moneyDestination,
     friendName: input.moneyDestination === 'friend' ? input.friendName?.trim() || undefined : undefined,
     voiceNoteUri: input.voiceNoteUri?.trim() || undefined,
+    verificationType: input.verificationType ?? 'photo', // Default to photo for new promises
+    sponsorAmount: input.sponsorAmount,
+    sponsorCount: input.sponsorCount,
+    iToldYouSoMessage: input.iToldYouSoMessage?.trim() || undefined,
+    iToldYouSoFrom: input.iToldYouSoFrom?.trim() || undefined,
   };
 
   const state = await readState();

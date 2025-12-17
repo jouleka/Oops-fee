@@ -2,6 +2,13 @@ export type PromiseStatus = 'active' | 'completed' | 'failed' | 'expired';
 
 export type MoneyDestination = 'charity' | 'anti_charity' | 'friend' | 'oopsfee';
 
+// ─────────────────────────────────────────────────────────────
+// VERIFICATION
+// ─────────────────────────────────────────────────────────────
+
+/** How the user proves they completed their promise */
+export type VerificationType = 'honor' | 'photo' | 'partner' | 'healthkit' | 'location';
+
 export interface UserPromise {
   id: string;
   text: string;
@@ -35,6 +42,14 @@ export interface UserPromise {
   iToldYouSoMessage?: string;
   /** Who wrote the roast */
   iToldYouSoFrom?: string;
+
+  // ─── Verification ───
+  /** How the user proves completion (defaults to 'honor' for backwards compat) */
+  verificationType: VerificationType;
+  /** Local file:// URI to photo proof (when verificationType === 'photo') */
+  verificationProof?: string;
+  /** Timestamp when verification was submitted */
+  verificationTimestamp?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -92,6 +107,8 @@ export type CreatePromiseInput = {
   sponsorCount?: number;
   iToldYouSoMessage?: string;
   iToldYouSoFrom?: string;
+  // Verification
+  verificationType?: VerificationType; // Defaults to 'photo' in repo
 };
 
 export type PromiseUpdate = Partial<
@@ -112,6 +129,9 @@ export type PromiseUpdate = Partial<
     | 'sponsorCount'
     | 'iToldYouSoMessage'
     | 'iToldYouSoFrom'
+    | 'verificationType'
+    | 'verificationProof'
+    | 'verificationTimestamp'
   >
 >;
 

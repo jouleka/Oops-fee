@@ -26,14 +26,22 @@ export const ROTATING_QUOTES = [
 // Common promises, realistic stakes, relatable
 // ─────────────────────────────────────────────────────────────
 
-export const PROMISE_TEMPLATES = [
-  { id: "gym", text: "Hit the gym 3x this week", stake: 25, emoji: "💪" },
-  { id: "alcohol", text: "No drinks for 7 days", stake: 20, emoji: "🍷" },
-  { id: "morning", text: "Up before 7am tomorrow", stake: 10, emoji: "☀️" },
-  { id: "social", text: "No doomscrolling until 6pm", stake: 15, emoji: "📵" },
-  { id: "meditate", text: "10 min meditation daily", stake: 15, emoji: "🧘" },
-  { id: "project", text: "Ship that thing by Friday", stake: 50, emoji: "🚀" },
-] as const;
+import type { VerificationType } from '@/lib/promises/types';
+
+export const PROMISE_TEMPLATES: readonly {
+  id: string;
+  text: string;
+  stake: number;
+  emoji: string;
+  defaultVerification: VerificationType;
+}[] = [
+  { id: "gym", text: "Hit the gym 3x this week", stake: 25, emoji: "💪", defaultVerification: "photo" },
+  { id: "alcohol", text: "No drinks for 7 days", stake: 20, emoji: "🍷", defaultVerification: "honor" },
+  { id: "morning", text: "Up before 7am tomorrow", stake: 10, emoji: "☀️", defaultVerification: "photo" },
+  { id: "social", text: "No doomscrolling until 6pm", stake: 15, emoji: "📵", defaultVerification: "honor" },
+  { id: "meditate", text: "10 min meditation daily", stake: 15, emoji: "🧘", defaultVerification: "honor" },
+  { id: "project", text: "Ship that thing by Friday", stake: 50, emoji: "🚀", defaultVerification: "photo" },
+];
 
 export type PromiseTemplate = (typeof PROMISE_TEMPLATES)[number];
 
@@ -312,4 +320,96 @@ export const FAILURE_COPY = {
     "Your wallet sends its regards.",
     "At least you were honest about it.",
   ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// VERIFICATION
+// How users prove they did the thing
+// ─────────────────────────────────────────────────────────────
+
+export const VERIFICATION_COPY = {
+  // Section header
+  sectionTitle: "HOW WILL YOU PROVE IT?",
+  sectionHint: "Pick your accountability level. Choose wisely.",
+
+  // Verification type cards
+  types: {
+    photo: {
+      emoji: "📷",
+      title: "Photo",
+      subtitle: "Snap a pic. No gallery picks.",
+      description: "Your camera, your proof, your slightly awkward selfie.",
+    },
+    partner: {
+      emoji: "👥",
+      title: "Friend",
+      subtitle: "A friend confirms you did it.",
+      description: "Hand your phone to someone who enjoys saying 'I told you so.'",
+    },
+    honor: {
+      emoji: "🤞",
+      title: "Honor",
+      subtitle: "Just trust me, bro.",
+      description: "We'll believe you. Probably. For now.",
+    },
+    healthkit: {
+      emoji: "⌚",
+      title: "Health",
+      subtitle: "Let your watch do the talking.",
+      description: "Coming soon. Your steps can't lie.",
+      comingSoon: true,
+    },
+    location: {
+      emoji: "📍",
+      title: "Location",
+      subtitle: "Be there or pay there.",
+      description: "Coming soon. GPS-verified accountability.",
+      comingSoon: true,
+    },
+  },
+
+  // Stakes gating
+  stakesWarning: {
+    low: null, // $1-10: no warning
+    medium: "Higher stakes usually need proof 📸",
+    high: "At this price point, 'trust me bro' doesn't fly.",
+  },
+
+  // Photo capture modal
+  photoCaptureTitle: "Prove it.",
+  photoCaptureSubtitle: "Take a photo. This is the evidence.",
+  photoCaptureButton: "Open camera",
+  photoRetakeButton: "Retake",
+  photoConfirmButton: "Use this photo",
+  photoCaptureHint: "No gallery picks allowed. Real proof only.",
+  photoCaptureFailed: "Camera access needed. Check your settings.",
+
+  // On completion
+  verifiedBadge: "Verified with photo",
+  honorBadge: "Trust-based",
+  partnerBadge: "Friend verified",
+
+  // Completion flow
+  completionPhotoRequired: "Photo proof required",
+  completionPhotoPrompt: "Take a photo to mark this complete.",
+  completionHonorPrompt: "You said honor system. We're trusting you.",
+
+  // Success screen additions
+  proofLabel: "PROOF",
+  proofTimestamp: "Captured at",
+} as const;
+
+// Verification type display order
+export const VERIFICATION_ORDER: readonly VerificationType[] = [
+  'photo',
+  'partner', 
+  'honor',
+  'healthkit',
+  'location',
+];
+
+// Stakes thresholds for honor system gating
+export const STAKES_THRESHOLDS = {
+  honorWarning: 11, // $11-25: show warning
+  honorDisabled: 26, // $26+: disable honor
 } as const;

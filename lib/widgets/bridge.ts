@@ -27,7 +27,13 @@ async function getSharedGroupPreferences() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const module = require('react-native-shared-group-preferences');
-      SharedGroupPreferences = module.default || module;
+      const prefs = module.default || module;
+      // Validate native methods are actually available (not in Expo Go)
+      if (typeof prefs?.setItem !== 'function') {
+        console.log('[WidgetBridge] SharedGroupPreferences not available (Expo Go?)');
+        return null;
+      }
+      SharedGroupPreferences = prefs;
     } catch (e) {
       console.warn('[WidgetBridge] SharedGroupPreferences not available:', e);
       return null;
@@ -108,6 +114,9 @@ function buildWidgetData(promises: UserPromise[]): WidgetData {
  * Call this whenever promises change (create, update, delete, status change).
  */
 export async function syncToWidget(promises: UserPromise[]): Promise<void> {
+  // Skip on web/unsupported platforms - native modules not available
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+
   const widgetData = buildWidgetData(promises);
   const jsonString = JSON.stringify(widgetData);
 
@@ -130,14 +139,17 @@ export async function syncToWidget(promises: UserPromise[]): Promise<void> {
  */
 async function syncToiOSWidget(jsonString: string): Promise<void> {
   const prefs = await getSharedGroupPreferences();
-  if (!prefs) return;
+  if (!prefs || typeof prefs.setItem !== 'function') return;
 
   try {
     await prefs.setItem(WIDGET_DATA_KEY, jsonString, APP_GROUP_ID);
     console.log('[WidgetBridge] iOS data written successfully');
     reloadWidget();
-  } catch (e) {
-    console.error('[WidgetBridge] Failed to sync iOS widget data:', e);
+  } catch {
+    // Silently ignore in Expo Go - native module not available
+    if (__DEV__) {
+      console.log('[WidgetBridge] Widget sync skipped (dev build required)');
+    }
   }
 }
 
@@ -160,6 +172,9 @@ async function syncToAndroidWidget(jsonString: string): Promise<void> {
  * Clear widget data (e.g., when all promises are cleared)
  */
 export async function clearWidgetData(): Promise<void> {
+  // Skip on web - native modules not available
+  if (Platform.OS === 'web') return;
+
   const emptyData: WidgetData = {
     promises: [],
     totalAtStake: 0,
@@ -169,13 +184,13 @@ export async function clearWidgetData(): Promise<void> {
 
   if (Platform.OS === 'ios') {
     const prefs = await getSharedGroupPreferences();
-    if (!prefs) return;
+    if (!prefs || typeof prefs.setItem !== 'function') return;
 
     try {
       await prefs.setItem(WIDGET_DATA_KEY, jsonString, APP_GROUP_ID);
       reloadWidget();
-    } catch (e) {
-      console.error('[WidgetBridge] Failed to clear iOS widget data:', e);
+    } catch {
+      // Silently ignore in Expo Go
     }
   } else if (Platform.OS === 'android') {
     const widgetModule = getAndroidWidgetModule();
