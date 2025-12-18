@@ -125,7 +125,7 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
   }));
 
   // Use a ref to avoid circular dependency between startRecording and stopRecording
-  const stopRecordingRef = useRef<() => Promise<void>>();
+  const stopRecordingRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   const stopRecording = useCallback(async () => {
     if (!recordingRef.current) return;

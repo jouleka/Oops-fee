@@ -185,7 +185,7 @@ function FailConfirmModal({
   visible,
   voiceNoteUri,
   iToldYouSoMessage,
-  iToldYouSoFrom,
+  iToldYouSoFrom: _iToldYouSoFrom,
   sponsorAmount,
   onCancel,
   onConfirm,

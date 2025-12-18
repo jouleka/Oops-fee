@@ -254,7 +254,7 @@ export default function HomeScreen() {
             <QuickAction
               icon="⚰️"
               label="Graveyard"
-              onPress={() => router.push('/graveyard' as any)}
+              onPress={() => router.push('/graveyard')}
             />
           </Animated.View>
         )}

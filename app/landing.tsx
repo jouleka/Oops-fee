@@ -59,7 +59,7 @@ export default function LandingScreen() {
     isAutoPlaying,
   ]);
 
-  const onMessagesScroll = useCallback((e: any) => {
+  const onMessagesScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
     const isNearBottom = distanceFromBottom < 80;

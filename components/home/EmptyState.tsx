@@ -9,12 +9,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import {
-  COPY,
-  getLiveBettorCount,
-  GRAVEYARD_ENTRIES,
-  PROMISE_TEMPLATES,
-  ROTATING_QUOTES,
-  type PromiseTemplate,
+    COPY,
+    getLiveBettorCount,
+    GRAVEYARD_ENTRIES,
+    PROMISE_TEMPLATES,
+    ROTATING_QUOTES,
+    type PromiseTemplate,
 } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticLight } from '@/lib/haptics';
@@ -136,7 +136,7 @@ function GraveyardPreview() {
 
   const handleGraveyardPress = useCallback(() => {
     hapticLight();
-    router.push('/graveyard' as any);
+    router.push('/graveyard');
   }, []);
 
   return (

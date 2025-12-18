@@ -13,16 +13,23 @@ import {
   deletePromise as repoDeletePromise,
   setPromiseStatus as repoSetPromiseStatus,
   updatePromise as repoUpdatePromise,
+  syncLocalToRemote,
 } from '@/lib/promises/repo';
+import { performFullSync, subscribeToPromiseChanges } from '@/lib/promises/sync';
 import type { CreatePromiseInput, PromiseStatus, PromiseUpdate, UserPromise } from '@/lib/promises/types';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { clearWidgetData, syncToWidget } from '@/lib/widgets';
+
+import { useAuth } from './auth';
 
 type PromiseStore = {
   promises: UserPromise[];
   isHydrated: boolean;
   isWorking: boolean;
+  isSyncing: boolean;
 
   refresh: () => Promise<void>;
+  syncWithRemote: () => Promise<void>;
   createPromise: (input: CreatePromiseInput) => Promise<UserPromise>;
   updatePromise: (id: string, patch: PromiseUpdate) => Promise<UserPromise | null>;
   setPromiseStatus: (id: string, status: PromiseStatus) => Promise<UserPromise | null>;
@@ -36,6 +43,15 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const [promises, setPromises] = useState<UserPromise[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  
+  const { user, isAuthenticated } = useAuth();
+  const promisesRef = useRef<UserPromise[]>([]);
+  
+  // Keep ref in sync for realtime callback
+  useEffect(() => {
+    promisesRef.current = promises;
+  }, [promises]);
 
   const refresh = useCallback(async () => {
     setIsWorking(true);
@@ -47,10 +63,67 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
       setIsWorking(false);
     }
   }, []);
+  
+  const syncWithRemote = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user?.id) return;
+    
+    setIsSyncing(true);
+    try {
+      // First, sync any local-only promises to remote
+      await syncLocalToRemote();
+      
+      // Then perform full sync to get latest from server
+      const merged = await performFullSync(user.id);
+      setPromises(merged);
+    } catch (error) {
+      console.error('[PromiseStore] Sync failed:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user?.id]);
 
+  // Initial hydration
   useEffect(() => {
     refresh().catch(() => {});
   }, [refresh]);
+  
+  // Sync when user signs in
+  useEffect(() => {
+    if (isAuthenticated && user?.id && isHydrated) {
+      syncWithRemote().catch(console.error);
+    }
+  }, [isAuthenticated, user?.id, isHydrated, syncWithRemote]);
+  
+  // Subscribe to realtime changes when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id || !isSupabaseConfigured()) {
+      return;
+    }
+    
+    const unsubscribe = subscribeToPromiseChanges(
+      user.id,
+      () => promisesRef.current,
+      (type, promise, promiseId) => {
+        if (type === 'delete') {
+          setPromises(prev => prev.filter(p => p.id !== promiseId));
+        } else if (promise) {
+          setPromises(prev => {
+            const existingIndex = prev.findIndex(p => p.id === promise.id);
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = promise;
+              return updated;
+            } else {
+              // New promise from server - add at appropriate position
+              return [promise, ...prev].sort((a, b) => b.createdAt - a.createdAt);
+            }
+          });
+        }
+      }
+    );
+    
+    return unsubscribe;
+  }, [isAuthenticated, user?.id]);
 
   // Sync to iOS widget whenever promises change
   const didHydrate = useRef(false);
@@ -148,14 +221,16 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
       promises,
       isHydrated,
       isWorking,
+      isSyncing,
       refresh,
+      syncWithRemote,
       createPromise,
       updatePromise,
       setPromiseStatus,
       deletePromise,
       clearAll,
     }),
-    [promises, isHydrated, isWorking, refresh, createPromise, updatePromise, setPromiseStatus, deletePromise, clearAll]
+    [promises, isHydrated, isWorking, isSyncing, refresh, syncWithRemote, createPromise, updatePromise, setPromiseStatus, deletePromise, clearAll]
   );
 
   return <PromiseStoreContext.Provider value={value}>{children}</PromiseStoreContext.Provider>;
@@ -166,5 +241,3 @@ export function usePromiseStore(): PromiseStore {
   if (!ctx) throw new Error('usePromiseStore must be used within PromiseStoreProvider');
   return ctx;
 }
-
-

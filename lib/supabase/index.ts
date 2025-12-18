@@ -20,7 +20,7 @@ export type {
   Database,
   // Table types
   Profile,
-  Promise,
+  PromiseRow,
   ShareLink,
   SponsorPledge,
   RoastMessage,

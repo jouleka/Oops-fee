@@ -6,7 +6,7 @@ import Animated, {
     Layout,
 } from 'react-native-reanimated';
 
-import { Message } from '@/constants/conversation';
+import type { Message } from '@/constants/conversation';
 
 interface MessageBubbleProps {
   message: Message;

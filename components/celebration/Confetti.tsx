@@ -133,6 +133,7 @@ export function Confetti({
       }, duration + 500);
       return () => clearTimeout(timeout);
     }
+    return undefined;
   }, [duration, onComplete]);
 
   return (

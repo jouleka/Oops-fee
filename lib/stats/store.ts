@@ -6,7 +6,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { CheckInRecord, UserPromise } from '@/lib/promises/types';
+import type { CheckInRecord, UserPromise, UserStats } from '@/lib/promises/types';
 
 const CHECKIN_STORAGE_KEY = 'oopsfee.checkins.v1';
 const MAX_FAILURE_MULTIPLIER = 8;

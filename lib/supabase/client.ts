@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import type { Database } from './types';
+import type { Database } from './types.generated';
 
 // Environment variables (set in app.json extra or .env)
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';

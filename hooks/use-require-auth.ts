@@ -28,7 +28,7 @@ export function useRequireAuth(): UseRequireAuthReturn {
   const { isAuthenticated, isLoading } = useAuth();
 
   const requireAuth = useCallback(
-    (reason?: string): boolean => {
+    (_reason?: string): boolean => {
       if (isAuthenticated) return true;
 
       // Navigate to sign-in
