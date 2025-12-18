@@ -377,6 +377,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPaymentMethod: Boolean(profile?.default_payment_method_id),
       paymentBlocked: profile?.payment_blocked ?? false,
       failedPaymentCount: profile?.failed_payment_count ?? 0,
+      brand: profile?.payment_method_brand ?? null,
+      last4: profile?.payment_method_last4 ?? null,
+      type: profile?.payment_method_type ?? null,
     }),
     [profile]
   );

@@ -83,4 +83,10 @@ export interface UserPaymentState {
   hasPaymentMethod: boolean;
   paymentBlocked: boolean;
   failedPaymentCount: number;
+  /** Payment method brand: visa, mastercard, amex, apple_pay, google_pay, link, etc. */
+  brand: string | null;
+  /** Last 4 digits of card (if applicable) */
+  last4: string | null;
+  /** Payment method type: card, wallet, link */
+  type: string | null;
 }

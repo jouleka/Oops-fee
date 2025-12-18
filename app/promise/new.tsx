@@ -30,8 +30,10 @@ import { VerificationPicker } from '@/components/verification';
 import { VoiceRecorder } from '@/components/voice';
 import { PROMISE_TEMPLATES, STAKES_THRESHOLDS, STATS_COPY, VERIFICATION_COPY, type PromiseTemplate } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { useRequireAuth } from '@/hooks/use-require-auth';
+import { isStripeConfigured } from '@/lib/stripe';
 import { clampInt, formatShortDateTime } from '@/lib/promises/time';
 import type { MoneyDestination, VerificationType } from '@/lib/promises/types';
 import { getFailureMultiplier, getMultiplierResetProgress } from '@/lib/stats/store';
@@ -660,6 +662,7 @@ export default function NewPromiseScreen() {
   const params = useLocalSearchParams<{ templateId?: string }>();
   const { createPromise, isWorking, promises } = usePromiseStore();
   const { requireAuth } = useRequireAuth();
+  const { paymentState, isAuthenticated } = useAuth();
 
   const templateId = useMemo(() => {
     const raw = params.templateId;
@@ -721,6 +724,10 @@ export default function NewPromiseScreen() {
   const canLock = text.trim().length > 0 && stake >= 0 && deadlineAt > nowMs && friendOk;
   const warningFree = stake === 0;
 
+  // Payment method required for staked promises
+  const needsPaymentMethod = effectiveStake > 0 && isStripeConfigured() && isAuthenticated && !paymentState.hasPaymentMethod;
+  const isPaymentBlocked = effectiveStake > 0 && isStripeConfigured() && isAuthenticated && paymentState.paymentBlocked;
+
   const handleBack = useCallback(() => {
     hapticLight();
     router.back();
@@ -743,9 +750,24 @@ export default function NewPromiseScreen() {
     if (effectiveStake > 0 && !requireAuth()) {
       return;
     }
+
+    // Require payment method for staked promises (if Stripe is configured)
+    if (effectiveStake > 0 && isStripeConfigured() && isAuthenticated) {
+      if (paymentState.paymentBlocked) {
+        // User has unresolved payment failures - must fix first
+        router.push('/(auth)/payment-method' as never);
+        return;
+      }
+      if (!paymentState.hasPaymentMethod) {
+        // User needs to add a payment method first
+        router.push('/(auth)/payment-method' as never);
+        return;
+      }
+    }
+
     hapticMedium();
     setConfirmOpen(true);
-  }, [effectiveStake, requireAuth]);
+  }, [effectiveStake, requireAuth, isAuthenticated, paymentState]);
 
   const doCreate = useCallback(async () => {
     if (!canLock) return;
@@ -1090,6 +1112,31 @@ export default function NewPromiseScreen() {
             </Animated.View>
           )}
 
+          {/* Payment Warning */}
+          {(needsPaymentMethod || isPaymentBlocked) && (
+            <Animated.View entering={FadeIn.duration(200)} style={styles.paymentWarning}>
+              <View style={styles.paymentWarningHeader}>
+                <Text style={styles.paymentWarningIcon}>{isPaymentBlocked ? '🚫' : '💳'}</Text>
+                <Text style={styles.paymentWarningTitle}>
+                  {isPaymentBlocked ? 'Payment required' : 'Add payment method'}
+                </Text>
+              </View>
+              <Text style={styles.paymentWarningText}>
+                {isPaymentBlocked
+                  ? 'Resolve your failed payment before creating new stakes.'
+                  : 'Add a card to create promises with real stakes. You only pay if you fail.'}
+              </Text>
+              <Pressable
+                onPress={() => router.push('/(auth)/payment-method' as never)}
+                style={({ pressed }) => [styles.paymentWarningButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.paymentWarningButtonText}>
+                  {isPaymentBlocked ? 'Fix payment' : 'Add card'}
+                </Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
           {/* Lock in */}
           <Animated.View entering={FadeInDown.delay(230).duration(220)} style={styles.lockSection}>
             <Pressable
@@ -1107,7 +1154,9 @@ export default function NewPromiseScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.lockButtonText}>{isWorking ? 'Working…' : 'Lock it in 🔒'}</Text>
+                <Text style={styles.lockButtonText}>
+                  {isWorking ? 'Working…' : needsPaymentMethod ? 'Add card to stake 💳' : 'Lock it in 🔒'}
+                </Text>
               </LinearGradient>
             </Pressable>
             <Text style={styles.lockFootnote}>You can&apos;t &quot;un-send&quot; this. (You can, but it ruins the vibe.)</Text>
@@ -1597,6 +1646,46 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+
+  // Payment warning
+  paymentWarning: {
+    backgroundColor: Colors.warningDim,
+    borderWidth: 1,
+    borderColor: Colors.warning + '44',
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  paymentWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  paymentWarningIcon: {
+    fontSize: 18,
+  },
+  paymentWarningTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.warning,
+    fontFamily: Fonts.rounded,
+  },
+  paymentWarningText: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+  },
+  paymentWarningButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.warning,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.full,
+    marginTop: Spacing.xs,
+  },
+  paymentWarningButtonText: {
+    ...Typography.caption,
+    color: Colors.bg,
+    fontWeight: '600',
   },
 
   // Multiplier warning

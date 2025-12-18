@@ -62,7 +62,15 @@
       "@bacons/apple-targets",
       "./plugins/withWidgetKitModule",
       "./plugins/withAndroidWidget",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.oopsfee.app",
+          "urlScheme": "oopsfee",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -10,14 +10,45 @@ import { PulsingDot } from '@/components/home/PulsingDot';
 import { getLiveBettorCount } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { isStripeConfigured } from '@/lib/stripe';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 }
 
+function getPaymentEmoji(brand: string | null): string {
+  const map: Record<string, string> = {
+    visa: '💳',
+    mastercard: '💳',
+    amex: '💳',
+    discover: '💳',
+    apple_pay: '🍎',
+    google_pay: '🤖',
+    link: '🔗',
+    cashapp: '💵',
+    amazon_pay: '📦',
+  };
+  return map[brand || ''] || '💳';
+}
+
+function getPaymentName(brand: string | null): string {
+  const map: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'Amex',
+    discover: 'Discover',
+    apple_pay: 'Apple Pay',
+    google_pay: 'Google Pay',
+    link: 'Link',
+    cashapp: 'Cash App',
+    amazon_pay: 'Amazon Pay',
+  };
+  return map[brand || ''] || 'Card';
+}
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, user, profile, signOut, isLoading } = useAuth();
+  const { isAuthenticated, user, profile, signOut, isLoading, paymentState } = useAuth();
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -107,6 +138,40 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </Animated.View>
+
+            {/* Payment Method */}
+            {isStripeConfigured() && (
+              <Animated.View entering={FadeInDown.delay(125).duration(300)} style={styles.section}>
+                <Text style={styles.sectionTitle}>Payment Method</Text>
+                <Pressable
+                  onPress={() => {
+                    hapticMedium();
+                    router.push('/(auth)/payment-method' as never);
+                  }}
+                  style={({ pressed }) => [
+                    styles.detailsCard,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>
+                      {paymentState.hasPaymentMethod
+                        ? `${getPaymentEmoji(paymentState.brand)} ${getPaymentName(paymentState.brand)}${paymentState.last4 ? ` •••• ${paymentState.last4}` : ''}`
+                        : '💳 No card'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={[
+                        styles.detailValue,
+                        !paymentState.hasPaymentMethod && { color: Colors.textMuted }
+                      ]}>
+                        {paymentState.hasPaymentMethod ? 'Manage' : 'Add'}
+                      </Text>
+                      <Text style={{ color: Colors.textMuted, fontSize: 16 }}>›</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              </Animated.View>
+            )}
 
             {/* Sign Out */}
             <Animated.View entering={FadeInDown.delay(150).duration(300)} style={styles.section}>

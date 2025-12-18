@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       payments: {
@@ -70,6 +95,9 @@ export type Database = {
           failed_payment_count: number | null
           id: string
           payment_blocked: boolean | null
+          payment_method_brand: string | null
+          payment_method_last4: string | null
+          payment_method_type: string | null
           stripe_customer_id: string | null
           updated_at: string | null
         }
@@ -81,6 +109,9 @@ export type Database = {
           failed_payment_count?: number | null
           id: string
           payment_blocked?: boolean | null
+          payment_method_brand?: string | null
+          payment_method_last4?: string | null
+          payment_method_type?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
@@ -92,6 +123,9 @@ export type Database = {
           failed_payment_count?: number | null
           id?: string
           payment_blocked?: boolean | null
+          payment_method_brand?: string | null
+          payment_method_last4?: string | null
+          payment_method_type?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
@@ -437,6 +471,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
