@@ -1,0 +1,84 @@
+-- ============================================================================
+-- Settlement Cron Job Setup
+-- Migration: 005_settlement_cron.sql
+--
+-- Sets up pg_cron to trigger the settle-promises edge function every 5 minutes.
+-- This handles auto-fail, off-session charges, and payment retries.
+--
+-- IMPORTANT: This migration requires manual configuration after running.
+-- See instructions below for setting up the cron job in Supabase Dashboard.
+-- ============================================================================
+
+-- Enable pg_net extension for HTTP calls (if not already enabled)
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+-- ============================================================================
+-- MANUAL SETUP REQUIRED
+-- ============================================================================
+--
+-- After deploying this migration, set up the cron job via Supabase Dashboard:
+--
+-- 1. Go to Database > Extensions and ensure "pg_cron" and "pg_net" are enabled
+--
+-- 2. Go to Database > Cron Jobs (or SQL Editor)
+--
+-- 3. Create the cron job with this SQL (replace YOUR_PROJECT_REF with your project):
+--
+--    SELECT cron.schedule(
+--      'settle-promises-cron',
+--      '*/5 * * * *',
+--      $$
+--      SELECT net.http_post(
+--        url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/settle-promises',
+--        headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+--        body := '{}'::jsonb
+--      ) AS request_id;
+--      $$
+--    );
+--
+-- 4. Set the SETTLEMENT_CRON_SECRET environment variable for the edge function:
+--    supabase secrets set SETTLEMENT_CRON_SECRET=your-secret-here
+--
+-- 5. Update the Authorization header to use the secret:
+--    "Authorization": "Bearer your-secret-here"
+--
+-- ============================================================================
+-- ALTERNATIVE: External Scheduler (GitHub Actions, etc.)
+-- ============================================================================
+--
+-- If using an external scheduler instead of pg_cron:
+--
+-- curl -X POST \
+--   "https://YOUR_PROJECT_REF.supabase.co/functions/v1/settle-promises" \
+--   -H "Authorization: Bearer YOUR_SERVICE_ROLE_KEY" \
+--   -H "Content-Type: application/json"
+--
+-- ============================================================================
+-- MONITORING QUERIES
+-- ============================================================================
+--
+-- View cron job status:
+-- SELECT * FROM cron.job;
+--
+-- View recent job runs:
+-- SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 20;
+--
+-- Remove the cron job if needed:
+-- SELECT cron.unschedule('settle-promises-cron');
+--
+-- ============================================================================
+-- VERIFY SETTLEMENT CANDIDATES (debugging)
+-- ============================================================================
+--
+-- Find promises ready for settlement:
+-- SELECT id, text, status, settle_at, payment_status, payment_retry_count
+-- FROM promises
+-- WHERE status = 'active' AND settle_at < NOW()
+-- ORDER BY settle_at;
+--
+-- Find payments ready for retry:
+-- SELECT id, text, payment_status, payment_retry_count, payment_next_retry_at
+-- FROM promises
+-- WHERE payment_status = 'failed' AND payment_next_retry_at < NOW()
+-- ORDER BY payment_next_retry_at;
+
