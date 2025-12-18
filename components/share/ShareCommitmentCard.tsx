@@ -58,7 +58,7 @@ export function ShareCommitmentCard({ promise }: ShareCommitmentCardProps) {
           <View style={styles.promiseContainer}>
             <Text style={styles.promiseLabel}>{SHARE_COPY.cardPromise}</Text>
             <Text style={styles.promiseText} numberOfLines={3}>
-              "{promise.text}"
+              &quot;{promise.text}&quot;
             </Text>
           </View>
 

@@ -172,7 +172,7 @@ export function PhotoCaptureModal({ visible, promiseText, onCapture, onCancel }:
           <View style={styles.promiseCard}>
             <Text style={styles.promiseLabel}>PROVING</Text>
             <Text style={styles.promiseText} numberOfLines={2}>
-              "{promiseText}"
+              &quot;{promiseText}&quot;
             </Text>
           </View>
 

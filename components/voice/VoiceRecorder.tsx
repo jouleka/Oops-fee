@@ -273,7 +273,7 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
           <Text style={styles.deniedIcon}>🎤</Text>
           <Text style={styles.deniedTitle}>Microphone denied</Text>
           <Text style={styles.deniedSubtitle}>
-            Can't record your voice without permission. Go to Settings to enable it.
+            Can&apos;t record your voice without permission. Go to Settings to enable it.
           </Text>
         </View>
       </View>

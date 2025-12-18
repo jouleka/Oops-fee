@@ -9,7 +9,7 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Modal,
     Pressable,
@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useRequireAuth } from '@/hooks/use-require-auth';
 import type { UserPromise } from '@/lib/promises/types';
 import { ShareCommitmentCard } from './ShareCommitmentCard';
 
@@ -40,6 +41,15 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   const viewShotRef = useRef<ViewShot>(null);
   const translateY = useSharedValue(0);
   const [sharing, setSharing] = useState(false);
+  const { requireAuth, isAuthenticated } = useRequireAuth();
+
+  // Check auth when modal opens - if not authed, redirect to sign-in and close modal
+  useEffect(() => {
+    if (visible && !isAuthenticated) {
+      requireAuth();
+      onClose();
+    }
+  }, [visible, isAuthenticated, requireAuth, onClose]);
 
   const dismiss = useCallback(() => {
     translateY.value = withTiming(600, { duration: 200 });

@@ -3,6 +3,8 @@
  * Dry humor, self-aware, not trying too hard
  */
 
+import type { VerificationType } from '@/lib/promises/types';
+
 // ─────────────────────────────────────────────────────────────
 // ROTATING QUOTES
 // Short, punchy, slightly uncomfortable truths
@@ -25,8 +27,6 @@ export const ROTATING_QUOTES = [
 // QUICK TEMPLATES
 // Common promises, realistic stakes, relatable
 // ─────────────────────────────────────────────────────────────
-
-import type { VerificationType } from '@/lib/promises/types';
 
 export const PROMISE_TEMPLATES: readonly {
   id: string;

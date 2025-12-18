@@ -11,14 +11,19 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oopsfee.app",
+      "appleTeamId": "VNF5P4YVBN",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "OopsFee needs mic access to record your promise. (For evidence.)"
       },
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.oopsfee.app"
+        ],
+        "com.apple.developer.applesignin": [
+          "Default"
         ]
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "permissions": [
@@ -41,6 +46,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
@@ -55,7 +61,8 @@
       ],
       "@bacons/apple-targets",
       "./plugins/withWidgetKitModule",
-      "./plugins/withAndroidWidget"
+      "./plugins/withAndroidWidget",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

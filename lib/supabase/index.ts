@@ -25,7 +25,7 @@ export type {
   SponsorPledge,
   RoastMessage,
   Payment,
-  // Insert/Update types
+  // Insert/Update types (also re-exported for convenience)
   ProfileInsert,
   ProfileUpdate,
   PromiseInsert,

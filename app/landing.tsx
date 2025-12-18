@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
@@ -5,13 +6,15 @@ import Animated, { FadeIn, FadeInDown, FadeInRight, FadeOut, Layout } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  ConversationCTA,
-  getMessageGrouping,
-  MessageBubble,
-  TypingIndicator,
+    ConversationCTA,
+    getMessageGrouping,
+    MessageBubble,
+    TypingIndicator,
 } from '@/components/chat';
 import { CTA_HEIGHT, REPLY_TEXT } from '@/constants/conversation';
 import { useConversationPlayback } from '@/hooks/use-conversation-playback';
+
+const ONBOARDING_KEY = '@oopsfee:has_completed_onboarding';
 
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
@@ -68,6 +71,8 @@ export default function LandingScreen() {
 
   async function onStart() {
     await startSending();
+    // Mark onboarding as complete so we skip it next time
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 100);

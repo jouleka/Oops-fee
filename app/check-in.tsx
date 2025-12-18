@@ -7,13 +7,11 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
-  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,13 +19,13 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { CHECKIN_COPY } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
+import type { CheckInRecord, UserStats } from '@/lib/promises/types';
 import {
-  hasCheckedInToday,
-  recordCheckIn,
   computeStats,
   getTodaysCheckIn,
+  hasCheckedInToday,
+  recordCheckIn,
 } from '@/lib/stats/store';
-import type { UserStats, CheckInRecord } from '@/lib/promises/types';
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -324,7 +322,7 @@ export default function CheckInScreen() {
             <Text style={styles.emptyEmoji}>😴</Text>
             <Text style={styles.emptyTitle}>Nothing to check in on</Text>
             <Text style={styles.emptySubtitle}>
-              No active promises. Either you're crushing it, or you haven't started.
+              No active promises. Either you&apos;re crushing it, or you haven&apos;t started.
             </Text>
             <Pressable
               onPress={handleClose}

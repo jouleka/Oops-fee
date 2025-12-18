@@ -59,7 +59,7 @@ function ShareCard({ promise, streak }: ShareCardProps) {
         <View style={styles.shareCardContent}>
           <Text style={styles.shareCardLabel}>I BET</Text>
           <Text style={styles.shareCardAmount}>${promise.stake}</Text>
-          <Text style={styles.shareCardPromise}>I'd "{promise.text}"</Text>
+          <Text style={styles.shareCardPromise}>I&apos;d &quot;{promise.text}&quot;</Text>
           <View style={styles.shareCardDivider} />
           <Text style={styles.shareCardResult}>AND I DID IT 💪</Text>
           {streak > 1 && (
@@ -236,7 +236,7 @@ export default function SuccessScreen() {
 
         {/* Promise text */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.promiseCard}>
-          <Text style={styles.promiseText}>"{promise.text}"</Text>
+          <Text style={styles.promiseText}>&quot;{promise.text}&quot;</Text>
         </Animated.View>
 
         {/* Saved badge */}

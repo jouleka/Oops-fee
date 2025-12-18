@@ -3,8 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -31,18 +31,19 @@ import { VoiceRecorder } from '@/components/voice';
 import { PROMISE_TEMPLATES, STAKES_THRESHOLDS, STATS_COPY, VERIFICATION_COPY, type PromiseTemplate } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
+import { useRequireAuth } from '@/hooks/use-require-auth';
 import { clampInt, formatShortDateTime } from '@/lib/promises/time';
 import type { MoneyDestination, VerificationType } from '@/lib/promises/types';
 import { getFailureMultiplier, getMultiplierResetProgress } from '@/lib/stats/store';
 
 const STAKE_PRESETS = [5, 10, 25, 50] as const;
 
-const DESTINATIONS: Array<{
+const DESTINATIONS: {
   id: MoneyDestination;
   title: string;
   subtitle: string;
   emoji: string;
-}> = [
+}[] = [
   {
     id: 'charity',
     title: 'Charity',
@@ -658,6 +659,7 @@ export default function NewPromiseScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ templateId?: string }>();
   const { createPromise, isWorking, promises } = usePromiseStore();
+  const { requireAuth } = useRequireAuth();
 
   const templateId = useMemo(() => {
     const raw = params.templateId;
@@ -737,9 +739,13 @@ export default function NewPromiseScreen() {
   );
 
   const openConfirm = useCallback(() => {
+    // Require auth for staked promises ($1+)
+    if (effectiveStake > 0 && !requireAuth()) {
+      return;
+    }
     hapticMedium();
     setConfirmOpen(true);
-  }, []);
+  }, [effectiveStake, requireAuth]);
 
   const doCreate = useCallback(async () => {
     if (!canLock) return;
@@ -1033,7 +1039,7 @@ export default function NewPromiseScreen() {
           {/* Voice commitment */}
           <Animated.View entering={FadeInDown.delay(210).duration(220)} style={styles.section}>
             <Text style={styles.sectionLabel}>OPTIONAL: VOICE COMMITMENT</Text>
-            <Text style={styles.sectionHint}>Say it out loud. We'll haunt you with it later.</Text>
+            <Text style={styles.sectionHint}>Say it out loud. We&apos;ll haunt you with it later.</Text>
 
             <VoiceRecorder
               existingUri={voiceNoteUri}
@@ -1104,7 +1110,7 @@ export default function NewPromiseScreen() {
                 <Text style={styles.lockButtonText}>{isWorking ? 'Working…' : 'Lock it in 🔒'}</Text>
               </LinearGradient>
             </Pressable>
-            <Text style={styles.lockFootnote}>You can't "un-send" this. (You can, but it ruins the vibe.)</Text>
+            <Text style={styles.lockFootnote}>You can&apos;t &quot;un-send&quot; this. (You can, but it ruins the vibe.)</Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>

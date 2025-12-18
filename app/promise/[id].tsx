@@ -629,7 +629,7 @@ export default function PromiseDetailScreen() {
             <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.failBanner}>
               <Text style={styles.failIcon}>💸</Text>
               <Text style={styles.failText}>
-                You failed. Payment is "coming soon". Convenient timing, I know.
+                You failed. Payment is &quot;coming soon&quot;. Convenient timing, I know.
               </Text>
             </Animated.View>
           )}
@@ -642,7 +642,7 @@ export default function PromiseDetailScreen() {
                 <Text style={styles.iToldYouSoTitle}>{FAILURE_COPY.iToldYouSoRevealTitle}</Text>
               </View>
               <View style={styles.iToldYouSoContent}>
-                <Text style={styles.iToldYouSoMessage}>"{promise.iToldYouSoMessage}"</Text>
+                <Text style={styles.iToldYouSoMessage}>&quot;{promise.iToldYouSoMessage}&quot;</Text>
                 {promise.iToldYouSoFrom && (
                   <Text style={styles.iToldYouSoFrom}>
                     — {promise.iToldYouSoFrom}

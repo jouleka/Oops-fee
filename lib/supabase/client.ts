@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { Database } from './types';
 
@@ -14,19 +15,37 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
+// Keys stored in SecureStore (auth tokens) vs AsyncStorage (larger data)
+const SECURE_STORE_KEYS = ['supabase.auth.token', 'sb-'];
+
 /**
- * Custom storage adapter using AsyncStorage for React Native
- * and localStorage for web, with secure storage consideration for sensitive tokens.
- * 
- * Note: For production, consider using expo-secure-store for the auth token
- * on native platforms. AsyncStorage is used here for simplicity and because
- * expo-secure-store has size limits that may not work for all session data.
+ * Check if a key should be stored in SecureStore (for sensitive auth data)
  */
-const ExpoStorageAdapter = {
+function isSecureKey(key: string): boolean {
+  return SECURE_STORE_KEYS.some(prefix => key.includes(prefix));
+}
+
+/**
+ * Custom storage adapter using:
+ * - SecureStore for auth tokens on native (encrypted, limited to 2KB)
+ * - AsyncStorage for larger data on native
+ * - localStorage on web
+ */
+const ExpoSecureStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     if (Platform.OS === 'web') {
       if (typeof localStorage === 'undefined') return null;
       return localStorage.getItem(key);
+    }
+    
+    // Use SecureStore for auth tokens
+    if (isSecureKey(key)) {
+      try {
+        return await SecureStore.getItemAsync(key);
+      } catch {
+        // Fall back to AsyncStorage if SecureStore fails
+        return AsyncStorage.getItem(key);
+      }
     }
     return AsyncStorage.getItem(key);
   },
@@ -36,6 +55,16 @@ const ExpoStorageAdapter = {
       localStorage.setItem(key, value);
       return;
     }
+    
+    // Use SecureStore for auth tokens
+    if (isSecureKey(key)) {
+      try {
+        await SecureStore.setItemAsync(key, value);
+        return;
+      } catch {
+        // Fall back to AsyncStorage if SecureStore fails (e.g., value too large)
+      }
+    }
     await AsyncStorage.setItem(key, value);
   },
   removeItem: async (key: string): Promise<void> => {
@@ -43,6 +72,15 @@ const ExpoStorageAdapter = {
       if (typeof localStorage === 'undefined') return;
       localStorage.removeItem(key);
       return;
+    }
+    
+    // Remove from both stores to ensure cleanup
+    if (isSecureKey(key)) {
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch {
+        // Ignore errors
+      }
     }
     await AsyncStorage.removeItem(key);
   },
@@ -52,14 +90,15 @@ const ExpoStorageAdapter = {
  * Supabase client configured for React Native / Expo
  * 
  * Features:
- * - Uses AsyncStorage for session persistence on native
+ * - Uses SecureStore for auth tokens on native (encrypted)
+ * - Uses AsyncStorage for larger data on native
  * - Uses localStorage on web
  * - Auto-refreshes tokens
  * - Typed with database schema
  */
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: ExpoStorageAdapter,
+    storage: ExpoSecureStorageAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web', // Only on web for OAuth redirects

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { AuthProvider } from '@/context/auth';
 import { PromiseStoreProvider } from '@/context/promise-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initializeNotifications } from '@/lib/notifications/setup';
@@ -17,20 +18,24 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <PromiseStoreProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" options={{ animation: 'fade' }} />
-          <Stack.Screen name="landing" options={{ animation: 'fade' }} />
-          <Stack.Screen name="home" options={{ animation: 'fade_from_bottom' }} />
-          <Stack.Screen name="stats" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="check-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-          <Stack.Screen name="promise/new" options={{ animation: 'fade_from_bottom' }} />
-          <Stack.Screen name="promise/[id]" options={{ animation: 'slide_from_right' }} />
-          <Stack.Screen name="promise/success" options={{ animation: 'fade', gestureEnabled: false }} />
-        </Stack>
-        <StatusBar style="light" />
-      </ThemeProvider>
-    </PromiseStoreProvider>
+    <AuthProvider>
+      <PromiseStoreProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" options={{ animation: 'fade' }} />
+            <Stack.Screen name="landing" options={{ animation: 'fade' }} />
+            <Stack.Screen name="home" options={{ animation: 'fade_from_bottom' }} />
+            <Stack.Screen name="stats" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="check-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="promise/new" options={{ animation: 'fade_from_bottom' }} />
+            <Stack.Screen name="promise/[id]" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="promise/success" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="light" />
+        </ThemeProvider>
+      </PromiseStoreProvider>
+    </AuthProvider>
   );
 }
