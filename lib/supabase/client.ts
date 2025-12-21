@@ -5,24 +5,15 @@ import { Platform } from 'react-native';
 import type { Database } from './types.generated';
 
 // Environment variables (set in app.json extra or .env)
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-// During static build (SSR), env vars may not be available
-// Use placeholder to prevent crash - client will be non-functional but won't break build
-const IS_BUILD_TIME = !SUPABASE_URL || !SUPABASE_ANON_KEY;
-
-if (IS_BUILD_TIME && typeof window !== 'undefined') {
-  // Only warn at runtime, not during SSR build
-  console.warn(
-    '[Supabase] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. ' +
-    'Backend features will not work.'
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    'Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. ' +
+    'Add them to your environment (Cloudflare Pages → Settings → Environment Variables).'
   );
 }
-
-// Placeholder URL for build time (must be valid URL format)
-const PLACEHOLDER_URL = 'https://placeholder.supabase.co';
-const PLACEHOLDER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
 
 // Keys stored in SecureStore (auth tokens) vs AsyncStorage (larger data)
 const SECURE_STORE_KEYS = ['supabase.auth.token', 'sb-'];
@@ -106,8 +97,8 @@ const ExpoSecureStorageAdapter = {
  * - Typed with database schema
  */
 export const supabase = createClient<Database>(
-  SUPABASE_URL || PLACEHOLDER_URL,
-  SUPABASE_ANON_KEY || PLACEHOLDER_KEY,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   {
   auth: {
     storage: ExpoSecureStorageAdapter,
