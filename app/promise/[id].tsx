@@ -15,8 +15,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LoadingState } from '@/components/ui/loading-state';
 import { ShareModal } from '@/components/share';
+import { LoadingState } from '@/components/ui/loading-state';
 import { PhotoCaptureModal } from '@/components/verification';
 import { VoicePlayback } from '@/components/voice';
 import { FAILURE_COPY, VERIFICATION_COPY } from '@/constants/content';
@@ -359,7 +359,7 @@ function FailConfirmModal({
                   ${totalLoss} will be charged
                 </Text>
                 <Text style={styles.chargeWarningSubtext}>
-                  No refunds. No excuses. No "my dog ate my gym shoes."
+                  No refunds. No excuses. No &quot;my dog ate my gym shoes.&quot;
                 </Text>
               </Animated.View>
             )}

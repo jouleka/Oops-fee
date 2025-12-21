@@ -1,21 +1,27 @@
 /**
  * ShareModal
  * Share your commitment with friends for accountability.
- * 
- * Note: Sponsor pledges and friend messages require backend sync.
- * For now, this just shares the commitment card image.
+ *
+ * Features:
+ * - Share commitment card image
+ * - Generate sponsor link (friends add to your stake)
+ * - Generate roast link (friends write "I Told You So" messages)
+ * - Generate partner link (for partner verification)
  */
 
+import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,10 +30,19 @@ import ViewShot from 'react-native-view-shot';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import type { UserPromise } from '@/lib/promises/types';
+import { createShareLink, type ShareLinkType } from '@/lib/share';
 import { ShareCommitmentCard } from './ShareCommitmentCard';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+}
+
+function hapticSuccess() {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+}
+
+function hapticError() {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
 }
 
 interface ShareModalProps {
@@ -36,12 +51,52 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
+type ShareOption = 'image' | 'sponsor' | 'roast' | 'partner';
+
+interface ShareLinkState {
+  loading: boolean;
+  url: string | null;
+  error: string | null;
+  copied: boolean;
+}
+
 export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   const insets = useSafeAreaInsets();
   const viewShotRef = useRef<ViewShot>(null);
   const translateY = useSharedValue(0);
   const [sharing, setSharing] = useState(false);
+  const [activeOption, setActiveOption] = useState<ShareOption | null>(null);
   const { requireAuth, isAuthenticated } = useRequireAuth();
+
+  // Share link states
+  const [sponsorLink, setSponsorLink] = useState<ShareLinkState>({
+    loading: false,
+    url: null,
+    error: null,
+    copied: false,
+  });
+  const [roastLink, setRoastLink] = useState<ShareLinkState>({
+    loading: false,
+    url: null,
+    error: null,
+    copied: false,
+  });
+  const [partnerLink, setPartnerLink] = useState<ShareLinkState>({
+    loading: false,
+    url: null,
+    error: null,
+    copied: false,
+  });
+
+  // Reset states when modal closes
+  useEffect(() => {
+    if (!visible) {
+      setActiveOption(null);
+      setSponsorLink({ loading: false, url: null, error: null, copied: false });
+      setRoastLink({ loading: false, url: null, error: null, copied: false });
+      setPartnerLink({ loading: false, url: null, error: null, copied: false });
+    }
+  }, [visible]);
 
   // Check auth when modal opens - if not authed, redirect to sign-in and close modal
   useEffect(() => {
@@ -60,7 +115,8 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  const handleShare = useCallback(async () => {
+  // Share image
+  const handleShareImage = useCallback(async () => {
     if (sharing) return;
 
     setSharing(true);
@@ -90,6 +146,149 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     }
   }, [sharing]);
 
+  // Generate and share link
+  const generateShareLink = useCallback(
+    async (type: ShareLinkType) => {
+      const setState =
+        type === 'sponsor'
+          ? setSponsorLink
+          : type === 'roast'
+          ? setRoastLink
+          : setPartnerLink;
+
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+      hapticMedium();
+
+      try {
+        const result = await createShareLink(promise.id, type);
+        setState({ loading: false, url: result.url, error: null, copied: false });
+        hapticSuccess();
+      } catch (error) {
+        setState({
+          loading: false,
+          url: null,
+          error: error instanceof Error ? error.message : 'Failed to create link',
+          copied: false,
+        });
+        hapticError();
+      }
+    },
+    [promise.id]
+  );
+
+  // Copy link to clipboard
+  const copyLink = useCallback(async (url: string, type: ShareLinkType) => {
+    await Clipboard.setStringAsync(url);
+    hapticSuccess();
+
+    const setState =
+      type === 'sponsor'
+        ? setSponsorLink
+        : type === 'roast'
+        ? setRoastLink
+        : setPartnerLink;
+
+    setState((prev) => ({ ...prev, copied: true }));
+
+    // Reset copied state after 2 seconds
+    setTimeout(() => {
+      setState((prev) => ({ ...prev, copied: false }));
+    }, 2000);
+  }, []);
+
+  // Share link via system share
+  const shareLink = useCallback(async (url: string, type: ShareLinkType) => {
+    const messages = {
+      sponsor: `Add to my stake on this promise! If I fail, I pay more. ${url}`,
+      roast: `Write me an "I Told You So" message that I'll only see if I fail. ${url}`,
+      partner: `I need you to verify that I completed my promise. Please confirm! ${url}`,
+    };
+
+    try {
+      await Share.share({
+        message: messages[type],
+        url,
+      });
+    } catch (error) {
+      console.error('Failed to share:', error);
+    }
+  }, []);
+
+  // Render share option button
+  const renderShareOption = (
+    option: ShareOption,
+    emoji: string,
+    title: string,
+    subtitle: string,
+    state?: ShareLinkState,
+    linkType?: ShareLinkType
+  ) => {
+    const isActive = activeOption === option;
+    const hasLink = state?.url;
+    const isLoading = state?.loading;
+
+    return (
+      <View key={option}>
+        <Pressable
+          onPress={() => {
+            setActiveOption(isActive ? null : option);
+            if (option === 'image') {
+              handleShareImage();
+            } else if (linkType && !state?.url) {
+              generateShareLink(linkType);
+            }
+          }}
+          disabled={sharing || isLoading}
+          style={({ pressed }) => [
+            styles.optionBtn,
+            isActive && styles.optionBtnActive,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.optionEmoji}>{emoji}</Text>
+          <View style={styles.optionTextContainer}>
+            <Text style={styles.optionTitle}>{title}</Text>
+            <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          </View>
+          {isLoading && <ActivityIndicator size="small" color={Colors.accent} />}
+        </Pressable>
+
+        {/* Link actions */}
+        {isActive && hasLink && linkType && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.linkActions}>
+            <Pressable
+              style={[styles.linkActionBtn, state.copied && styles.linkActionBtnSuccess]}
+              onPress={() => copyLink(state.url!, linkType)}
+            >
+              <Text style={styles.linkActionText}>
+                {state.copied ? '✓ Copied!' : '📋 Copy link'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.linkActionBtn}
+              onPress={() => shareLink(state.url!, linkType)}
+            >
+              <Text style={styles.linkActionText}>📤 Share</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Error */}
+        {isActive && state?.error && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
+            <Text style={styles.errorText}>{state.error}</Text>
+            <Pressable
+              style={styles.retryBtn}
+              onPress={() => linkType && generateShareLink(linkType)}
+            >
+              <Text style={styles.retryText}>Try again</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
       <View style={styles.container}>
@@ -107,7 +306,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Share commitment</Text>
-              <Text style={styles.subtitle}>Post this to hold yourself accountable.</Text>
+              <Text style={styles.subtitle}>Get friends involved for extra accountability.</Text>
             </View>
 
             {/* Card Preview */}
@@ -115,25 +314,53 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
               <ShareCommitmentCard promise={promise} />
             </Animated.View>
 
-            {/* Coming Soon Note */}
-            <View style={styles.comingSoonCard}>
-              <Text style={styles.comingSoonEmoji}>🔮</Text>
-              <View style={styles.comingSoonContent}>
-                <Text style={styles.comingSoonTitle}>Coming soon</Text>
-                <Text style={styles.comingSoonText}>
-                  Friends will be able to add to your stake and leave messages that reveal if you fail.
-                </Text>
-              </View>
+            {/* Share Options */}
+            <View style={styles.options}>
+              {renderShareOption(
+                'image',
+                '🖼️',
+                'Share image',
+                'Post this card to social media',
+              )}
+
+              {renderShareOption(
+                'sponsor',
+                '💸',
+                'Sponsor my failure',
+                'Friends add to your stake',
+                sponsorLink,
+                'sponsor'
+              )}
+
+              {renderShareOption(
+                'roast',
+                '🔥',
+                'I Told You So',
+                'Friends write messages revealed if you fail',
+                roastLink,
+                'roast'
+              )}
+
+              {/* Only show partner option for partner verification type */}
+              {promise.verificationType === 'partner' &&
+                renderShareOption(
+                  'partner',
+                  '👀',
+                  'Get verified',
+                  'Send to your accountability partner',
+                  partnerLink,
+                  'partner'
+                )}
             </View>
 
-            {/* Share Button */}
+            {/* Main Share Button */}
             <Pressable
               disabled={sharing}
-              onPress={handleShare}
+              onPress={handleShareImage}
               style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed, sharing && styles.disabled]}
             >
               <LinearGradient colors={[Colors.accent, '#0A7FD4']} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Text style={styles.btnText}>{sharing ? 'Sharing...' : 'Share to friends'}</Text>
+                <Text style={styles.btnText}>{sharing ? 'Sharing...' : 'Share commitment image'}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -163,6 +390,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgElevated,
     borderTopLeftRadius: Radius.xxl,
     borderTopRightRadius: Radius.xxl,
+    maxHeight: '90%',
   },
   handleRow: {
     alignItems: 'center',
@@ -199,13 +427,17 @@ const styles = StyleSheet.create({
   // Card wrapper
   cardWrapper: {
     alignItems: 'center',
-    transform: [{ scale: 0.85 }],
-    marginVertical: -Spacing.lg,
+    transform: [{ scale: 0.75 }],
+    marginVertical: -Spacing.xxl,
   },
 
-  // Coming soon
-  comingSoonCard: {
+  // Options
+  options: {
+    gap: Spacing.sm,
+  },
+  optionBtn: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
@@ -213,20 +445,76 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: Spacing.md,
   },
-  comingSoonEmoji: {
+  optionBtnActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentDim,
+  },
+  optionEmoji: {
     fontSize: 24,
   },
-  comingSoonContent: {
+  optionTextContainer: {
     flex: 1,
     gap: 2,
   },
-  comingSoonTitle: {
+  optionTitle: {
     ...Typography.bodySemibold,
-    color: Colors.textSecondary,
+    color: Colors.text,
   },
-  comingSoonText: {
+  optionSubtitle: {
     ...Typography.caption,
     color: Colors.textTertiary,
+  },
+
+  // Link actions
+  linkActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  linkActionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  linkActionBtnSuccess: {
+    backgroundColor: Colors.successDim,
+    borderColor: Colors.success,
+  },
+  linkActionText: {
+    ...Typography.caption,
+    color: Colors.text,
+  },
+
+  // Error
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.dangerDim,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+    marginHorizontal: Spacing.md,
+  },
+  errorText: {
+    ...Typography.caption,
+    color: Colors.danger,
+    flex: 1,
+  },
+  retryBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  retryText: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontWeight: '600',
   },
 
   // Share button
