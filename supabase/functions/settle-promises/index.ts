@@ -24,8 +24,9 @@ const GRACE_PERIOD_MS = 60 * 60 * 1000;
 const RETRY_DELAYS_HOURS = [0, 24, 72, 168];
 const MAX_RETRIES = 4;
 
-// High-stakes threshold: $50 (5000 cents) - default to fail if partner doesn't respond
-const HIGH_STAKES_THRESHOLD_CENTS = 5000;
+// High-stakes threshold: $50 - default to fail if partner doesn't respond
+// Stake is stored in dollars
+const HIGH_STAKES_THRESHOLD = 50;
 
 // Batch size for processing (avoid timeouts)
 const BATCH_SIZE = 50;
@@ -191,7 +192,7 @@ async function processPromiseSettlement(
       // Partner deadline passed - apply timeout logic
       console.log(`[settle-promises] Partner deadline expired for promise: ${promise.id}`);
 
-      if (promise.stake >= HIGH_STAKES_THRESHOLD_CENTS) {
+      if (promise.stake >= HIGH_STAKES_THRESHOLD) {
         // High stakes: default to FAILED (prevent gaming)
         return await markPromiseFailed(
           promise,
@@ -358,10 +359,15 @@ async function chargeForFailedPromise(
 
   try {
     // Create off-session PaymentIntent
-    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, amount: ${promise.stake}`);
+    // Stake is stored in dollars, Stripe expects cents
+    const amountInCents = promise.stake * 100;
+    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, amount: $${promise.stake} (${amountInCents} cents)`);
 
+    // Use idempotency key to prevent duplicate charges from cron retries
+    const idempotencyKey = `settle-promise-${promise.id}-attempt-${attemptNumber}`;
+    
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: promise.stake,
+      amount: amountInCents,
       currency: 'usd',
       customer: stripe_customer_id,
       payment_method: default_payment_method_id,
@@ -373,6 +379,8 @@ async function chargeForFailedPromise(
         attempt_number: String(attemptNumber),
       },
       description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."`,
+    }, {
+      idempotencyKey,
     });
 
     console.log(`[settle-promises] PaymentIntent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
@@ -425,10 +433,10 @@ async function chargeForFailedPromise(
 
     console.error(`[settle-promises] Payment failed for promise ${promise.id}:`, stripeError);
 
-    // Log the failed payment attempt
+    // Log the failed payment attempt (store amount in cents)
     await supabase.from('payments').insert({
       promise_id: promise.id,
-      amount: promise.stake,
+      amount: amountInCents,
       currency: 'usd',
       status: 'failed',
       attempt_number: attemptNumber,
@@ -465,10 +473,10 @@ async function handlePaymentSuccess(
     })
     .eq('id', promise.id);
 
-  // Log the successful payment
+  // Log the successful payment (store amount in cents)
   await supabase.from('payments').insert({
     promise_id: promise.id,
-    amount: promise.stake,
+    amount: promise.stake * 100,
     currency: 'usd',
     stripe_payment_intent_id: paymentIntentId,
     status: 'succeeded',
@@ -497,10 +505,10 @@ async function handlePaymentRequiresAction(
     })
     .eq('id', promise.id);
 
-  // Log the payment attempt
+  // Log the payment attempt (store amount in cents)
   await supabase.from('payments').insert({
     promise_id: promise.id,
-    amount: promise.stake,
+    amount: promise.stake * 100,
     currency: 'usd',
     stripe_payment_intent_id: paymentIntent.id,
     status: 'requires_action',

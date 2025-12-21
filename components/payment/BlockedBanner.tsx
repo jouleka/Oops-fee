@@ -47,7 +47,7 @@ export function BlockedBanner({
 
       <View style={styles.action}>
         <Text style={styles.actionText}>Fix</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+        <Ionicons name="chevron-forward" size={16} color={Colors.text} />
       </View>
     </Pressable>
   );
@@ -57,18 +57,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.dangerDim,
+    backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
     padding: Spacing.md,
     gap: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.danger,
+    borderColor: Colors.border,
+    // Subtle left accent
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.danger,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: Radius.full,
-    backgroundColor: 'rgba(255, 69, 58, 0.2)',
+    backgroundColor: Colors.dangerDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -77,7 +80,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.bodySemibold,
-    color: Colors.danger,
+    color: Colors.text,
     marginBottom: 2,
   },
   description: {
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.danger,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,

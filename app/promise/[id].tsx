@@ -21,9 +21,11 @@ import { PhotoCaptureModal } from '@/components/verification';
 import { VoicePlayback } from '@/components/voice';
 import { FAILURE_COPY, VERIFICATION_COPY } from '@/constants/content';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { formatShortDateTime, getTimeRemaining, type Urgency } from '@/lib/promises/time';
 import type { PromiseStatus, UserPromise } from '@/lib/promises/types';
+import { supabase } from '@/lib/supabase';
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -187,6 +189,7 @@ function FailConfirmModal({
   iToldYouSoMessage,
   iToldYouSoFrom: _iToldYouSoFrom,
   sponsorAmount,
+  stake,
   onCancel,
   onConfirm,
   working,
@@ -196,6 +199,7 @@ function FailConfirmModal({
   iToldYouSoMessage?: string;
   iToldYouSoFrom?: string;
   sponsorAmount?: number;
+  stake: number;
   onCancel: () => void;
   onConfirm: () => void;
   working: boolean;
@@ -258,6 +262,8 @@ function FailConfirmModal({
   const hasVoice = !!voiceNoteUri && !voiceError;
   const hasIToldYouSo = !!iToldYouSoMessage;
   const hasSponsor = (sponsorAmount ?? 0) > 0;
+  const hasStake = stake > 0;
+  const totalLoss = stake + (sponsorAmount ?? 0);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
@@ -268,7 +274,12 @@ function FailConfirmModal({
             <View style={styles.modalHandle} />
           </View>
 
-          <View style={styles.failModalContent}>
+          <ScrollView 
+            style={styles.failModalScroll}
+            contentContainerStyle={styles.failModalContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             {/* Header with emoji */}
             <View style={styles.failModalHeader}>
               <Text style={styles.failModalEmoji}>💸</Text>
@@ -337,37 +348,55 @@ function FailConfirmModal({
               </Animated.View>
             )}
 
-            {/* Action buttons */}
-            <View style={styles.modalActions}>
-              <Pressable onPress={dismiss} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
-                <Text style={styles.secondaryBtnText}>I changed my mind</Text>
-              </Pressable>
+            {/* Charge warning - the real talk */}
+            {hasStake && (
+              <Animated.View entering={FadeIn.delay(200).duration(250)} style={styles.chargeWarning}>
+                <View style={styles.chargeWarningHeader}>
+                  <Text style={styles.chargeWarningIcon}>💳</Text>
+                  <Text style={styles.chargeWarningTitle}>Real money. Real consequences.</Text>
+                </View>
+                <Text style={styles.chargeWarningAmount}>
+                  ${totalLoss} will be charged
+                </Text>
+                <Text style={styles.chargeWarningSubtext}>
+                  No refunds. No excuses. No "my dog ate my gym shoes."
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Action buttons - stacked vertically for better layout */}
+            <View style={styles.failModalActions}>
               <Pressable
                 disabled={working || !canConfirm}
                 onPress={onConfirm}
                 style={({ pressed }) => [
-                  styles.primaryBtn,
+                  styles.failPrimaryBtn,
                   pressed && styles.pressed,
                   (working || !canConfirm) && styles.disabled,
                 ]}
               >
                 <LinearGradient
                   colors={canConfirm ? [Colors.danger, '#FF6B35'] : [Colors.systemGray4, Colors.systemGray5]}
-                  style={styles.primaryBtnGradient}
+                  style={styles.failPrimaryBtnGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.primaryBtnText}>
+                  <Text style={styles.failPrimaryBtnText}>
                     {working
-                      ? 'Processing feelings…'
+                      ? 'Processing…'
                       : !canConfirm
                         ? 'Listen first'
-                        : 'Yes, I failed'}
+                        : hasStake
+                          ? `💳 Pay $${totalLoss} & admit defeat`
+                          : 'Yes, I failed'}
                   </Text>
                 </LinearGradient>
               </Pressable>
+              <Pressable onPress={dismiss} style={({ pressed }) => [styles.failSecondaryBtn, pressed && styles.pressed]}>
+                <Text style={styles.failSecondaryBtnText}>Wait, I changed my mind</Text>
+              </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -403,6 +432,7 @@ export default function PromiseDetailScreen() {
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
   const { promises, setPromiseStatus, updatePromise, deletePromise, isWorking, isHydrated } = usePromiseStore();
+  const { session } = useAuth();
 
   const promise: UserPromise | null = useMemo(() => {
     if (!id) return null;
@@ -479,12 +509,47 @@ export default function PromiseDetailScreen() {
     router.replace({ pathname: '/promise/success', params: { promiseId: promise.id } });
   }, [promise, setPromiseStatus]);
 
+  // Track if we're processing a failure to prevent double charges
+  const [isProcessingFail, setIsProcessingFail] = useState(false);
+
   const handleFail = useCallback(async () => {
     if (!promise) return;
+    
+    // CRITICAL: Prevent double-click charges
+    if (isProcessingFail) {
+      console.log('[handleFail] Already processing, ignoring duplicate click');
+      return;
+    }
+    setIsProcessingFail(true);
+    
     hapticMedium();
+
+    // If there's a stake and user is authenticated, charge immediately
+    if (promise.stake > 0 && session?.access_token) {
+      try {
+        const { data, error } = await supabase.functions.invoke('charge-promise', {
+          body: { promiseId: promise.id },
+        });
+
+        if (error) {
+          console.error('[handleFail] Edge function error:', error);
+          // No alert - the fail banner will show appropriate status
+        } else if (data) {
+          console.log('[handleFail] Charge result:', data);
+          // No alerts - the updated fail banner shows accurate payment status
+          // User will see "💸 $X charged" or "🔐 Bank confirmation needed" etc.
+        }
+      } catch (err) {
+        console.error('[handleFail] Error calling charge-promise:', err);
+        // Still mark as failed locally even if charge call fails
+      }
+    }
+
+    // Update local state
     await setPromiseStatus(promise.id, 'failed');
     setConfirmFail(false);
-  }, [promise, setPromiseStatus]);
+    setIsProcessingFail(false);
+  }, [promise, setPromiseStatus, session, isProcessingFail]);
 
   const handleDelete = useCallback(async () => {
     if (!promise) return;
@@ -627,9 +692,24 @@ export default function PromiseDetailScreen() {
 
           {promise.status === 'failed' && (
             <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.failBanner}>
-              <Text style={styles.failIcon}>💸</Text>
+              <Text style={styles.failIcon}>
+                {promise.paymentStatus === 'succeeded' ? '💸' : 
+                 promise.paymentStatus === 'requires_action' ? '🔐' :
+                 promise.paymentStatus === 'failed' ? '⚠️' :
+                 promise.stake > 0 ? '💸' : '😔'}
+              </Text>
               <Text style={styles.failText}>
-                You failed. Payment is &quot;coming soon&quot;. Convenient timing, I know.
+                {promise.paymentStatus === 'succeeded' 
+                  ? `You failed. $${promise.stake} charged. The universe collected.`
+                  : promise.paymentStatus === 'requires_action'
+                  ? 'You failed. Your bank needs you to confirm the payment.'
+                  : promise.paymentStatus === 'failed'
+                  ? `You failed. Payment of $${promise.stake} didn't go through. We'll retry.`
+                  : promise.paymentStatus === 'abandoned'
+                  ? `You failed. Payment couldn't be collected after multiple attempts.`
+                  : promise.stake > 0
+                  ? `You failed. $${promise.stake} will be charged.`
+                  : 'You failed. No stake, no pain. Just disappointment.'}
               </Text>
             </Animated.View>
           )}
@@ -729,9 +809,10 @@ export default function PromiseDetailScreen() {
         iToldYouSoMessage={promise.iToldYouSoMessage}
         iToldYouSoFrom={promise.iToldYouSoFrom}
         sponsorAmount={promise.sponsorAmount}
+        stake={promise.stake}
         onCancel={() => setConfirmFail(false)}
         onConfirm={handleFail}
-        working={isWorking}
+        working={isWorking || isProcessingFail}
       />
 
       <ConfirmActionModal
@@ -1030,8 +1111,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  failModalScroll: {
+    flexGrow: 0,
+  },
   failModalContent: {
     padding: Spacing.xl,
+    paddingBottom: Spacing.xxl,
     gap: Spacing.lg,
   },
   failModalHeader: {
@@ -1128,6 +1213,73 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.textSecondary,
     flex: 1,
+  },
+
+  // Charge warning styles
+  chargeWarning: {
+    backgroundColor: 'rgba(255, 69, 58, 0.08)',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 58, 0.25)',
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  chargeWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  chargeWarningIcon: {
+    fontSize: 20,
+  },
+  chargeWarningTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.danger,
+  },
+  chargeWarningAmount: {
+    ...Typography.h2,
+    color: Colors.text,
+    fontFamily: Fonts.mono,
+    textAlign: 'center',
+    marginVertical: Spacing.xs,
+  },
+  chargeWarningSubtext: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
+  // Fail modal specific action buttons (stacked vertically)
+  failModalActions: {
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  failPrimaryBtn: {
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  failPrimaryBtnGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  failPrimaryBtnText: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+    fontFamily: Fonts.rounded,
+    textAlign: 'center',
+  },
+  failSecondaryBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  failSecondaryBtnText: {
+    ...Typography.body,
+    color: Colors.textSecondary,
   },
 
   secondaryBtn: {

@@ -18,6 +18,7 @@ import {
   PromiseCard,
   StreakBadge,
 } from '@/components/home';
+import { BlockedBanner, PaymentBanner } from '@/components/payment';
 import { LoadingState } from '@/components/ui/loading-state';
 import { COPY, type PromiseTemplate } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
@@ -29,8 +30,8 @@ import { computeStats, hasCheckedInToday, recordCheckIn } from '@/lib/stats/stor
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { promises, isHydrated, setPromiseStatus } = usePromiseStore();
-  const { isAuthenticated, profile, user } = useAuth();
+  const { promises, isHydrated, setPromiseStatus, updatePromise } = usePromiseStore();
+  const { isAuthenticated, profile, user, paymentState } = useAuth();
   const [now, setNow] = useState(() => Date.now());
 
   const [showCheckInBanner, setShowCheckInBanner] = useState(false);
@@ -99,6 +100,12 @@ export default function HomeScreen() {
     [promises]
   );
 
+  // Find promises that require SCA resolution (payment authentication needed)
+  const promisesRequiringSCA = useMemo(
+    () => promises.filter((p) => p.paymentStatus === 'requires_action' && p.paymentClientSecret),
+    [promises]
+  );
+
   // Handlers
   const handleAddPromise = useCallback((template?: PromiseTemplate) => {
     router.push(
@@ -137,6 +144,19 @@ export default function HomeScreen() {
     hapticLight();
     router.push('/profile' as never);
   }, []);
+
+  // Handle SCA payment completion - refresh promises to get updated status
+  const handlePaymentComplete = useCallback(
+    (promiseId: string) => {
+      // Update local state immediately for optimistic UI
+      // The actual status will be confirmed via realtime subscription or next sync
+      updatePromise(promiseId, {
+        paymentStatus: 'succeeded',
+        paymentClientSecret: undefined,
+      }).catch(console.error);
+    },
+    [updatePromise]
+  );
 
   // Loading state
   if (!isHydrated) {
@@ -195,6 +215,27 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Payment Blocked Banner - Must resolve before creating new stakes */}
+        {paymentState.paymentBlocked && (
+          <View style={styles.paymentBannerContainer}>
+            <BlockedBanner
+              failedPaymentCount={paymentState.failedPaymentCount}
+            />
+          </View>
+        )}
+
+        {/* SCA Resolution Banners - Each promise requiring payment auth */}
+        {promisesRequiringSCA.map((p) => (
+          <View key={`sca-${p.id}`} style={styles.paymentBannerContainer}>
+            <PaymentBanner
+              clientSecret={p.paymentClientSecret!}
+              promiseText={p.text}
+              stakeAmount={p.stake * 100} // Convert to cents
+              onPaymentComplete={() => handlePaymentComplete(p.id)}
+            />
+          </View>
+        ))}
+
         {/* Check-in Banner - Only shows when needed */}
         {showCheckInBanner && active.length > 0 && (
           <CheckInBanner
@@ -413,6 +454,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.xl,
+  },
+
+  // Payment Banners
+  paymentBannerContainer: {
+    marginBottom: Spacing.md,
   },
 
   // Stats Bar
