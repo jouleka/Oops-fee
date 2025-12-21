@@ -1,0 +1,38 @@
+# Supabase Edge Functions Configuration
+# https://supabase.com/docs/guides/functions/config
+
+# ─────────────────────────────────────────────────────────────
+# PUBLIC ENDPOINTS (No JWT required)
+# These are accessed by friends via share links
+# ─────────────────────────────────────────────────────────────
+
+[get-share-context]
+verify_jwt = false
+
+[submit-sponsor]
+verify_jwt = false
+
+[submit-roast]
+verify_jwt = false
+
+[submit-partner-decision]
+verify_jwt = false
+
+# ─────────────────────────────────────────────────────────────
+# WEBHOOK ENDPOINTS (Verified via other means)
+# ─────────────────────────────────────────────────────────────
+
+[stripe-webhook]
+verify_jwt = false
+
+# ─────────────────────────────────────────────────────────────
+# AUTHENTICATED ENDPOINTS (JWT required - default)
+# ─────────────────────────────────────────────────────────────
+
+# create-share-link - requires auth (promise owner)
+# stripe-setup-intent - requires auth
+# stripe-confirm-setup - requires auth
+# stripe-remove-payment-method - requires auth
+# charge-promise - requires auth/service role
+# settle-promises - requires service role
+
