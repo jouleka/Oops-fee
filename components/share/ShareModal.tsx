@@ -67,6 +67,21 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   const [activeOption, setActiveOption] = useState<ShareOption | null>(null);
   const { requireAuth, isAuthenticated } = useRequireAuth();
 
+  // Track previous partner state to detect changes
+  const prevPartnerStateRef = useRef(promise.partnerState);
+  
+  // Auto-close when partner verification completes
+  useEffect(() => {
+    const prev = prevPartnerStateRef.current;
+    const curr = promise.partnerState;
+    prevPartnerStateRef.current = curr;
+    
+    // If partner just approved/rejected, close modal
+    if (prev === 'awaiting' && (curr === 'approved' || curr === 'rejected')) {
+      onClose();
+    }
+  }, [promise.partnerState, onClose]);
+
   // Share link states
   const [friendLink, setFriendLink] = useState<ShareLinkState>({
     loading: false,
@@ -81,14 +96,17 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     copied: false,
   });
 
-  // Reset states when modal closes
+  // Reset states when modal opens/closes
   useEffect(() => {
-    if (!visible) {
+    if (visible) {
+      // Reset translateY when modal opens so it's not stuck at bottom
+      translateY.value = 0;
+    } else {
       setActiveOption(null);
       setFriendLink({ loading: false, url: null, error: null, copied: false });
       setPartnerLink({ loading: false, url: null, error: null, copied: false });
     }
-  }, [visible]);
+  }, [visible, translateY]);
 
   // Check auth when modal opens - if not authed, redirect to sign-in and close modal
   useEffect(() => {
@@ -313,8 +331,9 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
                 'friend'
               )}
 
-              {/* Only show partner option for partner verification type */}
+              {/* Only show partner option if user already clicked "I did it" (partnerState is awaiting) */}
               {promise.verificationType === 'partner' &&
+                promise.partnerState === 'awaiting' &&
                 renderShareOption(
                   'partner',
                   '👀',

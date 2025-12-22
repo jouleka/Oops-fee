@@ -33,6 +33,7 @@ export interface ShareContext {
   hasSponsor?: boolean;
   // Partner-specific
   partnerState?: 'awaiting' | 'resolved';
+  partnerDeadlineRemaining?: string; // Human-readable time remaining, e.g. "23 hours"
 }
 
 export interface SubmitSponsorResponse {
@@ -186,5 +187,18 @@ export async function submitPartnerDecision(
   }
 
   return data;
+}
+
+/**
+ * Start partner verification flow.
+ * Creates a partner share link and sets the promise to awaiting state.
+ * Returns the share link for the user to send to their partner.
+ */
+export async function startPartnerVerification(
+  promiseId: string
+): Promise<CreateShareLinkResponse> {
+  // Creating a partner share link automatically sets partner_state to awaiting
+  // on the server via the create-share-link edge function
+  return createShareLink(promiseId, 'partner');
 }
 

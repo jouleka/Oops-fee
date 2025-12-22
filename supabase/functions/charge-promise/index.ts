@@ -174,9 +174,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create and confirm PaymentIntent
-    // Stake is stored in dollars, Stripe expects cents
-    const amountInCents = promise.stake * 100;
-    console.log(`[charge-promise] Charging $${promise.stake} (${amountInCents} cents) for promise ${promiseId}`);
+    // Stake is stored in dollars, sponsor_total is stored in cents
+    // Convert everything to cents for Stripe
+    const sponsorCents = promise.sponsor_total ?? 0;
+    const stakeCents = promise.stake * 100;
+    const amountInCents = stakeCents + sponsorCents;
+    const totalAmount = amountInCents / 100; // For display
+    console.log(`[charge-promise] Charging $${totalAmount} (stake: $${promise.stake}, sponsor: $${sponsorCents / 100}) for promise ${promiseId}`);
 
     try {
       // Use idempotency key to prevent duplicate charges
@@ -227,8 +231,8 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             success: true,
             charged: true,
-            amount: promise.stake, // Return in dollars for display
-            message: `$${promise.stake} charged. The universe has collected.`,
+            amount: totalAmount, // Return in dollars for display
+            message: `$${totalAmount} charged. The universe has collected.`,
             paymentIntentId: paymentIntent.id,
           } as ChargeResponse),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -261,7 +265,7 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             success: true,
             charged: false,
-            amount: promise.stake, // Return in dollars
+            amount: totalAmount, // Return in dollars
             message: 'Your bank requires confirmation. One more tap to face the music.',
             requiresAction: true,
             clientSecret: paymentIntent.client_secret,
@@ -285,7 +289,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: true,
           charged: false,
-          amount: promise.stake,
+          amount: totalAmount,
           message: `Payment processing (${paymentIntent.status})`,
           paymentIntentId: paymentIntent.id,
         } as ChargeResponse),
@@ -325,7 +329,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: true,
           charged: false,
-          amount: promise.stake,
+          amount: totalAmount,
           message: `Payment failed: ${err.message || 'Card declined'}. We'll try again.`,
         } as ChargeResponse),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

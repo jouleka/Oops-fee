@@ -358,6 +358,11 @@ function PartnerDecisionForm({ context, token }: { context: ShareContext; token:
         <Text style={styles.formSubtitle}>
           You&apos;re {context.ownerFirstName}&apos;s accountability partner. Verify their promise.
         </Text>
+        {context.partnerDeadlineRemaining && (
+          <Text style={styles.deadlineNote}>
+            ⏳ You have {context.partnerDeadlineRemaining} to respond
+          </Text>
+        )}
       </View>
 
       <View style={styles.promisePreview}>
@@ -615,6 +620,13 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  deadlineNote: {
+    ...Typography.caption,
+    color: Colors.warning,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    fontWeight: '600',
   },
 
   // Promise preview

@@ -451,12 +451,60 @@ export default function PromiseDetailScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [showPartnerSendPrompt, setShowPartnerSendPrompt] = useState(false);
 
   // Calculate total stake including sponsors
   const totalStake = promise ? promise.stake + (promise.sponsorAmount ?? 0) : 0;
   const hasSponsor = promise && (promise.sponsorAmount ?? 0) > 0;
-  const hasIToldYouSo = promise && (promise.iToldYouSoMessages?.length ?? 0) > 0;
   const needsPhotoProof = promise?.verificationType === 'photo';
+  const needsPartnerVerification = promise?.verificationType === 'partner';
+  const isAwaitingPartner = promise?.partnerState === 'awaiting';
+
+  // Fetch roast messages directly for failed promises
+  const [roastMessages, setRoastMessages] = useState<{ message: string; from: string }[]>([]);
+  const [loadingRoasts, setLoadingRoasts] = useState(false);
+
+  useEffect(() => {
+    if (!promise || promise.status !== 'failed') return;
+    
+    const promiseId = promise.id;
+    const existingMessages = promise.iToldYouSoMessages ?? [];
+    const hasPlaceholder = existingMessages.some(m => m.message === '(from server)');
+    
+    // If we already have valid messages (not placeholders), use them
+    if (existingMessages.length > 0 && !hasPlaceholder) {
+      setRoastMessages(existingMessages);
+      return;
+    }
+
+    // Fetch fresh messages from database
+    async function fetchMessages() {
+      setLoadingRoasts(true);
+      try {
+        const { data, error } = await supabase
+          .from('roast_messages')
+          .select('message, from_name')
+          .eq('promise_id', promiseId)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          setRoastMessages(data.map(r => ({ message: r.message, from: r.from_name })));
+        } else {
+          // Fallback to existing messages if fetch fails
+          const filtered = existingMessages.filter(m => m.message !== '(from server)');
+          setRoastMessages(filtered);
+        }
+      } catch {
+        // Ignore fetch errors
+      } finally {
+        setLoadingRoasts(false);
+      }
+    }
+
+    fetchMessages();
+  }, [promise]);
+
+  const hasIToldYouSo = roastMessages.length > 0;
 
   const handleBack = useCallback(() => {
     hapticLight();
@@ -465,7 +513,7 @@ export default function PromiseDetailScreen() {
 
   const canChangeStatus = promise?.status !== 'completed' && promise?.status !== 'failed';
 
-  // Handler for initiating completion - checks if photo proof is needed
+  // Handler for initiating completion - checks if verification is needed
   const handleInitiateComplete = useCallback(() => {
     if (!promise) return;
     hapticLight();
@@ -473,11 +521,20 @@ export default function PromiseDetailScreen() {
     if (needsPhotoProof) {
       // Photo verification required - show photo capture modal
       setShowPhotoCapture(true);
+    } else if (needsPartnerVerification) {
+      // Partner verification required
+      if (isAwaitingPartner) {
+        // Already awaiting - just show share modal
+        setShowShareModal(true);
+      } else {
+        // Show prompt to send to partner
+        setShowPartnerSendPrompt(true);
+      }
     } else {
-      // No photo needed - show regular confirmation
+      // No special verification needed - show regular confirmation
       setConfirmComplete(true);
     }
-  }, [promise, needsPhotoProof]);
+  }, [promise, needsPhotoProof, needsPartnerVerification, isAwaitingPartner]);
 
   // Handler for completing with photo proof
   const handlePhotoCapture = useCallback(async (photoUri: string) => {
@@ -506,6 +563,23 @@ export default function PromiseDetailScreen() {
     // Navigate to success celebration screen
     router.replace({ pathname: '/promise/success', params: { promiseId: promise.id } });
   }, [promise, setPromiseStatus]);
+
+  // Handler for initiating partner verification - sets awaiting state and opens share modal
+  const handlePartnerVerificationStart = useCallback(async () => {
+    if (!promise) return;
+    hapticMedium();
+    
+    // Set partner state to awaiting with 24h deadline
+    const partnerDeadlineAt = Date.now() + 24 * 60 * 60 * 1000;
+    await updatePromise(promise.id, {
+      partnerState: 'awaiting',
+      partnerDeadlineAt,
+    });
+    
+    setShowPartnerSendPrompt(false);
+    // Open share modal so they can send the partner link
+    setShowShareModal(true);
+  }, [promise, updatePromise]);
 
   // Track if we're processing a failure to prevent double charges
   const [isProcessingFail, setIsProcessingFail] = useState(false);
@@ -617,7 +691,7 @@ export default function PromiseDetailScreen() {
                 </View>
               )}
               <View style={[styles.moneyChip, { backgroundColor: Colors.dangerDim, borderColor: Colors.danger + '55' }]}>
-                <Text style={styles.moneyChipText}>${totalStake}</Text>
+                <Text style={styles.moneyChipText}>${promise.stake}</Text>
               </View>
             </View>
           </View>
@@ -653,9 +727,20 @@ export default function PromiseDetailScreen() {
             <View style={styles.metaDivider} />
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>VERIFICATION</Text>
-              <Text style={styles.metaValue}>
+              <Text style={[
+                styles.metaValue,
+                promise.partnerState === 'approved' && { color: Colors.success },
+                promise.partnerState === 'rejected' && { color: Colors.danger },
+                promise.partnerState === 'awaiting' && { color: Colors.accent },
+              ]}>
                 {promise.verificationType === 'photo' && '📷 Photo proof'}
-                {promise.verificationType === 'partner' && '👥 Friend confirms'}
+                {promise.verificationType === 'partner' && (
+                  promise.partnerState === 'approved' ? '✅ Partner approved' :
+                  promise.partnerState === 'rejected' ? '❌ Partner rejected' :
+                  promise.partnerState === 'awaiting' ? '👀 Awaiting partner' :
+                  promise.partnerState === 'expired' ? '⏳ Partner timed out' :
+                  '👥 Friend confirms'
+                )}
                 {promise.verificationType === 'honor' && '🤞 Honor system'}
                 {promise.verificationType === 'healthkit' && '⌚ Health data'}
                 {promise.verificationType === 'location' && '📍 Location check'}
@@ -672,7 +757,32 @@ export default function PromiseDetailScreen() {
             )}
           </View>
 
-          {isExpiredView && (
+          {/* Awaiting partner verification banner */}
+          {isAwaitingPartner && promise.status === 'active' && (
+            <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.awaitingPartnerBanner}>
+              <Text style={styles.awaitingPartnerIcon}>👀</Text>
+              <View style={styles.awaitingPartnerContent}>
+                <Text style={styles.awaitingPartnerTitle}>Waiting for partner</Text>
+                <Text style={styles.awaitingPartnerText}>
+                  Your accountability partner needs to confirm you completed this.
+                  {promise.partnerDeadlineAt && (
+                    ` They have until ${formatShortDateTime(promise.partnerDeadlineAt)}.`
+                  )}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    hapticLight();
+                    setShowShareModal(true);
+                  }}
+                  style={({ pressed }) => [styles.awaitingPartnerBtn, pressed && styles.pressed]}
+                >
+                  <Text style={styles.awaitingPartnerBtnText}>Send reminder ↗</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          )}
+
+          {isExpiredView && !isAwaitingPartner && (
             <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.expiredBanner}>
               <Text style={styles.expiredIcon}>⏰</Text>
               <Text style={styles.expiredText}>
@@ -698,15 +808,15 @@ export default function PromiseDetailScreen() {
               </Text>
               <Text style={styles.failText}>
                 {promise.paymentStatus === 'succeeded' 
-                  ? `You failed. $${promise.stake} charged. The universe collected.`
+                  ? `You failed. $${totalStake} charged. The universe collected.`
                   : promise.paymentStatus === 'requires_action'
                   ? 'You failed. Your bank needs you to confirm the payment.'
                   : promise.paymentStatus === 'failed'
-                  ? `You failed. Payment of $${promise.stake} didn't go through. We'll retry.`
+                  ? `You failed. Payment of $${totalStake} didn't go through. We'll retry.`
                   : promise.paymentStatus === 'abandoned'
                   ? `You failed. Payment couldn't be collected after multiple attempts.`
-                  : promise.stake > 0
-                  ? `You failed. $${promise.stake} will be charged.`
+                  : totalStake > 0
+                  ? `You failed. $${totalStake} will be charged.`
                   : 'You failed. No stake, no pain. Just disappointment.'}
               </Text>
             </Animated.View>
@@ -718,20 +828,24 @@ export default function PromiseDetailScreen() {
               <View style={styles.iToldYouSoHeader}>
                 <Text style={styles.iToldYouSoEmoji}>💌</Text>
                 <Text style={styles.iToldYouSoTitle}>
-                  {(promise.iToldYouSoMessages?.length ?? 0) > 1
-                    ? `${promise.iToldYouSoMessages?.length} messages were left for you...`
+                  {roastMessages.length > 1
+                    ? `${roastMessages.length} messages were left for you...`
                     : FAILURE_COPY.iToldYouSoRevealTitle}
                 </Text>
               </View>
               <View style={styles.iToldYouSoContent}>
-                {promise.iToldYouSoMessages?.map((msg, index) => (
-                  <View key={index} style={styles.roastMessageItem}>
-                    <Text style={styles.iToldYouSoMessage}>&quot;{msg.message}&quot;</Text>
-                    {msg.from && (
-                      <Text style={styles.iToldYouSoFrom}>— {msg.from}</Text>
-                    )}
-                  </View>
-                ))}
+                {loadingRoasts ? (
+                  <Text style={styles.iToldYouSoMessage}>Loading messages...</Text>
+                ) : (
+                  roastMessages.map((msg, index) => (
+                    <View key={index} style={styles.roastMessageItem}>
+                      <Text style={styles.iToldYouSoMessage}>&quot;{msg.message}&quot;</Text>
+                      {msg.from && (
+                        <Text style={styles.iToldYouSoFrom}>— {msg.from}</Text>
+                      )}
+                    </View>
+                  ))
+                )}
               </View>
             </Animated.View>
           )}
@@ -752,21 +866,45 @@ export default function PromiseDetailScreen() {
 
         {canChangeStatus && (
           <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.actions}>
-            <Pressable
-              onPress={handleInitiateComplete}
-              style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed, styles.actionSuccess]}
-            >
-              <LinearGradient
-                colors={[Colors.success, '#2EC44F']}
-                style={styles.actionBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+            {/* For awaiting partner state, show different action */}
+            {isAwaitingPartner ? (
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  setShowShareModal(true);
+                }}
+                style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed, styles.actionWaiting]}
               >
-                <Text style={styles.actionBtnText}>
-                  {needsPhotoProof ? 'I did it 📷' : 'I did it ✓'}
-                </Text>
-              </LinearGradient>
-            </Pressable>
+                <LinearGradient
+                  colors={[Colors.accent, '#0A84FF']}
+                  style={styles.actionBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.actionBtnText}>Send to partner 👀</Text>
+                </LinearGradient>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleInitiateComplete}
+                style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed, styles.actionSuccess]}
+              >
+                <LinearGradient
+                  colors={[Colors.success, '#2EC44F']}
+                  style={styles.actionBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.actionBtnText}>
+                    {needsPhotoProof 
+                      ? 'I did it 📷' 
+                      : needsPartnerVerification 
+                        ? 'I did it 👥' 
+                        : 'I did it ✓'}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            )}
 
             <Pressable
               onPress={() => {
@@ -847,6 +985,18 @@ export default function PromiseDetailScreen() {
           onCancel={() => setShowPhotoCapture(false)}
         />
       )}
+
+      {/* Partner Verification Prompt Modal */}
+      <ConfirmActionModal
+        visible={showPartnerSendPrompt}
+        title="Get verified by your partner"
+        subtitle="You're claiming you did it. Now your accountability partner needs to confirm. They'll have 24 hours to respond."
+        confirmText="Send to partner 👀"
+        confirmColors={[Colors.accent, '#0A84FF']}
+        onCancel={() => setShowPartnerSendPrompt(false)}
+        onConfirm={handlePartnerVerificationStart}
+        working={isWorking}
+      />
     </View>
   );
 }
@@ -964,6 +1114,44 @@ const styles = StyleSheet.create({
   expiredIcon: { fontSize: 14, marginTop: 1 },
   expiredText: { ...Typography.caption, color: Colors.danger, flex: 1 },
 
+  // Awaiting partner banner
+  awaitingPartnerBanner: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    backgroundColor: Colors.accentDim,
+    borderWidth: 1,
+    borderColor: Colors.accent + '44',
+    padding: Spacing.lg,
+    borderRadius: Radius.lg,
+  },
+  awaitingPartnerIcon: { fontSize: 24 },
+  awaitingPartnerContent: {
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  awaitingPartnerTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.accent,
+  },
+  awaitingPartnerText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  awaitingPartnerBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.accent + '22',
+    borderRadius: Radius.md,
+    marginTop: Spacing.xs,
+  },
+  awaitingPartnerBtnText: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontWeight: '600',
+  },
+
   successBanner: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -1069,6 +1257,7 @@ const styles = StyleSheet.create({
   actionBtnText: { ...Typography.bodySemibold, color: Colors.text, fontFamily: Fonts.rounded },
   actionSuccess: {},
   actionDanger: {},
+  actionWaiting: {},
 
   footer: { paddingTop: Spacing.xl },
   footerText: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center', fontStyle: 'italic' },

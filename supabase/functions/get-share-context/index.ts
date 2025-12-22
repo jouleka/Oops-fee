@@ -65,6 +65,7 @@ interface ShareContext {
   hasSponsor?: boolean;
   // For partner
   partnerState?: 'awaiting' | 'resolved';
+  partnerDeadlineRemaining?: string; // Human-readable time remaining, e.g. "23 hours"
 }
 
 Deno.serve(async (req: Request) => {
@@ -169,6 +170,7 @@ Deno.serve(async (req: Request) => {
         sponsor_count,
         has_roast,
         partner_state,
+        partner_deadline_at,
         user_id
       `)
       .eq('id', shareLink.promise_id)
@@ -220,6 +222,24 @@ Deno.serve(async (req: Request) => {
 
     if (shareLink.type === 'partner') {
       context.partnerState = promise.partner_state === 'awaiting' ? 'awaiting' : 'resolved';
+      
+      // Add human-readable time remaining for partner deadline
+      if (promise.partner_deadline_at && promise.partner_state === 'awaiting') {
+        const deadline = new Date(promise.partner_deadline_at);
+        const now = new Date();
+        const diffMs = deadline.getTime() - now.getTime();
+        
+        if (diffMs > 0) {
+          const hours = Math.floor(diffMs / (1000 * 60 * 60));
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          if (hours > 0) {
+            context.partnerDeadlineRemaining = `${hours} hour${hours !== 1 ? 's' : ''}`;
+          } else {
+            context.partnerDeadlineRemaining = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+          }
+        }
+      }
     }
 
     return new Response(JSON.stringify(context), {

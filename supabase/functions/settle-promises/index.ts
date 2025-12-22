@@ -36,6 +36,7 @@ interface Promise {
   user_id: string;
   text: string;
   stake: number;
+  sponsor_total: number | null; // Stored in cents
   status: string;
   deadline_at: string;
   settle_at: string;
@@ -357,11 +358,16 @@ async function chargeForFailedPromise(
     };
   }
 
+  // Calculate total amount including sponsor contributions
+  // Stake is stored in dollars, sponsor_total is stored in cents
+  const sponsorCents = promise.sponsor_total ?? 0;
+  const stakeCents = promise.stake * 100;
+  const amountInCents = stakeCents + sponsorCents;
+  const totalAmount = amountInCents / 100; // For display/logging
+
   try {
     // Create off-session PaymentIntent
-    // Stake is stored in dollars, Stripe expects cents
-    const amountInCents = promise.stake * 100;
-    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, amount: $${promise.stake} (${amountInCents} cents)`);
+    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, amount: $${totalAmount} (stake: $${promise.stake}, sponsor: $${sponsorCents / 100})`);
 
     // Use idempotency key to prevent duplicate charges from cron retries
     const idempotencyKey = `settle-promise-${promise.id}-attempt-${attemptNumber}`;
@@ -387,7 +393,7 @@ async function chargeForFailedPromise(
 
     // Handle different payment statuses
     if (paymentIntent.status === 'succeeded') {
-      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber);
+      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents);
       return {
         promiseId: promise.id,
         action: 'charged',
@@ -397,7 +403,7 @@ async function chargeForFailedPromise(
     }
 
     if (paymentIntent.status === 'requires_action') {
-      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber);
+      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, amountInCents);
       return {
         promiseId: promise.id,
         action: 'requires_action',
@@ -463,6 +469,7 @@ async function handlePaymentSuccess(
   supabase: ReturnType<typeof createAdminClient>,
   paymentIntentId: string,
   attemptNumber: number,
+  amountInCents: number,
 ): Promise<void> {
   // Update promise
   await supabase
@@ -476,7 +483,7 @@ async function handlePaymentSuccess(
   // Log the successful payment (store amount in cents)
   await supabase.from('payments').insert({
     promise_id: promise.id,
-    amount: promise.stake * 100,
+    amount: amountInCents,
     currency: 'usd',
     stripe_payment_intent_id: paymentIntentId,
     status: 'succeeded',
@@ -494,6 +501,7 @@ async function handlePaymentRequiresAction(
   supabase: ReturnType<typeof createAdminClient>,
   paymentIntent: { id: string; client_secret: string },
   attemptNumber: number,
+  amountInCents: number,
 ): Promise<void> {
   // Store client secret for app to complete payment
   await supabase
@@ -508,7 +516,7 @@ async function handlePaymentRequiresAction(
   // Log the payment attempt (store amount in cents)
   await supabase.from('payments').insert({
     promise_id: promise.id,
-    amount: promise.stake * 100,
+    amount: amountInCents,
     currency: 'usd',
     stripe_payment_intent_id: paymentIntent.id,
     status: 'requires_action',

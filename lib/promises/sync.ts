@@ -243,24 +243,46 @@ export function subscribeToPromiseChanges(
       },
       async (payload) => {
         try {
-          // Only process if promise is active or just became resolved
           const newData = payload.new as PromiseRow | null;
-          const oldData = payload.old as { status?: string; id?: string } | null;
+          const oldData = payload.old as { id?: string } | null;
+          const promiseId = newData?.id || oldData?.id || '';
           
-          const isRelevant = 
-            newData?.status === 'active' || 
-            oldData?.status === 'active' ||
-            payload.eventType === 'DELETE';
+          console.log('[sync] Realtime event:', payload.eventType, 'promiseId:', promiseId, 'partner_state:', newData?.partner_state);
           
-          if (!isRelevant) return;
+          // For DELETE events, always process
+          if (payload.eventType === 'DELETE') {
+            const currentPromises = getCurrentPromises();
+            const result = await handleRealtimeChange(
+              payload as RealtimePostgresChangesPayload<PromiseRow>,
+              currentPromises
+            );
+            onUpdate(result.type, result.promise, promiseId);
+            return;
+          }
           
+          // For INSERT/UPDATE, check if we have this promise locally
+          // or if it's a status/partner_state change we care about
           const currentPromises = getCurrentPromises();
+          const localPromise = currentPromises.find(p => p.id === promiseId);
+          
+          // Process if:
+          // 1. It's a new promise (INSERT)
+          // 2. We have it locally (could be partner verification update)
+          // 3. New data shows it's active or just became resolved
+          const shouldProcess = 
+            payload.eventType === 'INSERT' ||
+            localPromise !== undefined ||
+            newData?.status === 'active' ||
+            newData?.status === 'completed' ||
+            newData?.status === 'failed';
+          
+          if (!shouldProcess) return;
+          
           const result = await handleRealtimeChange(
             payload as RealtimePostgresChangesPayload<PromiseRow>,
             currentPromises
           );
           
-          const promiseId = newData?.id || oldData?.id || '';
           onUpdate(result.type, result.promise, promiseId);
         } catch (error) {
           console.error('[sync] Error handling realtime change:', error);

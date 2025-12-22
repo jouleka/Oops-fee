@@ -199,12 +199,11 @@ export async function getPromiseWithRoast(id: string): Promise<UserPromise | nul
   
   if (isSupabaseConfigured() && promise.remoteId) {
     try {
-      const roast = await remote.fetchRoastMessage(id);
-      if (roast) {
+      const roasts = await remote.fetchRoastMessages(id);
+      if (roasts.length > 0) {
         return {
           ...promise,
-          iToldYouSoMessage: roast.message,
-          iToldYouSoFrom: roast.from,
+          iToldYouSoMessages: roasts,
         };
       }
     } catch {

@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
     // 3. Verify promise exists and belongs to user
     const { data: promise, error: promiseError } = await supabase
       .from('promises')
-      .select('id, user_id, status, verification_type')
+      .select('id, user_id, status, verification_type, partner_state')
       .eq('id', promiseId)
       .single();
 
@@ -181,6 +181,31 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
       );
+    }
+
+    // 9b. For partner links: update promise with awaiting state and partner deadline
+    if (type === 'partner') {
+      const partnerDeadlineAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      // settle_at should be after partner deadline + 1 hour grace period
+      const settleAt = new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString();
+      
+      // Only update if not already awaiting (prevent resetting deadline)
+      if (promise.partner_state !== 'awaiting') {
+        const { error: updateError } = await supabase
+          .from('promises')
+          .update({
+            partner_state: 'awaiting',
+            partner_deadline_at: partnerDeadlineAt,
+            settle_at: settleAt,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', promiseId);
+
+        if (updateError) {
+          console.error('[create-share-link] Error updating partner state:', updateError);
+          // Don't fail the request - link was created successfully
+        }
+      }
     }
 
     // 10. Build response

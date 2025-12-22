@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { PartnerNotification, type PartnerNotificationType } from '@/components/notifications';
 import {
   cancelAllNotifications,
   cancelPromiseReminders,
@@ -22,11 +23,23 @@ import { clearWidgetData, syncToWidget } from '@/lib/widgets';
 
 import { useAuth } from './auth';
 
+// Partner notification state type
+export interface PartnerNotificationData {
+  visible: boolean;
+  type: PartnerNotificationType;
+  promiseText: string;
+  stake: number;
+}
+
 type PromiseStore = {
   promises: UserPromise[];
   isHydrated: boolean;
   isWorking: boolean;
   isSyncing: boolean;
+  
+  // Partner notification
+  partnerNotification: PartnerNotificationData;
+  dismissPartnerNotification: () => void;
 
   refresh: () => Promise<void>;
   syncWithRemote: () => Promise<void>;
@@ -39,11 +52,27 @@ type PromiseStore = {
 
 const PromiseStoreContext = createContext<PromiseStore | null>(null);
 
+// Notification state for partner verification
+interface PartnerNotificationState {
+  visible: boolean;
+  type: PartnerNotificationType;
+  promiseText: string;
+  stake: number;
+}
+
 export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const [promises, setPromises] = useState<UserPromise[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // Partner notification state
+  const [partnerNotification, setPartnerNotification] = useState<PartnerNotificationState>({
+    visible: false,
+    type: 'approved',
+    promiseText: '',
+    stake: 0,
+  });
   
   const { user, isAuthenticated } = useAuth();
   const promisesRef = useRef<UserPromise[]>([]);
@@ -107,6 +136,24 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
         if (type === 'delete') {
           setPromises(prev => prev.filter(p => p.id !== promiseId));
         } else if (promise) {
+          // Check for partner state changes to show notification
+          const oldPromise = promisesRef.current.find(p => p.id === promise.id);
+          
+          console.log('[PromiseStore] Realtime update - old partnerState:', oldPromise?.partnerState, 'new partnerState:', promise.partnerState);
+          
+          // Partner verification completed - show custom notification
+          if (oldPromise?.partnerState === 'awaiting' && promise.partnerState !== 'awaiting') {
+            console.log('[PromiseStore] Partner verification completed! Showing notification for:', promise.partnerState);
+            if (promise.partnerState === 'approved' || promise.partnerState === 'rejected') {
+              setPartnerNotification({
+                visible: true,
+                type: promise.partnerState,
+                promiseText: promise.text,
+                stake: promise.stake,
+              });
+            }
+          }
+          
           setPromises(prev => {
             const existingIndex = prev.findIndex(p => p.id === promise.id);
             if (existingIndex >= 0) {
@@ -216,12 +263,18 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const dismissPartnerNotification = useCallback(() => {
+    setPartnerNotification(prev => ({ ...prev, visible: false }));
+  }, []);
+
   const value = useMemo<PromiseStore>(
     () => ({
       promises,
       isHydrated,
       isWorking,
       isSyncing,
+      partnerNotification,
+      dismissPartnerNotification,
       refresh,
       syncWithRemote,
       createPromise,
@@ -230,10 +283,21 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
       deletePromise,
       clearAll,
     }),
-    [promises, isHydrated, isWorking, isSyncing, refresh, syncWithRemote, createPromise, updatePromise, setPromiseStatus, deletePromise, clearAll]
+    [promises, isHydrated, isWorking, isSyncing, partnerNotification, dismissPartnerNotification, refresh, syncWithRemote, createPromise, updatePromise, setPromiseStatus, deletePromise, clearAll]
   );
 
-  return <PromiseStoreContext.Provider value={value}>{children}</PromiseStoreContext.Provider>;
+  return (
+    <PromiseStoreContext.Provider value={value}>
+      {children}
+      <PartnerNotification
+        visible={partnerNotification.visible}
+        type={partnerNotification.type}
+        promiseText={partnerNotification.promiseText}
+        stake={partnerNotification.stake}
+        onDismiss={dismissPartnerNotification}
+      />
+    </PromiseStoreContext.Provider>
+  );
 }
 
 export function usePromiseStore(): PromiseStore {
