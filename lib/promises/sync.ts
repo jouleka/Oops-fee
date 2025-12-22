@@ -9,7 +9,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import * as local from './repo.local';
-import { fetchPromises, fetchRoastMessage, toLocalPromise } from './repo.remote';
+import { fetchPromises, fetchRoastMessages, toLocalPromise } from './repo.remote';
 import type { UserPromise } from './types';
 
 // ─────────────────────────────────────────────────────────────
@@ -36,8 +36,7 @@ export function mergePromise(local: UserPromise, remote: UserPromise): UserPromi
     // Remote always wins for these (server-controlled)
     sponsorAmount: remote.sponsorAmount ?? local.sponsorAmount,
     sponsorCount: remote.sponsorCount ?? local.sponsorCount,
-    iToldYouSoMessage: remote.iToldYouSoMessage ?? local.iToldYouSoMessage,
-    iToldYouSoFrom: remote.iToldYouSoFrom ?? local.iToldYouSoFrom,
+    iToldYouSoMessages: remote.iToldYouSoMessages ?? local.iToldYouSoMessages,
     
     // Partner state from server
     partnerState: remote.partnerState ?? local.partnerState,
@@ -117,12 +116,13 @@ export async function performFullSync(userId: string): Promise<UserPromise[]> {
     
     // Enrich promises with roast messages where needed
     const enrichPromises = Array.from(mergedMap.values()).map(async (p) => {
-      // If has placeholder roast message, fetch the actual message
-      if (p.iToldYouSoMessage === '(from server)' || (p.iToldYouSoMessage && !p.iToldYouSoFrom)) {
+      // Fetch roast messages if we don't have them yet or have placeholder
+      const hasPlaceholder = p.iToldYouSoMessages?.some(m => m.message === '(from server)');
+      if (!p.iToldYouSoMessages || hasPlaceholder) {
         try {
-          const roast = await fetchRoastMessage(p.id);
-          if (roast) {
-            return { ...p, iToldYouSoMessage: roast.message, iToldYouSoFrom: roast.from };
+          const messages = await fetchRoastMessages(p.id);
+          if (messages.length > 0) {
+            return { ...p, iToldYouSoMessages: messages };
           }
         } catch {
           // Ignore errors
@@ -165,13 +165,12 @@ export async function handleRealtimeChange(
   if ((eventType === 'INSERT' || eventType === 'UPDATE') && newRow) {
     const remotePromise = toLocalPromise(newRow as PromiseRow);
     
-    // Try to enrich with roast message if has_roast is true
+    // Try to enrich with roast messages if has_roast is true
     if ((newRow as PromiseRow).has_roast) {
       try {
-        const roast = await fetchRoastMessage(remotePromise.id);
-        if (roast) {
-          remotePromise.iToldYouSoMessage = roast.message;
-          remotePromise.iToldYouSoFrom = roast.from;
+        const messages = await fetchRoastMessages(remotePromise.id);
+        if (messages.length > 0) {
+          remotePromise.iToldYouSoMessages = messages;
         }
       } catch {
         // Ignore errors fetching roast

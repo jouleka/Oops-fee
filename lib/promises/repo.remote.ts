@@ -57,7 +57,7 @@ export function toRemoteInsert(local: UserPromise, userId: string): PromiseInser
     payment_client_secret: local.paymentClientSecret ?? null,
     sponsor_total: Math.round((local.sponsorAmount ?? 0) * 100), // Store in cents
     sponsor_count: local.sponsorCount ?? 0,
-    has_roast: Boolean(local.iToldYouSoMessage),
+    has_roast: (local.iToldYouSoMessages?.length ?? 0) > 0,
   };
 }
 
@@ -108,7 +108,7 @@ export function toRemoteUpdate(patch: Partial<UserPromise>): RemotePromiseUpdate
   if (patch.paymentClientSecret !== undefined) update.payment_client_secret = patch.paymentClientSecret;
   if (patch.sponsorAmount !== undefined) update.sponsor_total = Math.round(patch.sponsorAmount * 100); // Store in cents
   if (patch.sponsorCount !== undefined) update.sponsor_count = patch.sponsorCount;
-  if (patch.iToldYouSoMessage !== undefined) update.has_roast = Boolean(patch.iToldYouSoMessage);
+  if (patch.iToldYouSoMessages !== undefined) update.has_roast = patch.iToldYouSoMessages.length > 0;
   
   // Always update updated_at
   update.updated_at = new Date().toISOString();
@@ -161,7 +161,7 @@ export function toLocalPromise(remote: PromiseRow): UserPromise {
       : undefined,
     sponsorAmount: remote.sponsor_total ? remote.sponsor_total / 100 : undefined, // Convert cents to dollars
     sponsorCount: remote.sponsor_count ?? undefined,
-    iToldYouSoMessage: remote.has_roast ? '(from server)' : undefined, // Placeholder, actual message from roast_messages table
+    iToldYouSoMessages: remote.has_roast ? [{ message: '(from server)', from: '' }] : undefined, // Placeholder, actual messages from roast_messages table
     partnerState: partnerState ?? undefined,
     partnerDeadlineAt: remote.partner_deadline_at 
       ? new Date(remote.partner_deadline_at).getTime() 
@@ -251,8 +251,6 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     verificationType: input.verificationType ?? 'photo',
     sponsorAmount: input.sponsorAmount,
     sponsorCount: input.sponsorCount,
-    iToldYouSoMessage: input.iToldYouSoMessage?.trim() || undefined,
-    iToldYouSoFrom: input.iToldYouSoFrom?.trim() || undefined,
   };
   
   const insert = toRemoteInsert(localPromise, userId);
@@ -276,8 +274,7 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     ...toLocalPromise(data),
     // Preserve local-only fields
     friendName: localPromise.friendName,
-    iToldYouSoMessage: localPromise.iToldYouSoMessage,
-    iToldYouSoFrom: localPromise.iToldYouSoFrom,
+    iToldYouSoMessages: localPromise.iToldYouSoMessages,
   };
 }
 
@@ -362,29 +359,26 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
     // Preserve local-only fields
     friendName: local.friendName,
     voiceNoteUri: local.voiceNoteUri,
-    iToldYouSoMessage: local.iToldYouSoMessage,
-    iToldYouSoFrom: local.iToldYouSoFrom,
+    iToldYouSoMessages: local.iToldYouSoMessages,
   };
 }
 
 /**
- * Fetch the latest roast message for a promise
+ * Fetch all roast messages for a promise
  */
-export async function fetchRoastMessage(promiseId: string): Promise<{ message: string; from: string } | null> {
-  if (!isRemoteAvailable()) return null;
+export async function fetchRoastMessages(promiseId: string): Promise<Array<{ message: string; from: string }>> {
+  if (!isRemoteAvailable()) return [];
   
   const { data, error } = await supabase
     .from('roast_messages')
     .select('message, from_name')
     .eq('promise_id', promiseId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .order('created_at', { ascending: false });
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
-    return null;
+    console.error('[fetchRoastMessages] Error:', error);
+    return [];
   }
 
-  return data ? { message: data.message, from: data.from_name } : null;
+  return (data ?? []).map(row => ({ message: row.message, from: row.from_name }));
 }

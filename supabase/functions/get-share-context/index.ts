@@ -61,7 +61,7 @@ interface ShareContext {
   // For friend (combined sponsor + roast)
   currentSponsorTotal?: number;
   sponsorCount?: number;
-  hasRoast?: boolean;
+  roastCount?: number; // Number of roast messages
   hasSponsor?: boolean;
   // For partner
   partnerState?: 'awaiting' | 'resolved';
@@ -204,11 +204,18 @@ Deno.serve(async (req: Request) => {
 
     // Add type-specific fields
     if (shareLink.type === 'friend') {
-      // Friend links can see sponsor info and whether roast exists
+      // Friend links can see sponsor info and roast count
       context.currentSponsorTotal = (promise.sponsor_total || 0) / 100; // Convert cents to dollars
       context.sponsorCount = promise.sponsor_count || 0;
-      context.hasRoast = promise.has_roast || false;
       context.hasSponsor = (promise.sponsor_count || 0) > 0;
+
+      // Get roast message count
+      const { count: roastCount } = await supabase
+        .from('roast_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('promise_id', shareLink.promise_id);
+
+      context.roastCount = roastCount || 0;
     }
 
     if (shareLink.type === 'partner') {

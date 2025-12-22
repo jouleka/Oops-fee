@@ -80,10 +80,11 @@ function coercePromise(raw: unknown): UserPromise | null {
   // Virality fields
   const sponsorAmount = typeof raw.sponsorAmount === 'number' ? raw.sponsorAmount : undefined;
   const sponsorCount = typeof raw.sponsorCount === 'number' ? raw.sponsorCount : undefined;
-  const iToldYouSoMessage =
-    typeof raw.iToldYouSoMessage === 'string' && raw.iToldYouSoMessage.length > 0 ? raw.iToldYouSoMessage : undefined;
-  const iToldYouSoFrom =
-    typeof raw.iToldYouSoFrom === 'string' && raw.iToldYouSoFrom.length > 0 ? raw.iToldYouSoFrom : undefined;
+  const iToldYouSoMessages = Array.isArray(raw.iToldYouSoMessages)
+    ? (raw.iToldYouSoMessages as Array<{ message: string; from: string }>).filter(
+        (m) => typeof m.message === 'string' && typeof m.from === 'string'
+      )
+    : undefined;
 
   // Partner verification fields
   const partnerStateRaw = typeof raw.partnerState === 'string' ? raw.partnerState : null;
@@ -132,8 +133,7 @@ function coercePromise(raw: unknown): UserPromise | null {
     verificationTimestamp,
     sponsorAmount,
     sponsorCount,
-    iToldYouSoMessage,
-    iToldYouSoFrom,
+    iToldYouSoMessages,
     partnerState,
     partnerDeadlineAt,
     paymentStatus,
@@ -220,8 +220,6 @@ export async function createPromise(input: CreatePromiseInput): Promise<UserProm
     verificationType: input.verificationType ?? 'photo', // Default to photo for new promises
     sponsorAmount: input.sponsorAmount,
     sponsorCount: input.sponsorCount,
-    iToldYouSoMessage: input.iToldYouSoMessage?.trim() || undefined,
-    iToldYouSoFrom: input.iToldYouSoFrom?.trim() || undefined,
   };
 
   const state = await readState();

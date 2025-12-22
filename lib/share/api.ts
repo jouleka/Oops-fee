@@ -29,7 +29,7 @@ export interface ShareContext {
   // Friend link - combined sponsor + roast
   currentSponsorTotal?: number;
   sponsorCount?: number;
-  hasRoast?: boolean;
+  roastCount?: number;
   hasSponsor?: boolean;
   // Partner-specific
   partnerState?: 'awaiting' | 'resolved';

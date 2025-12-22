@@ -193,11 +193,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6. Delete any existing roast messages for this promise (only keep latest)
-    await supabase
+    // 6. Check if this IP has already left a message (1 per IP per promise)
+    const { data: existingMessage } = await supabase
       .from('roast_messages')
-      .delete()
-      .eq('promise_id', shareLink.promise_id);
+      .select('id')
+      .eq('promise_id', shareLink.promise_id)
+      .eq('from_ip_hash', ipHash)
+      .limit(1)
+      .single();
+
+    if (existingMessage) {
+      return new Response(
+        JSON.stringify({ error: 'You have already left a message for this promise' }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
 
     // 7. Insert new roast message (trigger will set has_roast flag)
     const { error: insertError } = await supabase

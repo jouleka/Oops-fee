@@ -216,10 +216,10 @@ function FriendForm({ context, token }: { context: ShareContext; token: string }
         <Text style={styles.sectionTitle}>🔥 Leave a roast message (optional)</Text>
       </View>
 
-      {context.hasRoast && (
-        <View style={styles.warningBox}>
-          <Text style={styles.warningText}>
-            ⚠️ Someone already left a message. Yours will replace it.
+      {(context.roastCount ?? 0) > 0 && (
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            🔥 {context.roastCount} friend{context.roastCount !== 1 ? 's have' : ' has'} already left a message
           </Text>
         </View>
       )}
@@ -749,6 +749,16 @@ const styles = StyleSheet.create({
   warningText: {
     ...Typography.caption,
     color: Colors.warning,
+    textAlign: 'center',
+  },
+  infoBox: {
+    backgroundColor: Colors.accentDim,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+  },
+  infoText: {
+    ...Typography.caption,
+    color: Colors.accent,
     textAlign: 'center',
   },
   errorBox: {

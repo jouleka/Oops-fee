@@ -52,10 +52,8 @@ export interface UserPromise {
   sponsorCount?: number;
 
   // ─── Virality: I Told You So ───
-  /** Friend's roast message revealed on failure */
-  iToldYouSoMessage?: string;
-  /** Who wrote the roast */
-  iToldYouSoFrom?: string;
+  /** Roast messages from friends, revealed on failure */
+  iToldYouSoMessages?: { message: string; from: string }[];
 
   // ─── Verification ───
   /** How the user proves completion (defaults to 'honor' for backwards compat) */
@@ -137,8 +135,6 @@ export type CreatePromiseInput = {
   // Virality fields (optional at creation, can be added later)
   sponsorAmount?: number;
   sponsorCount?: number;
-  iToldYouSoMessage?: string;
-  iToldYouSoFrom?: string;
   // Verification
   verificationType?: VerificationType; // Defaults to 'photo' in repo
 };
@@ -159,8 +155,7 @@ export type PromiseUpdate = Partial<
     | 'streakAtCompletion'
     | 'sponsorAmount'
     | 'sponsorCount'
-    | 'iToldYouSoMessage'
-    | 'iToldYouSoFrom'
+    | 'iToldYouSoMessages'
     | 'verificationType'
     | 'verificationProof'
     | 'verificationTimestamp'

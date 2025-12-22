@@ -186,8 +186,7 @@ function ConfirmActionModal({
 function FailConfirmModal({
   visible,
   voiceNoteUri,
-  iToldYouSoMessage,
-  iToldYouSoFrom: _iToldYouSoFrom,
+  iToldYouSoMessages,
   sponsorAmount,
   stake,
   onCancel,
@@ -196,8 +195,7 @@ function FailConfirmModal({
 }: {
   visible: boolean;
   voiceNoteUri?: string;
-  iToldYouSoMessage?: string;
-  iToldYouSoFrom?: string;
+  iToldYouSoMessages?: { message: string; from: string }[];
   sponsorAmount?: number;
   stake: number;
   onCancel: () => void;
@@ -260,7 +258,7 @@ function FailConfirmModal({
   // Allow confirmation if: no voice note, already listened, or voice failed to load
   const canConfirm = !voiceNoteUri || hasListened || voiceError;
   const hasVoice = !!voiceNoteUri && !voiceError;
-  const hasIToldYouSo = !!iToldYouSoMessage;
+  const hasIToldYouSo = (iToldYouSoMessages?.length ?? 0) > 0;
   const hasSponsor = (sponsorAmount ?? 0) > 0;
   const hasStake = stake > 0;
   const totalLoss = stake + (sponsorAmount ?? 0);
@@ -457,7 +455,7 @@ export default function PromiseDetailScreen() {
   // Calculate total stake including sponsors
   const totalStake = promise ? promise.stake + (promise.sponsorAmount ?? 0) : 0;
   const hasSponsor = promise && (promise.sponsorAmount ?? 0) > 0;
-  const hasIToldYouSo = promise && !!promise.iToldYouSoMessage;
+  const hasIToldYouSo = promise && (promise.iToldYouSoMessages?.length ?? 0) > 0;
   const needsPhotoProof = promise?.verificationType === 'photo';
 
   const handleBack = useCallback(() => {
@@ -719,15 +717,21 @@ export default function PromiseDetailScreen() {
             <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.iToldYouSoCard}>
               <View style={styles.iToldYouSoHeader}>
                 <Text style={styles.iToldYouSoEmoji}>💌</Text>
-                <Text style={styles.iToldYouSoTitle}>{FAILURE_COPY.iToldYouSoRevealTitle}</Text>
+                <Text style={styles.iToldYouSoTitle}>
+                  {(promise.iToldYouSoMessages?.length ?? 0) > 1
+                    ? `${promise.iToldYouSoMessages?.length} messages were left for you...`
+                    : FAILURE_COPY.iToldYouSoRevealTitle}
+                </Text>
               </View>
               <View style={styles.iToldYouSoContent}>
-                <Text style={styles.iToldYouSoMessage}>&quot;{promise.iToldYouSoMessage}&quot;</Text>
-                {promise.iToldYouSoFrom && (
-                  <Text style={styles.iToldYouSoFrom}>
-                    — {promise.iToldYouSoFrom}
-                  </Text>
-                )}
+                {promise.iToldYouSoMessages?.map((msg, index) => (
+                  <View key={index} style={styles.roastMessageItem}>
+                    <Text style={styles.iToldYouSoMessage}>&quot;{msg.message}&quot;</Text>
+                    {msg.from && (
+                      <Text style={styles.iToldYouSoFrom}>— {msg.from}</Text>
+                    )}
+                  </View>
+                ))}
               </View>
             </Animated.View>
           )}
@@ -806,8 +810,7 @@ export default function PromiseDetailScreen() {
       <FailConfirmModal
         visible={confirmFail}
         voiceNoteUri={promise.voiceNoteUri}
-        iToldYouSoMessage={promise.iToldYouSoMessage}
-        iToldYouSoFrom={promise.iToldYouSoFrom}
+        iToldYouSoMessages={promise.iToldYouSoMessages}
         sponsorAmount={promise.sponsorAmount}
         stake={promise.stake}
         onCancel={() => setConfirmFail(false)}
@@ -1020,6 +1023,12 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.textSecondary,
     textAlign: 'right',
+  },
+  roastMessageItem: {
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: Spacing.xs,
   },
 
   // Sponsor loss banner
