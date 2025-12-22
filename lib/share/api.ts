@@ -12,7 +12,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 // TYPES
 // ─────────────────────────────────────────────────────────────
 
-export type ShareLinkType = 'sponsor' | 'roast' | 'partner';
+export type ShareLinkType = 'friend' | 'partner';
 
 export interface CreateShareLinkResponse {
   token: string;
@@ -26,11 +26,11 @@ export interface ShareContext {
   deadlinePassed: boolean;
   ownerFirstName?: string;
   status: 'active' | 'resolved';
-  // Sponsor-specific
+  // Friend link - combined sponsor + roast
   currentSponsorTotal?: number;
   sponsorCount?: number;
-  // Roast-specific
   hasRoast?: boolean;
+  hasSponsor?: boolean;
   // Partner-specific
   partnerState?: 'awaiting' | 'resolved';
 }

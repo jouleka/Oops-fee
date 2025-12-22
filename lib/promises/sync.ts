@@ -115,8 +115,26 @@ export async function performFullSync(userId: string): Promise<UserPromise[]> {
       }
     }
     
+    // Enrich promises with roast messages where needed
+    const enrichPromises = Array.from(mergedMap.values()).map(async (p) => {
+      // If has placeholder roast message, fetch the actual message
+      if (p.iToldYouSoMessage === '(from server)' || (p.iToldYouSoMessage && !p.iToldYouSoFrom)) {
+        try {
+          const roast = await fetchRoastMessage(p.id);
+          if (roast) {
+            return { ...p, iToldYouSoMessage: roast.message, iToldYouSoFrom: roast.from };
+          }
+        } catch {
+          // Ignore errors
+        }
+      }
+      return p;
+    });
+    
+    const enriched = await Promise.all(enrichPromises);
+    
     // Sort by creation date (newest first)
-    const merged = Array.from(mergedMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+    const merged = enriched.sort((a, b) => b.createdAt - a.createdAt);
     
     // Persist merged state locally
     await local.bulkUpsertPromises(merged);

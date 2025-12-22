@@ -53,18 +53,18 @@ async function hashToken(token: string): Promise<string> {
 }
 
 interface ShareContext {
-  type: 'sponsor' | 'roast' | 'partner';
+  type: 'friend' | 'partner';
   promiseText: string; // First 100 chars only
   deadlinePassed: boolean; // Not the actual deadline
   ownerFirstName?: string; // Not full name
   status: 'active' | 'resolved'; // Simplified
-  // For sponsor
+  // For friend (combined sponsor + roast)
   currentSponsorTotal?: number;
   sponsorCount?: number;
+  hasRoast?: boolean;
+  hasSponsor?: boolean;
   // For partner
   partnerState?: 'awaiting' | 'resolved';
-  // For roast
-  hasRoast?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -203,13 +203,12 @@ Deno.serve(async (req: Request) => {
     };
 
     // Add type-specific fields
-    if (shareLink.type === 'sponsor') {
-      context.currentSponsorTotal = promise.sponsor_total || 0;
+    if (shareLink.type === 'friend') {
+      // Friend links can see sponsor info and whether roast exists
+      context.currentSponsorTotal = (promise.sponsor_total || 0) / 100; // Convert cents to dollars
       context.sponsorCount = promise.sponsor_count || 0;
-    }
-
-    if (shareLink.type === 'roast') {
       context.hasRoast = promise.has_roast || false;
+      context.hasSponsor = (promise.sponsor_count || 0) > 0;
     }
 
     if (shareLink.type === 'partner') {

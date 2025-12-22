@@ -4,8 +4,7 @@
  *
  * Features:
  * - Share commitment card image
- * - Generate sponsor link (friends add to your stake)
- * - Generate roast link (friends write "I Told You So" messages)
+ * - Generate friend link (friends can pledge and/or write "I Told You So" messages)
  * - Generate partner link (for partner verification)
  */
 
@@ -51,7 +50,7 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-type ShareOption = 'image' | 'sponsor' | 'roast' | 'partner';
+type ShareOption = 'image' | 'friend' | 'partner';
 
 interface ShareLinkState {
   loading: boolean;
@@ -69,13 +68,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   const { requireAuth, isAuthenticated } = useRequireAuth();
 
   // Share link states
-  const [sponsorLink, setSponsorLink] = useState<ShareLinkState>({
-    loading: false,
-    url: null,
-    error: null,
-    copied: false,
-  });
-  const [roastLink, setRoastLink] = useState<ShareLinkState>({
+  const [friendLink, setFriendLink] = useState<ShareLinkState>({
     loading: false,
     url: null,
     error: null,
@@ -92,8 +85,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   useEffect(() => {
     if (!visible) {
       setActiveOption(null);
-      setSponsorLink({ loading: false, url: null, error: null, copied: false });
-      setRoastLink({ loading: false, url: null, error: null, copied: false });
+      setFriendLink({ loading: false, url: null, error: null, copied: false });
       setPartnerLink({ loading: false, url: null, error: null, copied: false });
     }
   }, [visible]);
@@ -149,12 +141,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   // Generate and share link
   const generateShareLink = useCallback(
     async (type: ShareLinkType) => {
-      const setState =
-        type === 'sponsor'
-          ? setSponsorLink
-          : type === 'roast'
-          ? setRoastLink
-          : setPartnerLink;
+      const setState = type === 'friend' ? setFriendLink : setPartnerLink;
 
       setState((prev) => ({ ...prev, loading: true, error: null }));
       hapticMedium();
@@ -181,12 +168,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     await Clipboard.setStringAsync(url);
     hapticSuccess();
 
-    const setState =
-      type === 'sponsor'
-        ? setSponsorLink
-        : type === 'roast'
-        ? setRoastLink
-        : setPartnerLink;
+    const setState = type === 'friend' ? setFriendLink : setPartnerLink;
 
     setState((prev) => ({ ...prev, copied: true }));
 
@@ -199,8 +181,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   // Share link via system share
   const shareLink = useCallback(async (url: string, type: ShareLinkType) => {
     const messages = {
-      sponsor: `Add to my stake on this promise! If I fail, I pay more. ${url}`,
-      roast: `Write me an "I Told You So" message that I'll only see if I fail. ${url}`,
+      friend: `Help hold me accountable! You can add to my stake or write me a message I'll only see if I fail. ${url}`,
       partner: `I need you to verify that I completed my promise. Please confirm! ${url}`,
     };
 
@@ -324,21 +305,12 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
               )}
 
               {renderShareOption(
-                'sponsor',
-                '💸',
-                'Sponsor my failure',
-                'Friends add to your stake',
-                sponsorLink,
-                'sponsor'
-              )}
-
-              {renderShareOption(
-                'roast',
-                '🔥',
-                'I Told You So',
-                'Friends write messages revealed if you fail',
-                roastLink,
-                'roast'
+                'friend',
+                '🔗',
+                'Share with friends',
+                'They can pledge money or write roast messages',
+                friendLink,
+                'friend'
               )}
 
               {/* Only show partner option for partner verification type */}

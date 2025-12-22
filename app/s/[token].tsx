@@ -5,8 +5,7 @@
  * - oopsfee.app/s/{token}
  *
  * Renders different forms based on link type:
- * - sponsor: Add to the stake
- * - roast: Write an "I Told You So" message
+ * - friend: Combined form - pledge money AND/OR write roast message
  * - partner: Approve/reject completion
  */
 
@@ -49,24 +48,29 @@ function hapticError() {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
 }
 
+
 // ─────────────────────────────────────────────────────────────
-// SPONSOR FORM
+// FRIEND FORM (Combined Sponsor + Roast)
 // ─────────────────────────────────────────────────────────────
 
-function SponsorForm({ context, token }: { context: ShareContext; token: string }) {
-  const [amount, setAmount] = useState('5');
+function FriendForm({ context, token }: { context: ShareContext; token: string }) {
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ newTotal: number; sponsorCount: number } | null>(null);
+  const [sponsorResult, setSponsorResult] = useState<{ newTotal: number; sponsorCount: number } | null>(null);
+  const [roastSubmitted, setRoastSubmitted] = useState(false);
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
-    
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum < 1 || amountNum > 1000) {
-      setError('Amount must be between $1 and $1000');
+
+    const hasAmount = amount.trim() !== '';
+    const hasMessage = message.trim() !== '';
+
+    if (!hasAmount && !hasMessage) {
+      setError('Add a pledge amount or write a message (or both!)');
       hapticError();
       return;
     }
@@ -77,13 +81,40 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
       return;
     }
 
+    if (hasAmount) {
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum < 1 || amountNum > 1000) {
+        setError('Amount must be between $1 and $1000');
+        hapticError();
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
     hapticMedium();
 
     try {
-      const res = await submitSponsor(token, amountNum, name.trim());
-      setResult(res);
+      // Submit both in parallel if both are provided
+      const promises: Promise<unknown>[] = [];
+
+      if (hasAmount) {
+        promises.push(
+          submitSponsor(token, parseFloat(amount), name.trim()).then((res) => {
+            setSponsorResult(res);
+          })
+        );
+      }
+
+      if (hasMessage) {
+        promises.push(
+          submitRoast(token, message.trim(), name.trim()).then(() => {
+            setRoastSubmitted(true);
+          })
+        );
+      }
+
+      await Promise.all(promises);
       setSubmitted(true);
       hapticSuccess();
     } catch (e) {
@@ -92,17 +123,29 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
     } finally {
       setSubmitting(false);
     }
-  }, [amount, name, token, submitting]);
+  }, [amount, message, name, token, submitting]);
 
-  if (submitted && result) {
+  if (submitted) {
     return (
       <Animated.View entering={FadeIn.duration(300)} style={styles.successContainer}>
-        <Text style={styles.successEmoji}>🎯</Text>
-        <Text style={styles.successTitle}>Pledge locked in!</Text>
-        <Text style={styles.successSubtitle}>
-          ${result.newTotal.toFixed(0)} total at stake from {result.sponsorCount} sponsor
-          {result.sponsorCount !== 1 ? 's' : ''}.
+        <Text style={styles.successEmoji}>{sponsorResult && roastSubmitted ? '🔥💸' : sponsorResult ? '💸' : '🔥'}</Text>
+        <Text style={styles.successTitle}>
+          {sponsorResult && roastSubmitted
+            ? 'Double whammy!'
+            : sponsorResult
+            ? 'Pledge locked in!'
+            : 'Message saved!'}
         </Text>
+        <Text style={styles.successSubtitle}>
+          {sponsorResult
+            ? `$${sponsorResult.newTotal.toFixed(0)} total at stake from ${sponsorResult.sponsorCount} sponsor${sponsorResult.sponsorCount !== 1 ? 's' : ''}.`
+            : `If ${context.ownerFirstName} fails, your message will be revealed.`}
+        </Text>
+        {sponsorResult && roastSubmitted && (
+          <Text style={styles.successNote}>
+            Plus your roast message is locked and loaded.
+          </Text>
+        )}
         <Text style={styles.successNote}>
           {context.ownerFirstName} will feel the pressure now.
         </Text>
@@ -113,10 +156,10 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
   return (
     <View style={styles.formContainer}>
       <View style={styles.formHeader}>
-        <Text style={styles.formEmoji}>💸</Text>
-        <Text style={styles.formTitle}>Sponsor their failure</Text>
+        <Text style={styles.formEmoji}>🎯</Text>
+        <Text style={styles.formTitle}>Hold them accountable</Text>
         <Text style={styles.formSubtitle}>
-          Add to {context.ownerFirstName}&apos;s stake. If they fail, they pay more.
+          Add to {context.ownerFirstName}&apos;s stake and/or leave a message they&apos;ll only see if they fail.
         </Text>
       </View>
 
@@ -132,8 +175,12 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
         </View>
       )}
 
+      {/* Sponsor Section */}
+      <View style={styles.sectionDivider}>
+        <Text style={styles.sectionTitle}>💸 Add to their stake (optional)</Text>
+      </View>
+
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your pledge amount</Text>
         <View style={styles.amountInputWrapper}>
           <Text style={styles.dollarSign}>$</Text>
           <TextInput
@@ -141,7 +188,7 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
-            placeholder="5"
+            placeholder="0"
             placeholderTextColor={Colors.textMuted}
             maxLength={4}
           />
@@ -164,112 +211,9 @@ function SponsorForm({ context, token }: { context: ShareContext; token: string 
         </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your name</Text>
-        <TextInput
-          style={styles.textInput}
-          value={name}
-          onChangeText={setName}
-          placeholder="Anonymous is boring..."
-          placeholderTextColor={Colors.textMuted}
-          maxLength={50}
-          autoCapitalize="words"
-        />
-      </View>
-
-      {error && (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </Animated.View>
-      )}
-
-      <Pressable
-        disabled={submitting}
-        onPress={handleSubmit}
-        style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, submitting && styles.disabled]}
-      >
-        <LinearGradient colors={[Colors.warning, '#E68A00']} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Text style={styles.btnText}>{submitting ? 'Pledging...' : 'Pledge against them'}</Text>
-        </LinearGradient>
-      </Pressable>
-
-      <Text style={styles.disclaimer}>
-        This is a shame pledge, not real money. It adds social pressure.
-      </Text>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// ROAST FORM
-// ─────────────────────────────────────────────────────────────
-
-function RoastForm({ context, token }: { context: ShareContext; token: string }) {
-  const [message, setMessage] = useState('');
-  const [name, setName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = useCallback(async () => {
-    if (submitting) return;
-
-    if (!message.trim()) {
-      setError('Write a message first');
-      hapticError();
-      return;
-    }
-
-    if (!name.trim()) {
-      setError('Please enter your name');
-      hapticError();
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    hapticMedium();
-
-    try {
-      await submitRoast(token, message.trim(), name.trim());
-      setSubmitted(true);
-      hapticSuccess();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to submit');
-      hapticError();
-    } finally {
-      setSubmitting(false);
-    }
-  }, [message, name, token, submitting]);
-
-  if (submitted) {
-    return (
-      <Animated.View entering={FadeIn.duration(300)} style={styles.successContainer}>
-        <Text style={styles.successEmoji}>😈</Text>
-        <Text style={styles.successTitle}>Message saved!</Text>
-        <Text style={styles.successSubtitle}>
-          If {context.ownerFirstName} fails, your message will be revealed.
-        </Text>
-        <Text style={styles.successNote}>
-          Let&apos;s hope they don&apos;t disappoint you.
-        </Text>
-      </Animated.View>
-    );
-  }
-
-  return (
-    <View style={styles.formContainer}>
-      <View style={styles.formHeader}>
-        <Text style={styles.formEmoji}>🔥</Text>
-        <Text style={styles.formTitle}>I Told You So</Text>
-        <Text style={styles.formSubtitle}>
-          Write a message that {context.ownerFirstName} will only see if they fail.
-        </Text>
-      </View>
-
-      <View style={styles.promisePreview}>
-        <Text style={styles.promiseLabel}>THE PROMISE</Text>
-        <Text style={styles.promiseText}>&ldquo;{context.promiseText}&rdquo;</Text>
+      {/* Roast Section */}
+      <View style={styles.sectionDivider}>
+        <Text style={styles.sectionTitle}>🔥 Leave a roast message (optional)</Text>
       </View>
 
       {context.hasRoast && (
@@ -281,7 +225,6 @@ function RoastForm({ context, token }: { context: ShareContext; token: string })
       )}
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your roast message</Text>
         <TextInput
           style={[styles.textInput, styles.textArea]}
           value={message}
@@ -290,14 +233,18 @@ function RoastForm({ context, token }: { context: ShareContext; token: string })
           placeholderTextColor={Colors.textMuted}
           maxLength={280}
           multiline
-          numberOfLines={4}
+          numberOfLines={3}
           textAlignVertical="top"
         />
         <Text style={styles.charCount}>{message.length}/280</Text>
       </View>
 
+      {/* Name (required) */}
+      <View style={styles.sectionDivider}>
+        <Text style={styles.sectionTitle}>👤 Your name</Text>
+      </View>
+
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your name</Text>
         <TextInput
           style={styles.textInput}
           value={name}
@@ -320,10 +267,24 @@ function RoastForm({ context, token }: { context: ShareContext; token: string })
         onPress={handleSubmit}
         style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, submitting && styles.disabled]}
       >
-        <LinearGradient colors={[Colors.danger, '#CC362E']} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Text style={styles.btnText}>{submitting ? 'Saving...' : 'Lock in your roast'}</Text>
+        <LinearGradient colors={[Colors.accent, '#0A84FF']} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Text style={styles.btnText}>
+            {submitting
+              ? 'Submitting...'
+              : amount && message
+              ? 'Submit pledge & roast'
+              : amount
+              ? 'Submit pledge'
+              : message
+              ? 'Submit roast'
+              : 'Submit'}
+          </Text>
         </LinearGradient>
       </Pressable>
+
+      <Text style={styles.disclaimer}>
+        This is a shame pledge, not real money. It adds social pressure.
+      </Text>
     </View>
   );
 }
@@ -516,10 +477,8 @@ export default function SharePage() {
     }
 
     switch (context.type) {
-      case 'sponsor':
-        return <SponsorForm context={context} token={token!} />;
-      case 'roast':
-        return <RoastForm context={context} token={token!} />;
+      case 'friend':
+        return <FriendForm context={context} token={token!} />;
       case 'partner':
         return <PartnerDecisionForm context={context} token={token!} />;
       default:
@@ -694,6 +653,16 @@ const styles = StyleSheet.create({
     ...Typography.h3,
     color: Colors.warning,
     fontFamily: Fonts.mono,
+  },
+
+  // Section dividers for combined form
+  sectionDivider: {
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  sectionTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.textSecondary,
   },
 
   // Input

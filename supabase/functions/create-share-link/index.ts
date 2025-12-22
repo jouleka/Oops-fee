@@ -3,11 +3,14 @@
 /**
  * create-share-link Edge Function
  *
- * Creates a shareable link for a promise (sponsor/roast/partner).
+ * Creates a shareable link for a promise (friend/partner).
+ * - friend: Combined sponsor + roast link (friends can pledge and/or leave messages)
+ * - partner: Verification link for partner to approve/reject completion
+ * 
  * Requires user authentication - only the promise owner can create links.
  *
  * POST /create-share-link
- * Body: { promiseId: string, type: 'sponsor' | 'roast' | 'partner' }
+ * Body: { promiseId: string, type: 'friend' | 'partner' }
  * Returns: { token: string, url: string, expiresAt?: string }
  */
 
@@ -30,7 +33,7 @@ async function hashToken(token: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-type ShareLinkType = 'sponsor' | 'roast' | 'partner';
+type ShareLinkType = 'friend' | 'partner';
 
 interface CreateShareLinkRequest {
   promiseId: string;
@@ -70,9 +73,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!['sponsor', 'roast', 'partner'].includes(type)) {
+    if (!['friend', 'partner'].includes(type)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid type. Must be sponsor, roast, or partner' }),
+        JSON.stringify({ error: 'Invalid type. Must be friend or partner' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -149,7 +152,7 @@ Deno.serve(async (req: Request) => {
       .eq('revoked', false)
       .single();
 
-    // For sponsor/roast, reuse existing link if available
+    // For friend, reuse existing link if available
     // For partner, always create new link (each partner gets unique link)
     if (existingLink && type !== 'partner') {
       // Revoke old link before creating new one

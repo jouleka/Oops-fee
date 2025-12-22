@@ -128,10 +128,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Validate link type and status
-    if (shareLink.type !== 'roast') {
+    // 3. Validate link type - only 'friend' type supports roast messages
+    if (shareLink.type !== 'friend') {
       return new Response(
-        JSON.stringify({ error: 'This is not a roast link' }),
+        JSON.stringify({ error: 'This link does not support roast messages' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

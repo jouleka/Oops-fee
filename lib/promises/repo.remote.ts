@@ -55,7 +55,7 @@ export function toRemoteInsert(local: UserPromise, userId: string): PromiseInser
     payment_status: local.paymentStatus ?? null,
     payment_next_retry_at: null,
     payment_client_secret: local.paymentClientSecret ?? null,
-    sponsor_total: local.sponsorAmount ?? 0,
+    sponsor_total: Math.round((local.sponsorAmount ?? 0) * 100), // Store in cents
     sponsor_count: local.sponsorCount ?? 0,
     has_roast: Boolean(local.iToldYouSoMessage),
   };
@@ -106,7 +106,7 @@ export function toRemoteUpdate(patch: Partial<UserPromise>): RemotePromiseUpdate
   if (patch.streakAtCompletion !== undefined) update.streak_at_completion = patch.streakAtCompletion;
   if (patch.paymentStatus !== undefined) update.payment_status = patch.paymentStatus;
   if (patch.paymentClientSecret !== undefined) update.payment_client_secret = patch.paymentClientSecret;
-  if (patch.sponsorAmount !== undefined) update.sponsor_total = patch.sponsorAmount;
+  if (patch.sponsorAmount !== undefined) update.sponsor_total = Math.round(patch.sponsorAmount * 100); // Store in cents
   if (patch.sponsorCount !== undefined) update.sponsor_count = patch.sponsorCount;
   if (patch.iToldYouSoMessage !== undefined) update.has_roast = Boolean(patch.iToldYouSoMessage);
   
@@ -159,7 +159,7 @@ export function toLocalPromise(remote: PromiseRow): UserPromise {
     verificationTimestamp: remote.verification_timestamp 
       ? new Date(remote.verification_timestamp).getTime() 
       : undefined,
-    sponsorAmount: remote.sponsor_total ?? undefined,
+    sponsorAmount: remote.sponsor_total ? remote.sponsor_total / 100 : undefined, // Convert cents to dollars
     sponsorCount: remote.sponsor_count ?? undefined,
     iToldYouSoMessage: remote.has_roast ? '(from server)' : undefined, // Placeholder, actual message from roast_messages table
     partnerState: partnerState ?? undefined,

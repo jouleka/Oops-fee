@@ -127,10 +127,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Validate link type and status
-    if (shareLink.type !== 'sponsor') {
+    // 3. Validate link type - only 'friend' type supports sponsoring
+    if (shareLink.type !== 'friend') {
       return new Response(
-        JSON.stringify({ error: 'This is not a sponsor link' }),
+        JSON.stringify({ error: 'This link does not support sponsoring' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -192,7 +192,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6. Insert sponsor pledge (trigger will update denormalized totals)
+    // 6. Check if this IP has already pledged on this promise
+    const { data: existingPledge } = await supabase
+      .from('sponsor_pledges')
+      .select('id')
+      .eq('promise_id', shareLink.promise_id)
+      .eq('from_ip_hash', ipHash)
+      .limit(1)
+      .single();
+
+    if (existingPledge) {
+      return new Response(
+        JSON.stringify({ error: 'You have already sponsored this promise' }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    // 8. Insert sponsor pledge (trigger will update denormalized totals)
     const { error: insertError } = await supabase
       .from('sponsor_pledges')
       .insert({
@@ -213,7 +232,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7. Get updated totals
+    // 9. Get updated totals
     const { data: updatedPromise } = await supabase
       .from('promises')
       .select('sponsor_total, sponsor_count')
