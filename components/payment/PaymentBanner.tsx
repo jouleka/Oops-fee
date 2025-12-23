@@ -24,7 +24,7 @@ interface PaymentBannerProps {
   clientSecret: string;
   /** The promise text to show context */
   promiseText?: string;
-  /** The stake amount in cents */
+  /** The stake amount in dollars */
   stakeAmount?: number;
   /** Called when payment is completed successfully */
   onPaymentComplete?: () => void;
@@ -58,7 +58,7 @@ export function PaymentBanner({
   };
 
   const formattedAmount = stakeAmount
-    ? `$${(stakeAmount / 100).toFixed(2)}`
+    ? `$${stakeAmount}`
     : null;
 
   return (

@@ -230,7 +230,7 @@ export default function HomeScreen() {
             <PaymentBanner
               clientSecret={p.paymentClientSecret!}
               promiseText={p.text}
-              stakeAmount={p.stake * 100} // Convert to cents
+              stakeAmount={p.stake} // in dollars
               onPaymentComplete={() => handlePaymentComplete(p.id)}
             />
           </View>

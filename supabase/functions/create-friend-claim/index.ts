@@ -14,7 +14,7 @@
  *   promiseId: string,
  *   friendName: string,
  *   friendEmail: string,
- *   stakeAmount: number,      // in cents
+ *   stakeAmount: number,      // in dollars
  *   promiseText: string,
  *   deadline: string,         // ISO date string
  *   userName?: string         // Display name of promise creator
@@ -51,7 +51,7 @@ interface EmailParams {
   to: string;
   friendName: string;
   userName: string;
-  stakeAmount: number; // in cents
+  stakeAmount: number; // in dollars
   promiseText: string;
   deadline: string;
   claimUrl: string;
@@ -64,7 +64,7 @@ async function sendEmailNotification(params: EmailParams): Promise<boolean> {
   }
 
   const { to, friendName, userName, stakeAmount, promiseText, deadline, claimUrl } = params;
-  const stakeDisplay = `$${(stakeAmount / 100).toFixed(0)}`;
+  const stakeDisplay = `$${stakeAmount}`;
   const deadlineDate = new Date(deadline).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -193,7 +193,7 @@ interface CreateFriendClaimRequest {
   promiseId: string;
   friendName: string;
   friendEmail: string;
-  stakeAmount: number; // in cents
+  stakeAmount: number; // in dollars
   promiseText: string;
   deadline: string; // ISO date string
   userName?: string;
@@ -361,6 +361,7 @@ Deno.serve(async (req: Request) => {
       }
     }
     
+    // stakeAmount and promise.stake are both in dollars
     const stake = stakeAmount || promise.stake || 0;
 
     // 10. Send email notification

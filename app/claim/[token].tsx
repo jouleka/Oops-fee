@@ -45,8 +45,8 @@ function hapticError() {
 // HELPERS
 // ─────────────────────────────────────────────────────────────
 
-function formatCurrency(cents: number): string {
-  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+function formatCurrency(dollars: number): string {
+  return `$${dollars.toFixed(Number.isInteger(dollars) ? 0 : 2)}`;
 }
 
 function formatDeadline(dateStr: string): string {
@@ -88,7 +88,7 @@ function getTimeRemaining(dateStr: string): string {
 function PreviewState({ context }: { context: ClaimContext }) {
   const deadline = formatDeadline(context.deadline);
   const timeRemaining = getTimeRemaining(context.deadline);
-  const stake = formatCurrency(context.stakeCents);
+  const stake = formatCurrency(context.stake);
 
   return (
     <View style={styles.stateContainer}>
@@ -139,7 +139,7 @@ function PreviewState({ context }: { context: ClaimContext }) {
 // ─────────────────────────────────────────────────────────────
 
 function CompletedState({ context }: { context: ClaimContext }) {
-  const stake = formatCurrency(context.stakeCents);
+  const stake = formatCurrency(context.stake);
 
   return (
     <View style={styles.stateContainer}>
@@ -171,7 +171,7 @@ function CompletedState({ context }: { context: ClaimContext }) {
 function ClaimState({ context, token }: { context: ClaimContext; token: string }) {
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const amount = formatCurrency(context.amountCents || context.stakeCents);
+  const amount = formatCurrency(context.amount || context.stake);
 
   const handleClaim = useCallback(async () => {
     if (claiming) return;
@@ -268,7 +268,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
 
 function OnboardingState({ context, token }: { context: ClaimContext; token: string }) {
   const [resuming, setResuming] = useState(false);
-  const amount = formatCurrency(context.amountCents || context.stakeCents);
+  const amount = formatCurrency(context.amount || context.stake);
 
   const handleResume = useCallback(async () => {
     if (resuming) return;
@@ -340,7 +340,7 @@ function OnboardingState({ context, token }: { context: ClaimContext; token: str
 // ─────────────────────────────────────────────────────────────
 
 function TransferredState({ context }: { context: ClaimContext }) {
-  const amount = formatCurrency(context.amountCents || context.stakeCents);
+  const amount = formatCurrency(context.amount || context.stake);
 
   return (
     <View style={styles.stateContainer}>
@@ -376,7 +376,7 @@ function TransferredState({ context }: { context: ClaimContext }) {
 // ─────────────────────────────────────────────────────────────
 
 function ExpiredState({ context }: { context: ClaimContext }) {
-  const amount = formatCurrency(context.amountCents || context.stakeCents);
+  const amount = formatCurrency(context.amount || context.stake);
 
   return (
     <View style={styles.stateContainer}>
@@ -437,7 +437,7 @@ function ErrorState({ message }: { message: string }) {
 // ─────────────────────────────────────────────────────────────
 
 function SuccessRedirect({ context }: { context: ClaimContext }) {
-  const amount = formatCurrency(context.amountCents || context.stakeCents);
+  const amount = formatCurrency(context.amount || context.stake);
 
   return (
     <View style={styles.stateContainer}>

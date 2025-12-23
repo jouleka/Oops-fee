@@ -336,7 +336,7 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
         promiseId: id,
         friendName: input.friendName || 'Friend',
         friendEmail: input.friendEmail,
-        stakeAmount: localPromise.stake * 100, // Convert to cents
+        stakeAmount: localPromise.stake, // in dollars
         promiseText: localPromise.text,
         deadline: new Date(localPromise.deadlineAt).toISOString(),
       });
@@ -442,7 +442,7 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
         promiseId: local.id,
         friendName: local.friendName || 'Friend',
         friendEmail: local.friendEmail,
-        stakeAmount: local.stake * 100, // Convert to cents
+        stakeAmount: local.stake, // in dollars
         promiseText: local.text,
         deadline: new Date(local.deadlineAt).toISOString(),
       });

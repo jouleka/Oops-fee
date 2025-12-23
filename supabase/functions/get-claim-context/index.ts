@@ -135,17 +135,17 @@ Deno.serve(async (req: Request) => {
       daysUntilExpiry = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     }
 
-    // 7. Build response
+    // 7. Build response - all money values in dollars for UI
     const response = {
       claimId: claim.id,
       claimStatus: claim.claim_status,
       claimExpiresAt: claim.claim_expires_at,
-      amountCents: claim.amount_cents,
+      amount: claim.amount_cents ? claim.amount_cents / 100 : null, // convert cents to dollars
       
       friendName: claim.friend_name,
       
       promiseText: promise.text,
-      stakeCents: promise.stake, // stake is stored in cents
+      stake: promise.stake, // in dollars
       deadline: promise.deadline_at,
       promiseStatus,
       

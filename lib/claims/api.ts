@@ -18,14 +18,14 @@ export interface ClaimContext {
   claimId: string;
   claimStatus: ClaimStatus;
   claimExpiresAt: string | null;
-  amountCents: number | null;
+  amount: number | null; // in dollars
   
   // Friend info
   friendName: string;
   
   // Promise info
   promiseText: string;
-  stakeCents: number;
+  stake: number; // in dollars
   deadline: string;
   promiseStatus: 'active' | 'completed' | 'failed' | 'expired';
   
