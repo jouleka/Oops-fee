@@ -761,7 +761,9 @@ async function handlePaymentSuccess(
 }
 
 /**
- * Update friend claim and notify friend that money is available to claim
+ * Update friend claim and notify friend that money is available to claim.
+ * If friend is an in-app user (has a profile), credit their wallet directly.
+ * Otherwise, send claim notification email for external payout.
  */
 async function handleFriendClaimNotification(
   promise: Promise,
@@ -784,10 +786,77 @@ async function handleFriendClaimNotification(
 
   const friendClaim = claim as FriendClaim;
 
-  // 2. Calculate claim expiration (7 days from now)
+  // 2. Get user's display name for notifications
+  const { data: promiserProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', promise.user_id)
+    .single();
+
+  const userName = promiserProfile?.display_name || 'Someone';
+
+  // 3. Check if friend is an in-app user (has a profile with matching email)
+  if (friendClaim.friend_email) {
+    const { data: friendProfile, error: friendProfileError } = await supabase
+      .from('profiles')
+      .select('id, expo_push_token')
+      .eq('email', friendClaim.friend_email)
+      .single();
+
+    if (!friendProfileError && friendProfile) {
+      // ─────────────────────────────────────────────────────────────
+      // IN-APP FRIEND: Credit wallet directly, skip external payout
+      // ─────────────────────────────────────────────────────────────
+      console.log(`[settle-promises] Friend ${friendClaim.friend_email} is an in-app user (${friendProfile.id}), crediting wallet`);
+
+      // Credit wallet via RPC
+      const { error: creditError } = await supabase.rpc('credit_wallet', {
+        target_user_id: friendProfile.id,
+        amount_cents: amountInCents,
+      });
+
+      if (creditError) {
+        console.error(`[settle-promises] Error crediting wallet for ${friendProfile.id}:`, creditError);
+        // Fall through to external payout flow as fallback
+      } else {
+        // Update friend claim: mark as transferred (no external payout needed)
+        const { error: updateError } = await supabase
+          .from('friend_claims')
+          .update({
+            amount_cents: amountInCents,
+            claim_status: 'transferred',
+            payout_method: 'wallet',
+          })
+          .eq('id', friendClaim.id);
+
+        if (updateError) {
+          console.error(`[settle-promises] Error updating friend claim ${friendClaim.id}:`, updateError);
+        }
+
+        console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${friendProfile.id}`);
+
+        // Send push notification to friend
+        const amountDisplay = formatAmount(amountInCents);
+        await sendPushNotification(
+          friendProfile.expo_push_token,
+          '💰 You got paid!',
+          `${userName} broke their promise. ${amountDisplay} added to your wallet!`,
+          { type: 'wallet_credit', amount: amountInCents, promiseId: promise.id },
+        );
+
+        return; // Done - wallet credited, no external payout needed
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // NON-APP FRIEND: Send claim email for external payout (existing flow)
+  // ─────────────────────────────────────────────────────────────
+
+  // Calculate claim expiration (7 days from now)
   const claimExpiresAt = new Date(Date.now() + CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
-  // 3. Update friend claim: set amount, status, and expiration
+  // Update friend claim: set amount, status, and expiration
   const { error: updateError } = await supabase
     .from('friend_claims')
     .update({
@@ -804,17 +873,9 @@ async function handleFriendClaimNotification(
 
   console.log(`[settle-promises] Friend claim ${friendClaim.id} updated: amount=${amountInCents}, expires=${claimExpiresAt.toISOString()}`);
 
-  // 4. Get user's display name for the email
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', promise.user_id)
-    .single();
-
-  const userName = profile?.display_name || 'Someone';
   const claimUrl = `${APP_URL}/claim/${friendClaim.claim_token}`;
 
-  // 5. Send claim notification email to friend
+  // Send claim notification email to friend
   if (friendClaim.friend_email) {
     const emailSent = await sendClaimNotificationEmail({
       to: friendClaim.friend_email,

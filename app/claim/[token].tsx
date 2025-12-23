@@ -21,13 +21,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { getClaimContext, startClaimOnboarding, type ClaimContext } from '@/lib/claims';
+import { getClaimContext, startClaimOnboarding, claimViaPayPal, type ClaimContext } from '@/lib/claims';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -166,17 +167,25 @@ function CompletedState({ context }: { context: ClaimContext }) {
 
 // ─────────────────────────────────────────────────────────────
 // CLAIM MODE (User Failed - Money Available)
+// Shows payout method picker: PayPal (fast) or Stripe (bank account)
 // ─────────────────────────────────────────────────────────────
 
+type PayoutView = 'picker' | 'paypal' | 'stripe';
+
 function ClaimState({ context, token }: { context: ClaimContext; token: string }) {
-  const [claiming, setClaiming] = useState(false);
+  const [view, setView] = useState<PayoutView>('picker');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paypalEmail, setPaypalEmail] = useState('');
   const amount = formatCurrency(context.amount || context.stake);
 
-  const handleClaim = useCallback(async () => {
-    if (claiming) return;
+  // Email validation
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    setClaiming(true);
+  const handleStripeOnboarding = useCallback(async () => {
+    if (loading) return;
+
+    setLoading(true);
     setError(null);
     hapticMedium();
 
@@ -196,18 +205,180 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
       setError(message);
       hapticError();
     } finally {
-      setClaiming(false);
+      setLoading(false);
     }
-  }, [token, claiming]);
+  }, [token, loading]);
 
+  const handlePayPalSubmit = useCallback(async () => {
+    if (loading || !isValidEmail(paypalEmail)) return;
+
+    setLoading(true);
+    setError(null);
+    hapticMedium();
+
+    try {
+      const result = await claimViaPayPal(token, paypalEmail.trim());
+
+      if (!result.success) {
+        throw new Error(result.error || 'PayPal payout failed');
+      }
+
+      hapticSuccess();
+      // Page will re-render with updated context showing PayPal pending state
+      // Trigger a refetch by reloading the page
+      if (Platform.OS === 'web') {
+        window.location.reload();
+      } else {
+        router.replace(`/claim/${token}?refresh=${Date.now()}`);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to process PayPal payout';
+      setError(message);
+      hapticError();
+    } finally {
+      setLoading(false);
+    }
+  }, [token, paypalEmail, loading]);
+
+  // PayPal email input view
+  if (view === 'paypal') {
+    return (
+      <View style={styles.stateContainer}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+          <Text style={styles.emoji}>🅿️</Text>
+          <Text style={styles.title}>Enter your PayPal email</Text>
+          <Text style={styles.subtitle}>
+            We'll send {amount} to this email instantly.
+          </Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.inputCard}>
+          <Text style={styles.inputLabel}>PayPal Email Address</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="you@email.com"
+            placeholderTextColor={Colors.textMuted}
+            value={paypalEmail}
+            onChangeText={setPaypalEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoFocus
+          />
+          <Text style={styles.inputHint}>
+            Use the email connected to your PayPal account
+          </Text>
+        </Animated.View>
+
+        {error && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        )}
+
+        <View style={styles.buttonRow}>
+          <Pressable
+            onPress={() => setView('picker')}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.backBtnText}>← Back</Text>
+          </Pressable>
+
+          <Pressable
+            disabled={loading || !isValidEmail(paypalEmail)}
+            onPress={handlePayPalSubmit}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              pressed && styles.pressed,
+              (loading || !isValidEmail(paypalEmail)) && styles.disabled,
+            ]}
+          >
+            <LinearGradient
+              colors={['#0070ba', '#003087']}
+              style={styles.btnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.text} />
+              ) : (
+                <Text style={styles.claimBtnText}>Send to PayPal</Text>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        <Text style={styles.disclaimer}>
+          Funds usually arrive within minutes.{'\n'}
+          Check your PayPal app or email for confirmation.
+        </Text>
+      </View>
+    );
+  }
+
+  // Stripe flow (direct to onboarding)
+  if (view === 'stripe') {
+    return (
+      <View style={styles.stateContainer}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+          <Text style={styles.emoji}>🏦</Text>
+          <Text style={styles.title}>Set up bank transfer</Text>
+          <Text style={styles.subtitle}>
+            Connect your bank account to receive {amount}.
+          </Text>
+        </Animated.View>
+
+        {error && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        )}
+
+        <View style={styles.buttonRow}>
+          <Pressable
+            onPress={() => setView('picker')}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.backBtnText}>← Back</Text>
+          </Pressable>
+
+          <Pressable
+            disabled={loading}
+            onPress={handleStripeOnboarding}
+            style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, loading && styles.disabled]}
+          >
+            <LinearGradient
+              colors={['#635bff', '#4f46e5']}
+              style={styles.btnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.text} />
+              ) : (
+                <Text style={styles.claimBtnText}>Continue to Stripe</Text>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        <Text style={styles.disclaimer}>
+          Stripe securely handles bank account verification.{'\n'}
+          Transfers typically arrive in 2-3 business days.
+        </Text>
+      </View>
+    );
+  }
+
+  // Default: Payout method picker
   return (
     <View style={styles.stateContainer}>
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.emoji}>💸</Text>
-        <Text style={styles.title}>You've got money waiting!</Text>
+        <Text style={styles.title}>You've got {amount} waiting!</Text>
         <Text style={styles.subtitle}>
           {context.userName} didn't follow through.{'\n'}
-          Claim your {amount} now.
+          How would you like to receive it?
         </Text>
       </Animated.View>
 
@@ -229,35 +400,115 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
         </View>
       </View>
 
-      {error && (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </Animated.View>
-      )}
+      {/* Payout method picker */}
+      <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.methodPickerContainer}>
+        <Text style={styles.methodPickerLabel}>CHOOSE PAYOUT METHOD</Text>
 
-      <Pressable
-        disabled={claiming}
-        onPress={handleClaim}
-        style={({ pressed }) => [styles.claimBtn, pressed && styles.pressed, claiming && styles.disabled]}
-      >
-        <LinearGradient
-          colors={['#22c55e', '#16a34a']}
-          style={styles.btnGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <Pressable
+          onPress={() => { hapticMedium(); setView('paypal'); }}
+          style={({ pressed }) => [styles.methodOption, styles.methodOptionPayPal, pressed && styles.pressed]}
         >
-          {claiming ? (
-            <ActivityIndicator color={Colors.text} />
-          ) : (
-            <Text style={styles.claimBtnText}>Claim {amount}</Text>
-          )}
-        </LinearGradient>
-      </Pressable>
+          <View style={styles.methodOptionContent}>
+            <Text style={styles.methodIcon}>🅿️</Text>
+            <View style={styles.methodTextContainer}>
+              <Text style={styles.methodTitle}>PayPal</Text>
+              <Text style={styles.methodSubtitle}>Fastest – just enter your email</Text>
+            </View>
+          </View>
+          <View style={styles.methodBadge}>
+            <Text style={styles.methodBadgeText}>Instant</Text>
+          </View>
+        </Pressable>
 
-      <Text style={styles.disclaimer}>
-        You'll set up a free Stripe account to receive the money.{'\n'}
-        Takes about 2 minutes.
-      </Text>
+        <Pressable
+          onPress={() => { hapticMedium(); setView('stripe'); }}
+          style={({ pressed }) => [styles.methodOption, styles.methodOptionStripe, pressed && styles.pressed]}
+        >
+          <View style={styles.methodOptionContent}>
+            <Text style={styles.methodIcon}>🏦</Text>
+            <View style={styles.methodTextContainer}>
+              <Text style={styles.methodTitle}>Bank Account</Text>
+              <Text style={styles.methodSubtitle}>Via Stripe – takes ~2 min setup</Text>
+            </View>
+          </View>
+          <Text style={styles.methodChevron}>→</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PAYPAL PENDING STATE (Payout sent, waiting for recipient)
+// ─────────────────────────────────────────────────────────────
+
+function PayPalPendingState({ context }: { context: ClaimContext }) {
+  const amount = formatCurrency(context.amount || context.stake);
+
+  return (
+    <View style={styles.stateContainer}>
+      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+        <Text style={styles.emoji}>📧</Text>
+        <Text style={styles.title}>Check your PayPal!</Text>
+        <Text style={styles.subtitle}>
+          We've sent {amount} to your PayPal account.
+        </Text>
+      </Animated.View>
+
+      <Animated.View entering={FadeInUp.delay(200).duration(400)} style={styles.paypalPendingCard}>
+        <View style={styles.paypalEmailRow}>
+          <Text style={styles.paypalEmailLabel}>Sent to:</Text>
+          <Text style={styles.paypalEmailValue}>{context.paypalEmail}</Text>
+        </View>
+        <View style={styles.paypalStatusRow}>
+          <ActivityIndicator size="small" color="#0070ba" />
+          <Text style={styles.paypalStatusText}>Waiting for PayPal confirmation</Text>
+        </View>
+      </Animated.View>
+
+      <View style={styles.infoBox}>
+        <Text style={styles.infoIcon}>💡</Text>
+        <Text style={styles.infoText}>
+          If you have a PayPal account with this email, the money will be deposited automatically.{'\n\n'}
+          If not, you'll receive an email from PayPal to claim it.
+        </Text>
+      </View>
+
+      <View style={styles.promiseCard}>
+        <Text style={styles.promiseLabel}>THE BROKEN PROMISE</Text>
+        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseNote}>
+          {context.userName} didn't follow through. Their loss, your gain!
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PAYPAL UNCLAIMED STATE (PayPal payout expired after 30 days)
+// ─────────────────────────────────────────────────────────────
+
+function PayPalUnclaimedState({ context }: { context: ClaimContext }) {
+  const amount = formatCurrency(context.amount || context.stake);
+
+  return (
+    <View style={styles.stateContainer}>
+      <View style={styles.header}>
+        <Text style={styles.emoji}>⏰</Text>
+        <Text style={styles.title}>PayPal payout expired</Text>
+        <Text style={styles.subtitle}>
+          The PayPal payout of {amount} was not claimed within 30 days.
+        </Text>
+      </View>
+
+      <View style={styles.expiredCard}>
+        <Text style={styles.expiredIcon}>😔</Text>
+        <Text style={styles.expiredText}>
+          Unclaimed PayPal funds are returned to OopsFee.{'\n'}
+          Make sure to claim future payouts promptly!
+        </Text>
+      </View>
     </View>
   );
 }
@@ -533,7 +784,12 @@ export default function ClaimPage() {
         return <ClaimState context={context} token={token!} />;
 
       case 'claimed':
-        // Friend started onboarding
+        // Friend started onboarding or payout process
+        if (context.payoutMethod === 'paypal') {
+          // PayPal payout was initiated - show pending state
+          return <PayPalPendingState context={context} />;
+        }
+        // Stripe flow
         if (context.stripeAccountStatus === 'active') {
           // Account is ready, transfer should happen automatically
           return <SuccessRedirect context={context} />;
@@ -544,6 +800,10 @@ export default function ClaimPage() {
         return <TransferredState context={context} />;
 
       case 'expired':
+        // Check if this was a PayPal payout that went unclaimed
+        if (context.payoutMethod === 'paypal' && context.paypalBatchId) {
+          return <PayPalUnclaimedState context={context} />;
+        }
         return <ExpiredState context={context} />;
 
       default:
@@ -844,6 +1104,154 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+
+  // Payout method picker
+  methodPickerContainer: {
+    gap: Spacing.md,
+  },
+  methodPickerLabel: {
+    ...Typography.label,
+    color: Colors.textTertiary,
+    marginBottom: Spacing.xs,
+  },
+  methodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.xl,
+    borderWidth: 2,
+    padding: Spacing.lg,
+  },
+  methodOptionPayPal: {
+    borderColor: '#0070ba',
+  },
+  methodOptionStripe: {
+    borderColor: Colors.border,
+  },
+  methodOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  methodIcon: {
+    fontSize: 28,
+  },
+  methodTextContainer: {
+    flex: 1,
+  },
+  methodTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  methodSubtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  methodBadge: {
+    backgroundColor: '#0070ba',
+    borderRadius: Radius.full,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  methodBadgeText: {
+    ...Typography.caption,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  methodChevron: {
+    ...Typography.h3,
+    color: Colors.textTertiary,
+  },
+
+  // Input card (for PayPal email)
+  inputCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  inputLabel: {
+    ...Typography.label,
+    color: Colors.textTertiary,
+  },
+  textInput: {
+    ...Typography.body,
+    color: Colors.text,
+    backgroundColor: Colors.bg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginTop: Spacing.xs,
+  },
+  inputHint: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+
+  // Button row
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  backBtn: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: Colors.bgCard,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+  },
+  backBtnText: {
+    ...Typography.bodySemibold,
+    color: Colors.textSecondary,
+  },
+  submitBtn: {
+    flex: 1,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    ...Shadows.lg,
+  },
+
+  // PayPal pending state
+  paypalPendingCard: {
+    backgroundColor: 'rgba(0, 112, 186, 0.1)',
+    borderRadius: Radius.xl,
+    borderWidth: 2,
+    borderColor: '#0070ba',
+    padding: Spacing.xl,
+    gap: Spacing.lg,
+  },
+  paypalEmailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  paypalEmailLabel: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+  },
+  paypalEmailValue: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  paypalStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  paypalStatusText: {
+    ...Typography.body,
+    color: '#0070ba',
   },
 
   // Claim button

@@ -12,6 +12,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
 export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
+export type PayoutMethod = 'stripe' | 'paypal' | null;
 
 export interface ClaimContext {
   // Claim info
@@ -35,6 +36,11 @@ export interface ClaimContext {
   // Stripe Connect status
   stripeAccountStatus: StripeAccountStatus | null;
   
+  // PayPal payout info
+  payoutMethod: PayoutMethod; // 'stripe' | 'paypal' | null (not yet chosen)
+  paypalEmail: string | null; // Email used for PayPal payout
+  paypalBatchId: string | null; // PayPal batch ID for tracking
+  
   // Derived states
   canClaim: boolean;           // True if claim_status='notified' and not expired
   isExpired: boolean;          // True if claim has expired
@@ -45,6 +51,13 @@ export interface ClaimContext {
 export interface CreateConnectAccountResponse {
   accountId: string;
   onboardingUrl: string;
+}
+
+export interface PayPalClaimResponse {
+  success: boolean;
+  batchId?: string;
+  message?: string;
+  error?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -92,6 +105,34 @@ export async function startClaimOnboarding(token: string): Promise<CreateConnect
 
   if (!response.ok) {
     throw new Error(data.error || 'Failed to start onboarding');
+  }
+
+  return data;
+}
+
+/**
+ * Claim payout via PayPal.
+ * Sends an instant payout to the provided PayPal email address.
+ */
+export async function claimViaPayPal(
+  token: string,
+  paypalEmail: string
+): Promise<PayPalClaimResponse> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/paypal-payout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, paypalEmail }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return {
+      success: false,
+      error: data.error || 'Failed to process PayPal payout',
+    };
   }
 
   return data;
