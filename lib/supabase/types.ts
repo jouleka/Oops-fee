@@ -24,6 +24,7 @@ export type ShareLink = Database['public']['Tables']['share_links']['Row'];
 export type SponsorPledge = Database['public']['Tables']['sponsor_pledges']['Row'];
 export type RoastMessage = Database['public']['Tables']['roast_messages']['Row'];
 export type Payment = Database['public']['Tables']['payments']['Row'];
+export type FriendClaim = Database['public']['Tables']['friend_claims']['Row'];
 
 // ============================================================================
 // Insert Type Aliases
@@ -35,6 +36,7 @@ export type ShareLinkInsert = Database['public']['Tables']['share_links']['Inser
 export type SponsorPledgeInsert = Database['public']['Tables']['sponsor_pledges']['Insert'];
 export type RoastMessageInsert = Database['public']['Tables']['roast_messages']['Insert'];
 export type PaymentInsert = Database['public']['Tables']['payments']['Insert'];
+export type FriendClaimInsert = Database['public']['Tables']['friend_claims']['Insert'];
 
 // ============================================================================
 // Update Type Aliases
@@ -44,6 +46,7 @@ export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 export type PromiseUpdate = Database['public']['Tables']['promises']['Update'];
 export type ShareLinkUpdate = Database['public']['Tables']['share_links']['Update'];
 export type PaymentUpdate = Database['public']['Tables']['payments']['Update'];
+export type FriendClaimUpdate = Database['public']['Tables']['friend_claims']['Update'];
 
 // ============================================================================
 // Enum Types (from our schema - not auto-generated as ENUMs)
@@ -55,6 +58,8 @@ export type VerificationType = 'honor' | 'photo' | 'partner' | 'healthkit' | 'lo
 export type PartnerState = 'awaiting' | 'approved' | 'rejected' | 'expired';
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'requires_action' | 'abandoned';
 export type ShareLinkType = 'sponsor' | 'roast' | 'partner';
+export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
+export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
 
 // ============================================================================
 // Utility Types

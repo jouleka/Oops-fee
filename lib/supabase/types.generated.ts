@@ -9,6 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      friend_claims: {
+        Row: {
+          id: string
+          promise_id: string
+          friend_email: string | null
+          friend_phone: string | null
+          friend_name: string
+          stripe_account_id: string | null
+          stripe_account_status: string | null
+          claim_status: string
+          claim_token: string
+          claim_expires_at: string | null
+          amount_cents: number | null
+          transfer_id: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          promise_id: string
+          friend_email?: string | null
+          friend_phone?: string | null
+          friend_name: string
+          stripe_account_id?: string | null
+          stripe_account_status?: string | null
+          claim_status?: string
+          claim_token: string
+          claim_expires_at?: string | null
+          amount_cents?: number | null
+          transfer_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          promise_id?: string
+          friend_email?: string | null
+          friend_phone?: string | null
+          friend_name?: string
+          stripe_account_id?: string | null
+          stripe_account_status?: string | null
+          claim_status?: string
+          claim_token?: string
+          claim_expires_at?: string | null
+          amount_cents?: number | null
+          transfer_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_claims_promise_id_fkey"
+            columns: ["promise_id"]
+            isOneToOne: false
+            referencedRelation: "promises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -111,6 +170,7 @@ export type Database = {
           deadline_at: string
           expired_at: string | null
           failed_at: string | null
+          friend_claim_id: string | null
           has_roast: boolean | null
           id: string
           money_destination: string
@@ -140,6 +200,7 @@ export type Database = {
           deadline_at: string
           expired_at?: string | null
           failed_at?: string | null
+          friend_claim_id?: string | null
           has_roast?: boolean | null
           id: string
           money_destination?: string
@@ -169,6 +230,7 @@ export type Database = {
           deadline_at?: string
           expired_at?: string | null
           failed_at?: string | null
+          friend_claim_id?: string | null
           has_roast?: boolean | null
           id?: string
           money_destination?: string
@@ -193,6 +255,13 @@ export type Database = {
           voice_note_ref?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "promises_friend_claim_id_fkey"
+            columns: ["friend_claim_id"]
+            isOneToOne: false
+            referencedRelation: "friend_claims"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "promises_user_id_fkey"
             columns: ["user_id"]
@@ -315,7 +384,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_claim_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      update_last_active: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

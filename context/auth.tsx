@@ -4,7 +4,7 @@
  * Provides authentication state and methods for:
  * - Apple Sign-In (iOS)
  * - Google Sign-In (all platforms)
- * - Phone OTP (fallback)
+ * - Email OTP
  *
  * Usage:
  * ```tsx
@@ -60,10 +60,6 @@ export interface AuthActions {
   signInWithApple: () => Promise<void>;
   /** Sign in with Google */
   signInWithGoogle: () => Promise<void>;
-  /** Request OTP code to phone number */
-  sendOtp: (phone: string) => Promise<{ error: string | null }>;
-  /** Verify OTP code */
-  verifyOtp: (phone: string, code: string) => Promise<{ error: string | null }>;
   /** Send magic link/OTP to email */
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
   /** Verify email OTP code */
@@ -382,46 +378,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ─────────────────────────────────────────────────────────────
-  // Phone OTP
-  // ─────────────────────────────────────────────────────────────
-
-  const sendOtp = useCallback(async (phone: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone,
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { error: null };
-  }, []);
-
-  const verifyOtp = useCallback(async (phone: string, code: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      phone,
-      token: code,
-      type: 'sms',
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { error: null };
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────
   // Email Magic Link / OTP
   // ─────────────────────────────────────────────────────────────
 
   const sendEmailOtp = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        // This sends a 6-digit code instead of a magic link
-        // User enters the code just like phone OTP
-      },
     });
 
     if (error) {
@@ -481,8 +443,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(session?.user),
       signInWithApple,
       signInWithGoogle,
-      sendOtp,
-      verifyOtp,
       sendEmailOtp,
       verifyEmailOtp,
       signOut,
@@ -495,8 +455,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       signInWithApple,
       signInWithGoogle,
-      sendOtp,
-      verifyOtp,
       sendEmailOtp,
       verifyEmailOtp,
       signOut,

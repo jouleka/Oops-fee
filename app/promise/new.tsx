@@ -33,10 +33,10 @@ import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants
 import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { useRequireAuth } from '@/hooks/use-require-auth';
-import { isStripeConfigured } from '@/lib/stripe';
 import { clampInt, formatShortDateTime } from '@/lib/promises/time';
 import type { MoneyDestination, VerificationType } from '@/lib/promises/types';
 import { getFailureMultiplier, getMultiplierResetProgress } from '@/lib/stats/store';
+import { isStripeConfigured } from '@/lib/stripe';
 
 const STAKE_PRESETS = [5, 10, 25, 50] as const;
 
@@ -689,6 +689,7 @@ export default function NewPromiseScreen() {
 
   const [moneyDestination, setMoneyDestination] = useState<MoneyDestination>('oopsfee');
   const [friendName, setFriendName] = useState('');
+  const [friendEmail, setFriendEmail] = useState('');
   const [voiceNoteUri, setVoiceNoteUri] = useState<string | undefined>(undefined);
   const [verificationType, setVerificationType] = useState<VerificationType>(
     () => initialTemplate?.defaultVerification ?? 'photo'
@@ -720,7 +721,9 @@ export default function NewPromiseScreen() {
     }
   }, [effectiveStake, verificationType]);
 
-  const friendOk = moneyDestination !== 'friend' || friendName.trim().length > 0;
+  const friendContactOk = moneyDestination !== 'friend' || 
+    (friendName.trim().length > 0 && friendEmail.trim().length > 0);
+  const friendOk = friendContactOk;
   const canLock = text.trim().length > 0 && stake >= 0 && deadlineAt > nowMs && friendOk;
   const warningFree = stake === 0;
 
@@ -780,6 +783,7 @@ export default function NewPromiseScreen() {
         deadlineAt,
         moneyDestination,
         friendName: moneyDestination === 'friend' ? friendName.trim() : undefined,
+        friendEmail: moneyDestination === 'friend' && friendEmail.trim() ? friendEmail.trim() : undefined,
         voiceNoteUri,
         verificationType,
       });
@@ -789,7 +793,7 @@ export default function NewPromiseScreen() {
     } finally {
       setConfirming(false);
     }
-  }, [canLock, createPromise, deadlineAt, effectiveStake, friendName, moneyDestination, text, verificationType, voiceNoteUri]);
+  }, [canLock, createPromise, deadlineAt, effectiveStake, friendEmail, friendName, moneyDestination, text, verificationType, voiceNoteUri]);
 
   return (
     <View style={styles.screen}>
@@ -1040,7 +1044,7 @@ export default function NewPromiseScreen() {
 
             {moneyDestination === 'friend' && (
               <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.friendCard}>
-                <Text style={styles.friendLabel}>FRIEND</Text>
+                <Text style={styles.friendLabel}>FRIEND&apos;S NAME</Text>
                 <TextInput
                   value={friendName}
                   onChangeText={setFriendName}
@@ -1053,6 +1057,37 @@ export default function NewPromiseScreen() {
                   {friendName.trim().length === 0
                     ? "Name them. Otherwise it's imaginary accountability."
                     : 'Pick someone who enjoys saying "I told you so."'}
+                </Text>
+
+                <View style={styles.friendContactDivider} />
+
+                <Text style={styles.friendLabel}>CONTACT (AT LEAST ONE)</Text>
+                <Text style={styles.friendContactHint}>How should we notify them if you fail? (7 days to claim, then we keep it. Oops.)</Text>
+
+                <View style={styles.friendContactRow}>
+                  <View style={styles.friendContactInputWrapper}>
+                    <Text style={styles.friendContactIcon}>📧</Text>
+                    <TextInput
+                      value={friendEmail}
+                      onChangeText={setFriendEmail}
+                      placeholder="friend@email.com"
+                      placeholderTextColor={Colors.textMuted}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={64}
+                      style={styles.friendContactInput}
+                    />
+                  </View>
+                </View>
+
+                <Text style={[
+                  styles.friendHelper, 
+                  !friendEmail.trim() && styles.friendHelperDanger
+                ]}>
+                  {!friendEmail.trim()
+                    ? "Add their email. They can't claim money we can't reach them about."
+                    : "They have 7 days to claim. After that, it becomes our coffee fund :)"}
                 </Text>
               </Animated.View>
             )}
@@ -1595,6 +1630,40 @@ const styles = StyleSheet.create({
   friendHelperDanger: {
     color: Colors.danger,
     fontWeight: '600',
+  },
+  friendContactDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginVertical: Spacing.sm,
+  },
+  friendContactHint: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    marginLeft: Spacing.xs,
+    marginTop: -4,
+    marginBottom: Spacing.xs,
+  },
+  friendContactRow: {
+    marginBottom: Spacing.sm,
+  },
+  friendContactInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgElevated,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    borderRadius: Radius.lg,
+    paddingHorizontal: 14,
+  },
+  friendContactIcon: {
+    fontSize: 16,
+    marginRight: Spacing.sm,
+  },
+  friendContactInput: {
+    flex: 1,
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    paddingVertical: 12,
   },
 
   voiceConfirmation: {

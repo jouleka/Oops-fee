@@ -10,6 +10,9 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { generateId } from './repo.local';
 import type { CreatePromiseInput, UserPromise } from './types';
 
+// Supabase URL for edge function calls
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+
 // ─────────────────────────────────────────────────────────────
 // Type Conversions
 // ─────────────────────────────────────────────────────────────
@@ -184,6 +187,60 @@ export function isRemoteAvailable(): boolean {
   return isSupabaseConfigured();
 }
 
+// ─────────────────────────────────────────────────────────────
+// Friend Claim
+// ─────────────────────────────────────────────────────────────
+
+interface CreateFriendClaimInput {
+  promiseId: string;
+  friendName: string;
+  friendEmail: string;
+  stakeAmount: number;
+  promiseText: string;
+  deadline: string;
+  userName?: string;
+}
+
+interface CreateFriendClaimResult {
+  claimId: string;
+  claimToken: string;
+  claimUrl: string;
+  notifications: {
+    emailSent: boolean;
+    smsSent: boolean;
+  };
+}
+
+/**
+ * Create a friend claim via the edge function
+ * This notifies the friend about the promise and creates a claim record
+ */
+async function createFriendClaim(input: CreateFriendClaimInput): Promise<CreateFriendClaimResult> {
+  const session = (await supabase.auth.getSession()).data.session;
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/create-friend-claim`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(input),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
 /**
  * Fetch all promises for a user from Supabase
  */
@@ -247,6 +304,7 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     status: 'active',
     moneyDestination: input.moneyDestination,
     friendName: input.moneyDestination === 'friend' ? input.friendName?.trim() || undefined : undefined,
+    friendEmail: input.moneyDestination === 'friend' ? input.friendEmail?.trim() || undefined : undefined,
     voiceNoteUri: input.voiceNoteUri?.trim() || undefined,
     verificationType: input.verificationType ?? 'photo',
     sponsorAmount: input.sponsorAmount,
@@ -270,10 +328,32 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     throw new Error('No data returned from insert');
   }
 
+  // If money_destination is 'friend', create friend claim via edge function
+  if (input.moneyDestination === 'friend' && input.friendEmail) {
+    console.log('[repo.remote] Creating friend claim for promise:', id, 'email:', input.friendEmail);
+    try {
+      const claimResult = await createFriendClaim({
+        promiseId: id,
+        friendName: input.friendName || 'Friend',
+        friendEmail: input.friendEmail,
+        stakeAmount: localPromise.stake * 100, // Convert to cents
+        promiseText: localPromise.text,
+        deadline: new Date(localPromise.deadlineAt).toISOString(),
+      });
+      console.log('[repo.remote] Friend claim created:', claimResult);
+    } catch (claimError) {
+      // Log error but don't fail promise creation
+      console.error('[repo.remote] Failed to create friend claim:', claimError);
+    }
+  } else {
+    console.log('[repo.remote] Skipping friend claim - moneyDestination:', input.moneyDestination, 'friendEmail:', input.friendEmail);
+  }
+
   return {
     ...toLocalPromise(data),
     // Preserve local-only fields
     friendName: localPromise.friendName,
+    friendEmail: localPromise.friendEmail,
     iToldYouSoMessages: localPromise.iToldYouSoMessages,
   };
 }
@@ -354,10 +434,32 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
     throw new Error('No data returned from upsert');
   }
 
+  // If money_destination is 'friend', create friend claim via edge function
+  if (local.moneyDestination === 'friend' && local.friendEmail) {
+    console.log('[repo.remote] Creating friend claim for synced promise:', local.id, 'email:', local.friendEmail);
+    try {
+      const claimResult = await createFriendClaim({
+        promiseId: local.id,
+        friendName: local.friendName || 'Friend',
+        friendEmail: local.friendEmail,
+        stakeAmount: local.stake * 100, // Convert to cents
+        promiseText: local.text,
+        deadline: new Date(local.deadlineAt).toISOString(),
+      });
+      console.log('[repo.remote] Friend claim created:', claimResult);
+    } catch (claimError) {
+      // Log error but don't fail sync
+      console.error('[repo.remote] Failed to create friend claim:', claimError);
+    }
+  } else if (local.moneyDestination === 'friend') {
+    console.log('[repo.remote] Skipping friend claim for synced promise - no friendEmail');
+  }
+
   return {
     ...toLocalPromise(data),
     // Preserve local-only fields
     friendName: local.friendName,
+    friendEmail: local.friendEmail,
     voiceNoteUri: local.voiceNoteUri,
     iToldYouSoMessages: local.iToldYouSoMessages,
   };
@@ -366,7 +468,7 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
 /**
  * Fetch all roast messages for a promise
  */
-export async function fetchRoastMessages(promiseId: string): Promise<Array<{ message: string; from: string }>> {
+export async function fetchRoastMessages(promiseId: string): Promise<{ message: string; from: string }[]> {
   if (!isRemoteAvailable()) return [];
   
   const { data, error } = await supabase

@@ -30,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAppleAuthAvailable, useAuth } from '@/context/auth';
 
-type SignInStep = 'initial' | 'phone-input' | 'phone-verify' | 'email-input' | 'email-verify';
+type SignInStep = 'initial' | 'email-input' | 'email-verify';
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -46,8 +46,6 @@ export default function SignInScreen() {
   const {
     signInWithApple,
     signInWithGoogle,
-    sendOtp,
-    verifyOtp,
     sendEmailOtp,
     verifyEmailOtp,
     isAuthenticated,
@@ -55,7 +53,6 @@ export default function SignInScreen() {
   const appleAuthAvailable = useAppleAuthAvailable();
 
   const [step, setStep] = useState<SignInStep>('initial');
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -99,47 +96,6 @@ export default function SignInScreen() {
       setIsLoading(false);
     }
   }, [signInWithGoogle]);
-
-  // Phone OTP handlers
-  const handleSendPhoneOtp = useCallback(async () => {
-    if (!phone.trim()) {
-      setError('Enter your phone number. We promise not to text you memes.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    hapticMedium();
-    const result = await sendOtp(phone.trim());
-
-    if (result.error) {
-      setError(result.error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else {
-      setStep('phone-verify');
-    }
-    setIsLoading(false);
-  }, [phone, sendOtp]);
-
-  const handleVerifyPhoneOtp = useCallback(async () => {
-    if (otpCode.length < 6) {
-      setError('6 digits. Not 5. Not 7. Six.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    hapticMedium();
-    const result = await verifyOtp(phone.trim(), otpCode);
-
-    if (result.error) {
-      setError(result.error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    setIsLoading(false);
-  }, [phone, otpCode, verifyOtp]);
 
   // Email OTP handlers
   const handleSendEmailOtp = useCallback(async () => {
@@ -190,15 +146,9 @@ export default function SignInScreen() {
 
   const handleBack = useCallback(() => {
     hapticLight();
-    if (step === 'phone-verify') {
-      setStep('phone-input');
-      setOtpCode('');
-    } else if (step === 'email-verify') {
+    if (step === 'email-verify') {
       setStep('email-input');
       setOtpCode('');
-    } else if (step === 'phone-input') {
-      setStep('initial');
-      setPhone('');
     } else if (step === 'email-input') {
       setStep('initial');
       setEmail('');
@@ -239,15 +189,11 @@ export default function SignInScreen() {
           <Animated.View entering={FadeInDown.duration(300)} style={styles.titleSection}>
             <Text style={styles.title}>
               {step === 'initial' && 'Sign in'}
-              {step === 'phone-input' && 'Your phone'}
-              {step === 'phone-verify' && 'Enter code'}
               {step === 'email-input' && 'Your email'}
               {step === 'email-verify' && 'Enter code'}
             </Text>
             <Text style={styles.subtitle}>
               {step === 'initial' && 'To put actual money on your promises. No pressure.'}
-              {step === 'phone-input' && "We'll text you a code. Old school, but it works."}
-              {step === 'phone-verify' && `Sent to ${phone}. Check your messages.`}
               {step === 'email-input' && "We'll email you a magic code. Check your inbox."}
               {step === 'email-verify' && `Sent to ${email}. Check your inbox (and spam).`}
             </Text>
@@ -308,7 +254,7 @@ export default function SignInScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Email & Phone options */}
+              {/* Email option */}
               <View style={styles.buttonStack}>
                 <Pressable
                   onPress={() => {
@@ -332,136 +278,7 @@ export default function SignInScreen() {
                   </View>
                   <Text style={styles.chevron}>›</Text>
                 </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    hapticLight();
-                    setStep('phone-input');
-                  }}
-                  disabled={isLoading}
-                  style={({ pressed }) => [
-                    styles.optionCard,
-                    pressed && styles.cardPressed,
-                  ]}
-                >
-                  <View style={styles.optionIcon}>
-                    <Text style={styles.optionEmoji}>📱</Text>
-                  </View>
-                  <View style={styles.optionBody}>
-                    <Text style={styles.optionTitle}>Phone number</Text>
-                    <Text style={styles.optionSubtitle}>
-                      SMS verification. Classic.
-                    </Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
               </View>
-            </Animated.View>
-          )}
-
-          {/* Phone input step */}
-          {step === 'phone-input' && (
-            <Animated.View
-              entering={FadeInDown.duration(300)}
-              layout={Layout.springify()}
-              style={styles.section}
-            >
-              <Text style={styles.sectionLabel}>PHONE NUMBER</Text>
-              <Text style={styles.sectionHint}>Include country code. We&apos;re international like that.</Text>
-
-              <View style={styles.inputCard}>
-                <TextInput
-                  style={styles.phoneInput}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="+1 555 000 0000"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="phone-pad"
-                  autoFocus
-                  autoComplete="tel"
-                  textContentType="telephoneNumber"
-                />
-              </View>
-
-              <Pressable
-                onPress={handleSendPhoneOtp}
-                disabled={isLoading || !phone.trim()}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.primaryButtonPressed,
-                  (!phone.trim() || isLoading) && styles.buttonDisabled,
-                ]}
-              >
-                <LinearGradient
-                  colors={!phone.trim() || isLoading ? [Colors.systemGray4, Colors.systemGray5] : [Colors.accent, '#0A7FD4']}
-                  style={styles.primaryButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={Colors.text} />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Send code</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
-          )}
-
-          {/* Phone OTP verify step */}
-          {step === 'phone-verify' && (
-            <Animated.View
-              entering={FadeInDown.duration(300)}
-              layout={Layout.springify()}
-              style={styles.section}
-            >
-              <Text style={styles.sectionLabel}>VERIFICATION CODE</Text>
-              <Text style={styles.sectionHint}>The one we just texted you. It&apos;s 6 digits.</Text>
-
-              <View style={styles.inputCard}>
-                <TextInput
-                  style={styles.otpInput}
-                  value={otpCode}
-                  onChangeText={(text) => setOtpCode(text.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="number-pad"
-                  autoFocus
-                  maxLength={6}
-                  textContentType="oneTimeCode"
-                />
-              </View>
-
-              <Pressable
-                onPress={handleVerifyPhoneOtp}
-                disabled={isLoading || otpCode.length < 6}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.primaryButtonPressed,
-                  (otpCode.length < 6 || isLoading) && styles.buttonDisabled,
-                ]}
-              >
-                <LinearGradient
-                  colors={otpCode.length < 6 || isLoading ? [Colors.systemGray4, Colors.systemGray5] : [Colors.accent, '#0A7FD4']}
-                  style={styles.primaryButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={Colors.text} />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Verify</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable
-                onPress={handleSendPhoneOtp}
-                disabled={isLoading}
-                style={({ pressed }) => [styles.resendButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.resendText}>Didn&apos;t get it? Resend code</Text>
-              </Pressable>
             </Animated.View>
           )}
 
@@ -732,7 +549,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
 
-  // Option cards (email, phone)
+  // Option cards
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -786,12 +603,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.lg,
-  },
-  phoneInput: {
-    ...Typography.h2,
-    color: Colors.text,
-    textAlign: 'center',
-    paddingVertical: Spacing.sm,
   },
   emailInput: {
     ...Typography.body,

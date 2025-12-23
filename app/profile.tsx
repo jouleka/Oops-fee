@@ -127,7 +127,6 @@ export default function ProfileScreen() {
                   <Text style={styles.detailValue}>
                     {user?.app_metadata?.provider === 'apple' ? '🍎 Apple' : 
                      user?.app_metadata?.provider === 'google' ? '🔵 Google' : 
-                     user?.app_metadata?.provider === 'phone' ? '📱 Phone' : 
                      '📧 Email'}
                   </Text>
                 </View>

@@ -17,6 +17,12 @@ import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { createStripeClient } from '../_shared/stripe.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const APP_URL = Deno.env.get('APP_URL') || 'https://oopsfee.app';
+
+// Friend claim expiration: 7 days
+const CLAIM_EXPIRY_DAYS = 7;
+
 // Grace period after deadline before auto-fail (1 hour)
 const GRACE_PERIOD_MS = 60 * 60 * 1000;
 
@@ -46,6 +52,18 @@ interface Promise {
   payment_status: string | null;
   payment_retry_count: number;
   payment_next_retry_at: string | null;
+  money_destination: string | null; // 'oopsfee' | 'charity' | 'friend'
+  friend_claim_id: string | null;
+}
+
+interface FriendClaim {
+  id: string;
+  promise_id: string;
+  friend_email: string | null;
+  friend_phone: string | null;
+  friend_name: string;
+  claim_token: string;
+  claim_status: string;
 }
 
 interface Profile {
@@ -134,6 +152,141 @@ async function sendPushNotification(
   } catch (error) {
     console.error('[settle-promises] Failed to send push notification:', error);
     // Don't throw - push failure shouldn't break settlement
+  }
+}
+
+/**
+ * Send "claim your money" email to friend when user fails
+ */
+interface ClaimEmailParams {
+  to: string;
+  friendName: string;
+  userName: string;
+  amountCents: number;
+  promiseText: string;
+  claimUrl: string;
+  expiresAt: Date;
+}
+
+async function sendClaimNotificationEmail(params: ClaimEmailParams): Promise<boolean> {
+  if (!RESEND_API_KEY) {
+    console.log('[settle-promises] Resend API key not configured, skipping claim email');
+    return false;
+  }
+
+  const { to, friendName, userName, amountCents, promiseText, claimUrl, expiresAt } = params;
+  const amountDisplay = `$${(amountCents / 100).toFixed(amountCents % 100 === 0 ? 0 : 2)}`;
+  const expiryDate = expiresAt.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const subject = `💰 ${userName} failed — claim your ${amountDisplay}!`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claim Your Money</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #ffffff;">
+  <div style="max-width: 480px; margin: 0 auto; padding: 40px 24px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 8px 0; color: #22c55e;">
+        💸 Cha-ching!
+      </h1>
+      <p style="font-size: 18px; color: #ffffff; margin: 0;">
+        ${userName} didn't follow through
+      </p>
+    </div>
+    
+    <div style="background: linear-gradient(135deg, #134e2a 0%, #166534 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; border: 1px solid #22c55e; text-align: center;">
+      <p style="font-size: 14px; color: #86efac; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        Your Winnings
+      </p>
+      <p style="font-size: 48px; font-weight: 700; margin: 0; color: #22c55e;">
+        ${amountDisplay}
+      </p>
+    </div>
+    
+    <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #333;">
+      <p style="font-size: 12px; color: #888888; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        The Failed Promise
+      </p>
+      <p style="font-size: 16px; margin: 0; color: #ffffff;">
+        "${promiseText}"
+      </p>
+    </div>
+    
+    <div style="text-align: center; margin-bottom: 24px;">
+      <a href="${claimUrl}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 12px; font-size: 18px; font-weight: 700;">
+        Claim Your ${amountDisplay}
+      </a>
+    </div>
+    
+    <p style="font-size: 14px; color: #ef4444; text-align: center; margin: 0 0 16px 0; font-weight: 500;">
+      ⏰ Claim expires ${expiryDate}
+    </p>
+    
+    <p style="font-size: 14px; color: #888888; text-align: center; margin: 0;">
+      Click the button above to connect your bank account and receive your payout.
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #333; margin: 40px 0 24px 0;">
+    
+    <p style="font-size: 12px; color: #666666; text-align: center; margin: 0;">
+      Sent by <a href="${APP_URL}" style="color: #7c3aed;">OopsFee</a> — accountability with stakes
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const textBody = `Hey ${friendName}!
+
+${userName} failed to keep their promise: "${promiseText}"
+
+That means ${amountDisplay} is yours!
+
+Claim it here: ${claimUrl}
+
+⏰ This offer expires ${expiryDate}.
+
+Click the link to connect your bank account and receive your payout.
+
+— OopsFee`;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'OopsFee <hello@oopsfee.app>',
+        to: [to],
+        subject,
+        html: htmlBody,
+        text: textBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[settle-promises] Resend API error:', response.status, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log('[settle-promises] Claim notification email sent:', result.id);
+    return true;
+  } catch (error) {
+    console.error('[settle-promises] Claim email send error:', error);
+    return false;
   }
 }
 
@@ -589,7 +742,7 @@ async function handlePaymentSuccess(
 
   console.log(`[settle-promises] Payment succeeded for promise ${promise.id}`);
 
-  // Send push notification
+  // Send push notification to user
   const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeSuccess)
     .replace('${amount}', formatAmount(amountInCents));
   await sendPushNotification(
@@ -598,6 +751,87 @@ async function handlePaymentSuccess(
     body,
     { promiseId: promise.id, type: 'settlement_charged' },
   );
+
+  // ─────────────────────────────────────────────────────────────
+  // FRIEND PAYOUT: Update friend claim and notify friend
+  // ─────────────────────────────────────────────────────────────
+  if (promise.money_destination === 'friend' && promise.friend_claim_id) {
+    await handleFriendClaimNotification(promise, supabase, amountInCents);
+  }
+}
+
+/**
+ * Update friend claim and notify friend that money is available to claim
+ */
+async function handleFriendClaimNotification(
+  promise: Promise,
+  supabase: ReturnType<typeof createAdminClient>,
+  amountInCents: number,
+): Promise<void> {
+  console.log(`[settle-promises] Processing friend claim for promise ${promise.id}`);
+
+  // 1. Fetch the friend claim record
+  const { data: claim, error: claimError } = await supabase
+    .from('friend_claims')
+    .select('id, friend_email, friend_phone, friend_name, claim_token, claim_status')
+    .eq('id', promise.friend_claim_id)
+    .single();
+
+  if (claimError || !claim) {
+    console.error(`[settle-promises] Friend claim not found for promise ${promise.id}:`, claimError);
+    return;
+  }
+
+  const friendClaim = claim as FriendClaim;
+
+  // 2. Calculate claim expiration (7 days from now)
+  const claimExpiresAt = new Date(Date.now() + CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
+  // 3. Update friend claim: set amount, status, and expiration
+  const { error: updateError } = await supabase
+    .from('friend_claims')
+    .update({
+      amount_cents: amountInCents,
+      claim_status: 'notified',
+      claim_expires_at: claimExpiresAt.toISOString(),
+    })
+    .eq('id', friendClaim.id);
+
+  if (updateError) {
+    console.error(`[settle-promises] Error updating friend claim ${friendClaim.id}:`, updateError);
+    return;
+  }
+
+  console.log(`[settle-promises] Friend claim ${friendClaim.id} updated: amount=${amountInCents}, expires=${claimExpiresAt.toISOString()}`);
+
+  // 4. Get user's display name for the email
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', promise.user_id)
+    .single();
+
+  const userName = profile?.display_name || 'Someone';
+  const claimUrl = `${APP_URL}/claim/${friendClaim.claim_token}`;
+
+  // 5. Send claim notification email to friend
+  if (friendClaim.friend_email) {
+    const emailSent = await sendClaimNotificationEmail({
+      to: friendClaim.friend_email,
+      friendName: friendClaim.friend_name,
+      userName,
+      amountCents: amountInCents,
+      promiseText: promise.text.substring(0, 100),
+      claimUrl,
+      expiresAt: claimExpiresAt,
+    });
+
+    console.log(`[settle-promises] Claim email sent to ${friendClaim.friend_email}: ${emailSent}`);
+  } else {
+    console.log(`[settle-promises] No email for friend claim ${friendClaim.id}, skipping email notification`);
+  }
+
+  // TODO: Add SMS notification via Twilio if friend_phone is set
 }
 
 /**

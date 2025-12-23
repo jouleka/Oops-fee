@@ -55,6 +55,8 @@ function coercePromise(raw: unknown): UserPromise | null {
 
   const friendName =
     typeof raw.friendName === 'string' && raw.friendName.trim().length > 0 ? raw.friendName.trim() : undefined;
+  const friendEmail =
+    typeof raw.friendEmail === 'string' && raw.friendEmail.trim().length > 0 ? raw.friendEmail.trim() : undefined;
 
   const completedAt = typeof raw.completedAt === 'number' ? raw.completedAt : undefined;
   const failedAt = typeof raw.failedAt === 'number' ? raw.failedAt : undefined;
@@ -123,6 +125,7 @@ function coercePromise(raw: unknown): UserPromise | null {
     status,
     moneyDestination,
     friendName: moneyDestination === 'friend' ? friendName : undefined,
+    friendEmail: moneyDestination === 'friend' ? friendEmail : undefined,
     voiceNoteUri,
     completedAt,
     failedAt,
@@ -216,6 +219,7 @@ export async function createPromise(input: CreatePromiseInput): Promise<UserProm
     status: 'active',
     moneyDestination: input.moneyDestination,
     friendName: input.moneyDestination === 'friend' ? input.friendName?.trim() || undefined : undefined,
+    friendEmail: input.moneyDestination === 'friend' ? input.friendEmail?.trim() || undefined : undefined,
     voiceNoteUri: input.voiceNoteUri?.trim() || undefined,
     verificationType: input.verificationType ?? 'photo', // Default to photo for new promises
     sponsorAmount: input.sponsorAmount,
@@ -246,9 +250,16 @@ export async function updatePromise(id: string, patch: PromiseUpdate): Promise<U
     // Keep destination fields coherent.
     if (next.moneyDestination !== 'friend') {
       next.friendName = undefined;
-    } else if (typeof next.friendName === 'string') {
-      const trimmed = next.friendName.trim();
-      next.friendName = trimmed.length > 0 ? trimmed : undefined;
+      next.friendEmail = undefined;
+    } else {
+      if (typeof next.friendName === 'string') {
+        const trimmed = next.friendName.trim();
+        next.friendName = trimmed.length > 0 ? trimmed : undefined;
+      }
+      if (typeof next.friendEmail === 'string') {
+        const trimmed = next.friendEmail.trim();
+        next.friendEmail = trimmed.length > 0 ? trimmed : undefined;
+      }
     }
 
     // Keep timestamps coherent.

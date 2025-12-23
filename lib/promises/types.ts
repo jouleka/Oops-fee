@@ -34,6 +34,7 @@ export interface UserPromise {
 
   moneyDestination: MoneyDestination;
   friendName?: string; // only when moneyDestination === 'friend'
+  friendEmail?: string; // friend's email for claim notifications
 
   /** Local file:// URI to voice commitment recording */
   voiceNoteUri?: string;
@@ -131,6 +132,7 @@ export type CreatePromiseInput = {
   deadlineAt: number;
   moneyDestination: MoneyDestination;
   friendName?: string;
+  friendEmail?: string;
   voiceNoteUri?: string;
   // Virality fields (optional at creation, can be added later)
   sponsorAmount?: number;
@@ -147,6 +149,7 @@ export type PromiseUpdate = Partial<
     | 'deadlineAt'
     | 'moneyDestination'
     | 'friendName'
+    | 'friendEmail'
     | 'voiceNoteUri'
     | 'status'
     | 'completedAt'

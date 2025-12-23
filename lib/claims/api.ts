@@ -1,0 +1,99 @@
+/**
+ * Friend Claims API
+ *
+ * Client-side functions for interacting with friend claim edge functions.
+ */
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+
+// ─────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────
+
+export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
+export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
+
+export interface ClaimContext {
+  // Claim info
+  claimId: string;
+  claimStatus: ClaimStatus;
+  claimExpiresAt: string | null;
+  amountCents: number | null;
+  
+  // Friend info
+  friendName: string;
+  
+  // Promise info
+  promiseText: string;
+  stakeCents: number;
+  deadline: string;
+  promiseStatus: 'active' | 'completed' | 'failed' | 'expired';
+  
+  // User info
+  userName: string;
+  
+  // Stripe Connect status
+  stripeAccountStatus: StripeAccountStatus | null;
+  
+  // Derived states
+  canClaim: boolean;           // True if claim_status='notified' and not expired
+  isExpired: boolean;          // True if claim has expired
+  isTransferred: boolean;      // True if funds already sent
+  daysUntilExpiry: number | null; // Days left to claim (if claimable)
+}
+
+export interface CreateConnectAccountResponse {
+  accountId: string;
+  onboardingUrl: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PUBLIC ENDPOINTS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Get claim context for a token (public endpoint).
+ * Used to render the claim page.
+ */
+export async function getClaimContext(token: string): Promise<ClaimContext> {
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/get-claim-context?token=${encodeURIComponent(token)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to get claim context');
+  }
+
+  return data;
+}
+
+/**
+ * Start Stripe Connect Express onboarding.
+ * Creates a Connect account and returns the onboarding URL.
+ */
+export async function startClaimOnboarding(token: string): Promise<CreateConnectAccountResponse> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-connect-account`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to start onboarding');
+  }
+
+  return data;
+}
+

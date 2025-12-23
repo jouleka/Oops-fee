@@ -190,7 +190,13 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
     setIsWorking(true);
     try {
       const created = await repoCreatePromise(input);
-      setPromises((prev) => [created, ...prev]);
+      // Add to state, but avoid duplicates (realtime might beat us)
+      setPromises((prev) => {
+        if (prev.some(p => p.id === created.id)) {
+          return prev.map(p => p.id === created.id ? created : p);
+        }
+        return [created, ...prev];
+      });
 
       // Schedule notifications for this promise
       schedulePromiseReminders(created).catch(console.error);
