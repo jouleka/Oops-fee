@@ -54,6 +54,87 @@ interface Profile {
   default_payment_method_id: string | null;
   failed_payment_count: number;
   payment_blocked: boolean;
+  expo_push_token: string | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Settlement notification copy (matches client constants)
+// ─────────────────────────────────────────────────────────────
+const SETTLEMENT_NOTIFICATIONS = {
+  chargeSuccess: [
+    '💸 You lost ${amount}',
+    '${amount} gone. Promise broken.',
+    "That's ${amount} you won't see again.",
+    'Promise failed. ${amount} charged.',
+    'The wallet remembers: -${amount}.',
+  ],
+  chargeFailed: [
+    '⚠️ Payment failed for "${promise}"',
+    "We couldn't charge ${amount}. Card issue.",
+    'Payment declined. ${amount} still owed.',
+    'Your card said no to ${amount}.',
+    'Failed charge: ${amount}. Check your card.',
+  ],
+  requiresAction: [
+    '🔐 Action needed: ${amount} charge',
+    'Your bank needs confirmation for ${amount}.',
+    'Authenticate the ${amount} payment in the app.',
+    '${amount} charge pending your approval.',
+    'One more step: confirm ${amount} payment.',
+  ],
+  paymentAbandoned: [
+    '🚫 ${amount} charge abandoned. Account restricted.',
+    "Couldn't collect ${amount}. Your account is blocked.",
+    'Payment failed permanently. New stakes disabled.',
+    '${amount} uncollected. Account frozen.',
+  ],
+};
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatAmount(cents: number): string {
+  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+}
+
+/**
+ * Send a push notification via Expo Push API
+ */
+async function sendPushNotification(
+  pushToken: string | null,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  if (!pushToken) {
+    console.log('[settle-promises] No push token, skipping notification');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: 'default',
+        data,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('[settle-promises] Push notification sent:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[settle-promises] Failed to send push notification:', error);
+    // Don't throw - push failure shouldn't break settlement
+  }
 }
 
 interface SettlementResult {
@@ -321,10 +402,10 @@ async function chargeForFailedPromise(
   stripe: ReturnType<typeof createStripeClient>,
   attemptNumber: number,
 ): Promise<SettlementResult> {
-  // Get user's payment info
+  // Get user's payment info and push token
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, default_payment_method_id')
+    .select('stripe_customer_id, default_payment_method_id, expo_push_token')
     .eq('id', promise.user_id)
     .single();
 
@@ -391,9 +472,11 @@ async function chargeForFailedPromise(
 
     console.log(`[settle-promises] PaymentIntent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
 
+    const pushToken = (profile as Profile).expo_push_token;
+
     // Handle different payment statuses
     if (paymentIntent.status === 'succeeded') {
-      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents);
+      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents, pushToken);
       return {
         promiseId: promise.id,
         action: 'charged',
@@ -403,7 +486,7 @@ async function chargeForFailedPromise(
     }
 
     if (paymentIntent.status === 'requires_action') {
-      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, amountInCents);
+      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, amountInCents, pushToken);
       return {
         promiseId: promise.id,
         action: 'requires_action',
@@ -439,6 +522,8 @@ async function chargeForFailedPromise(
 
     console.error(`[settle-promises] Payment failed for promise ${promise.id}:`, stripeError);
 
+    const pushToken = (profile as Profile).expo_push_token;
+
     // Log the failed payment attempt (store amount in cents)
     await supabase.from('payments').insert({
       promise_id: promise.id,
@@ -450,8 +535,19 @@ async function chargeForFailedPromise(
       error_message: stripeError.message || stripeError.raw?.message || 'Unknown error',
     });
 
+    // Send push notification for failed payment
+    const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeFailed)
+      .replace('${amount}', formatAmount(amountInCents))
+      .replace('"${promise}"', `"${promise.text.substring(0, 30)}..."`);
+    await sendPushNotification(
+      pushToken,
+      'Payment Failed',
+      body,
+      { promiseId: promise.id, type: 'settlement_failed' },
+    );
+
     // Schedule retry or mark as abandoned
-    await handlePaymentFailure(promise, supabase, attemptNumber, stripeError);
+    await handlePaymentFailure(promise, supabase, attemptNumber, stripeError, pushToken, amountInCents);
 
     return {
       promiseId: promise.id,
@@ -470,6 +566,7 @@ async function handlePaymentSuccess(
   paymentIntentId: string,
   attemptNumber: number,
   amountInCents: number,
+  pushToken: string | null,
 ): Promise<void> {
   // Update promise
   await supabase
@@ -491,6 +588,16 @@ async function handlePaymentSuccess(
   });
 
   console.log(`[settle-promises] Payment succeeded for promise ${promise.id}`);
+
+  // Send push notification
+  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeSuccess)
+    .replace('${amount}', formatAmount(amountInCents));
+  await sendPushNotification(
+    pushToken,
+    'Promise Failed',
+    body,
+    { promiseId: promise.id, type: 'settlement_charged' },
+  );
 }
 
 /**
@@ -502,6 +609,7 @@ async function handlePaymentRequiresAction(
   paymentIntent: { id: string; client_secret: string },
   attemptNumber: number,
   amountInCents: number,
+  pushToken: string | null,
 ): Promise<void> {
   // Store client secret for app to complete payment
   await supabase
@@ -524,6 +632,16 @@ async function handlePaymentRequiresAction(
   });
 
   console.log(`[settle-promises] Payment requires action for promise ${promise.id}`);
+
+  // Send push notification - user needs to authenticate
+  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.requiresAction)
+    .replace('${amount}', formatAmount(amountInCents));
+  await sendPushNotification(
+    pushToken,
+    'Action Required',
+    body,
+    { promiseId: promise.id, type: 'settlement_requires_action' },
+  );
 }
 
 /**
@@ -534,6 +652,8 @@ async function handlePaymentFailure(
   supabase: ReturnType<typeof createAdminClient>,
   attemptNumber: number,
   error: { code?: string; message?: string },
+  pushToken: string | null,
+  amountInCents: number,
 ): Promise<void> {
   if (attemptNumber >= MAX_RETRIES) {
     // All retries exhausted - mark as abandoned
@@ -555,6 +675,16 @@ async function handlePaymentFailure(
         failed_payment_count: 1, // Increment would require RPC
       })
       .eq('id', promise.user_id);
+
+    // Send push notification for abandoned payment
+    const body = pickRandom(SETTLEMENT_NOTIFICATIONS.paymentAbandoned)
+      .replace('${amount}', formatAmount(amountInCents));
+    await sendPushNotification(
+      pushToken,
+      'Account Restricted',
+      body,
+      { promiseId: promise.id, type: 'settlement_abandoned' },
+    );
 
   } else {
     // Schedule next retry

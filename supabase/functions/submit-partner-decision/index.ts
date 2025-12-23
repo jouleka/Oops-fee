@@ -49,6 +49,65 @@ interface SubmitPartnerDecisionRequest {
   approved: boolean;
 }
 
+// Notification messages for partner decisions
+const APPROVED_MESSAGES = [
+  '✅ Your partner confirmed you did it!',
+  "Partner says you're good. Promise complete!",
+  'Verified! Your partner approved.',
+  'Your partner gave the thumbs up. Nice.',
+  'Confirmation received. You actually did it.',
+];
+
+const REJECTED_MESSAGES = [
+  '❌ Your partner says nope.',
+  'Partner rejected your completion.',
+  "Denied. Your partner didn't buy it.",
+  'Your partner called BS. Promise failed.',
+  'Verification denied. Oops.',
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Send a push notification via Expo Push API
+ */
+async function sendPushNotification(
+  pushToken: string | null,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  if (!pushToken) {
+    console.log('[submit-partner-decision] No push token, skipping notification');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: 'default',
+        data,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('[submit-partner-decision] Push notification sent:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[submit-partner-decision] Failed to send push notification:', error);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -154,7 +213,7 @@ Deno.serve(async (req: Request) => {
     // 5. Get promise and validate state
     const { data: promise, error: promiseError } = await supabase
       .from('promises')
-      .select('id, status, partner_state, stake, verification_type')
+      .select('id, status, partner_state, stake, verification_type, user_id')
       .eq('id', shareLink.promise_id)
       .single();
 
@@ -232,7 +291,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 7. Revoke the share link (partner links are one-time use)
+    // 7. Send push notification to promise owner
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('expo_push_token')
+      .eq('id', promise.user_id)
+      .single();
+
+    if (profile?.expo_push_token) {
+      const messages = approved ? APPROVED_MESSAGES : REJECTED_MESSAGES;
+      const title = approved ? '✅ Partner approved!' : '❌ Partner rejected';
+      await sendPushNotification(
+        profile.expo_push_token,
+        title,
+        pickRandom(messages),
+        { promiseId: shareLink.promise_id, type: 'partner_decision', approved },
+      );
+    }
+
+    // 8. Revoke the share link (partner links are one-time use)
     await supabase
       .from('share_links')
       .update({ revoked: true })

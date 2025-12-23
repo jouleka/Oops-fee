@@ -38,6 +38,8 @@ enable_signup = true
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
+# Note: Enable leaked password protection (HIBP) in Supabase Dashboard:
+# Authentication → Settings → Enable leaked password protection
 
 [auth.sms]
 enable_signup = true
@@ -60,4 +62,20 @@ ip_version = "IPv4"
 
 [analytics]
 enabled = false
+
+# Edge Functions - disable JWT verification for public endpoints
+[functions.submit-sponsor]
+verify_jwt = false
+
+[functions.submit-roast]
+verify_jwt = false
+
+[functions.submit-partner-decision]
+verify_jwt = false
+
+[functions.get-share-context]
+verify_jwt = false
+
+[functions.send-reengagement]
+verify_jwt = false
 

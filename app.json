@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.oopsfee.app",
       "appleTeamId": "VNF5P4YVBN",
-      "associatedDomains": ["applinks:oopsfee.app"],
+      "associatedDomains": [
+        "applinks:oopsfee.app"
+      ],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "OopsFee needs mic access to record your promise. (For evidence.)"
       },
@@ -54,7 +56,10 @@
               "pathPrefix": "/s/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -93,6 +98,30 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.oopsfee.app.widget",
+                  "targetName": "OopsFeeWidget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.oopsfee.app"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "c74989cd-da8b-4327-865c-d6a7977e8c00"
+      }
+    },
+    "owner": "jurgenleka"
   }
 }

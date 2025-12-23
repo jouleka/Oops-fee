@@ -15,6 +15,8 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import {
   createContext,
@@ -26,6 +28,8 @@ import {
   type ReactNode,
 } from 'react';
 import { Platform } from 'react-native';
+
+import Constants from 'expo-constants';
 
 import type { Profile, ProfileInsert, UserPaymentState } from '@/lib/supabase';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
@@ -77,6 +81,67 @@ export type AuthContextType = AuthState & AuthActions;
 // ─────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+// ─────────────────────────────────────────────────────────────
+// Push Token Registration
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Get Expo push token and store it in the user's profile.
+ * Only works on physical devices (not simulators/web).
+ */
+async function registerPushToken(userId: string): Promise<void> {
+  // Push tokens only work on physical devices
+  if (!Device.isDevice) {
+    console.log('[Auth] Push tokens require a physical device, skipping');
+    return;
+  }
+
+  // Skip web platform
+  if (Platform.OS === 'web') {
+    return;
+  }
+
+  try {
+    // Check if we have permission
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    // If not granted, request permission
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('[Auth] Push notification permission not granted');
+      return;
+    }
+
+    // Get the Expo push token
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+
+    const pushToken = tokenData.data;
+    console.log('[Auth] Got Expo push token:', pushToken);
+
+    // Store in profile
+    const { error } = await supabase
+      .from('profiles')
+      .update({ expo_push_token: pushToken })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('[Auth] Failed to store push token:', error);
+    } else {
+      console.log('[Auth] Push token stored successfully');
+    }
+  } catch (error) {
+    console.error('[Auth] Error registering push token:', error);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // Provider
@@ -161,6 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error('[Auth] Error creating profile:', insertError);
           } else {
             setProfile(newData as Profile);
+            // Register push token for new profile
+            registerPushToken(userId);
           }
         } else {
           console.error('[Auth] Error fetching profile:', error);
@@ -169,10 +236,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setProfile(data);
+      // Register push token on profile fetch (token may have changed)
+      registerPushToken(userId);
+      // Update last active timestamp for re-engagement tracking
+      updateLastActive();
     };
 
     doFetch();
   }, [session?.user?.id, session?.user]);
+
+  /**
+   * Update last_active_at timestamp for re-engagement notification targeting.
+   * Called on app open when user is authenticated.
+   */
+  async function updateLastActive(): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('update_last_active');
+      if (error) {
+        // Silently fail - this is non-critical telemetry
+        console.log('[Auth] Failed to update last_active:', error.message);
+      }
+    } catch {
+      // Ignore errors - non-critical
+    }
+  }
 
   const refreshProfile = useCallback(async () => {
     if (!session?.user?.id) return;

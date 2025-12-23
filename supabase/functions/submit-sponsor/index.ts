@@ -50,6 +50,66 @@ interface SubmitSponsorRequest {
   fromName: string;
 }
 
+// Notification messages for when someone sponsors
+const SPONSOR_MESSAGES = [
+  '💰 {fromName} added ${amount} to your stake!',
+  '+${amount} from {fromName}. No pressure.',
+  '{fromName} just made your promise more expensive.',
+  'Your stake just grew by ${amount}. Thanks, {fromName}.',
+  '{fromName} is betting against you. +${amount}.',
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatMessage(template: string, vars: Record<string, string | number>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+    result = result.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), `$${value}`);
+  }
+  return result;
+}
+
+/**
+ * Send a push notification via Expo Push API
+ */
+async function sendPushNotification(
+  pushToken: string | null,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  if (!pushToken) {
+    console.log('[submit-sponsor] No push token, skipping notification');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: 'default',
+        data,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('[submit-sponsor] Push notification sent:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[submit-sponsor] Failed to send push notification:', error);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -168,7 +228,7 @@ Deno.serve(async (req: Request) => {
     // 5. Check promise is still active
     const { data: promise, error: promiseError } = await supabase
       .from('promises')
-      .select('id, status, deadline_at')
+      .select('id, status, deadline_at, user_id')
       .eq('id', shareLink.promise_id)
       .single();
 
@@ -238,6 +298,27 @@ Deno.serve(async (req: Request) => {
       .select('sponsor_total, sponsor_count')
       .eq('id', shareLink.promise_id)
       .single();
+
+    // 10. Send push notification to promise owner
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('expo_push_token')
+      .eq('id', promise.user_id)
+      .single();
+
+    if (profile?.expo_push_token) {
+      const amountDollars = (amountCents / 100).toFixed(amountCents % 100 === 0 ? 0 : 2);
+      const message = formatMessage(pickRandom(SPONSOR_MESSAGES), {
+        fromName: sanitizedName,
+        amount: amountDollars,
+      });
+      await sendPushNotification(
+        profile.expo_push_token,
+        '💰 New sponsor!',
+        message,
+        { promiseId: shareLink.promise_id, type: 'sponsor' },
+      );
+    }
 
     return new Response(
       JSON.stringify({

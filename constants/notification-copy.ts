@@ -204,6 +204,225 @@ export const MULTIPLIER_NOTIFICATIONS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
+// SETTLEMENT NOTIFICATIONS (Push from backend)
+// When the settlement cron charges for failed promises
+// ─────────────────────────────────────────────────────────────
+
+export const SETTLEMENT_NOTIFICATIONS = {
+  /** Successful charge after promise failure */
+  chargeSuccess: [
+    '💸 You lost ${amount}',
+    '${amount} gone. Promise broken.',
+    "That's ${amount} you won't see again.",
+    'Promise failed. ${amount} charged.',
+    'The wallet remembers: -${amount}.',
+  ],
+
+  /** Payment failed (card declined, etc.) */
+  chargeFailed: [
+    '⚠️ Payment failed for "${promise}"',
+    "We couldn't charge ${amount}. Card issue.",
+    'Payment declined. ${amount} still owed.',
+    'Your card said no to ${amount}.',
+    'Failed charge: ${amount}. Check your card.',
+  ],
+
+  /** SCA/3DS required - user must authenticate */
+  requiresAction: [
+    '🔐 Action needed: ${amount} charge',
+    'Your bank needs confirmation for ${amount}.',
+    'Authenticate the ${amount} payment in the app.',
+    '${amount} charge pending your approval.',
+    'One more step: confirm ${amount} payment.',
+  ],
+
+  /** Payment abandoned after max retries */
+  paymentAbandoned: [
+    '🚫 ${amount} charge abandoned. Account restricted.',
+    "Couldn't collect ${amount}. Your account is blocked.",
+    'Payment failed permanently. New stakes disabled.',
+    '${amount} uncollected. Account frozen.',
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// RE-ENGAGEMENT NOTIFICATIONS
+// Bring users back after inactivity (psychology: loss aversion + FOMO)
+// ─────────────────────────────────────────────────────────────
+
+export const REENGAGEMENT_NOTIFICATIONS = {
+  /** 3 days inactive - gentle nudge */
+  day3: [
+    "Miss us? Your accountability partner is waiting.",
+    "3 days without a promise. What are you working on?",
+    "Your streak reset. Ready to start a new one?",
+    "Promises kept this week: 0. That's unlike you.",
+  ],
+
+  /** 7 days inactive - loss framing */
+  day7: [
+    "A week without commitments. Playing it safe?",
+    "7 days off. Sometimes we all need a break. Ready to come back?",
+    "Your future self is wondering where you went.",
+    "No stakes, no skin in the game. Miss the pressure?",
+  ],
+
+  /** 14 days inactive - identity challenge */
+  day14: [
+    "Remember when you were someone who kept promises?",
+    "Two weeks. The app misses your ambition.",
+    "Still there? One small promise can restart everything.",
+    "Your accountability muscle is getting weak.",
+  ],
+
+  /** 30 days inactive - fresh start framing */
+  day30: [
+    "New month, clean slate. What will you commit to?",
+    "30 days is a long time. Ready for a comeback?",
+    "One promise. That's all it takes to restart.",
+    "We saved your spot. Welcome back anytime.",
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// MOMENTUM NOTIFICATIONS
+// Celebrate wins and build identity (psychology: positive reinforcement)
+// ─────────────────────────────────────────────────────────────
+
+export const MOMENTUM_NOTIFICATIONS = {
+  /** Weekly summary - positive framing */
+  weeklySummary: [
+    "This week: {kept} kept, {failed} failed, ${saved} saved. Not bad.",
+    "Weekly stats: {kept}/{total} promises kept. ${saved} in your pocket.",
+    "You kept {kept} promises this week. Your past self would be proud.",
+    "{kept} wins this week. The streak continues.",
+  ],
+
+  /** Money saved milestone */
+  moneySaved: [
+    "💰 You've saved ${total} by keeping promises. That's real money.",
+    "${total} saved lifetime. Accountability pays.",
+    "If you'd failed everything, you'd be down ${total}. Nice work.",
+    "${total} kept in your pocket. Self-discipline has a price tag.",
+  ],
+
+  /** Near-miss celebration (completed just before deadline) */
+  nearMiss: [
+    "😅 Close call! You saved ${amount} with {hours} hours to spare.",
+    "Cutting it close! ${amount} saved at the last minute.",
+    "Photo finish! ${amount} stays in your wallet.",
+    "That was tight. ${amount} saved. Maybe start earlier next time?",
+  ],
+
+  /** Comeback after failure */
+  comeback: [
+    "Back on track! First win after a loss. That's resilience.",
+    "Redemption arc starting. Keep it going.",
+    "One win doesn't erase the loss, but it's a start.",
+    "The best time to start was yesterday. The second best time is now.",
+  ],
+
+  /** Perfect week */
+  perfectWeek: [
+    "🏆 Perfect week! Every promise kept. You're in the top 5%.",
+    "Flawless. 7 days, zero failures. That's elite.",
+    "100% this week. Your future self sends thanks.",
+    "All promises kept. This is what discipline looks like.",
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// INSIGHT NOTIFICATIONS
+// Personalized behavioral insights (psychology: self-awareness)
+// ─────────────────────────────────────────────────────────────
+
+export const INSIGHT_NOTIFICATIONS = {
+  /** Best day pattern */
+  bestDay: [
+    "Fun fact: You're most successful on {day}s. Plan accordingly.",
+    "Your best day is {day}. Consider frontloading your promises.",
+    "{day} is your power day. {successRate}% success rate.",
+  ],
+
+  /** Worst day pattern */
+  worstDay: [
+    "Heads up: {day}s are your weak spot. Only {successRate}% success.",
+    "You struggle on {day}s. Maybe go easier on yourself that day?",
+    "{day} trips you up. Smaller stakes on those days?",
+  ],
+
+  /** Optimal stake range */
+  optimalStake: [
+    "Sweet spot: You're {successRate}% successful with ${min}-${max} stakes.",
+    "Data says ${min}-${max} is your goldilocks zone.",
+    "Stakes over ${max} stress you out. Stakes under ${min} don't motivate.",
+  ],
+
+  /** Time of day pattern */
+  timePattern: [
+    "Morning promises: {morningRate}%. Evening: {eveningRate}%. Interesting.",
+    "You're a {preference} person. {rate}% success rate.",
+    "Pro tip: Your {time} commitments have the best track record.",
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// SOCIAL PROOF NOTIFICATIONS
+// Show that others are using the app (psychology: bandwagon effect)
+// ─────────────────────────────────────────────────────────────
+
+export const SOCIAL_PROOF_NOTIFICATIONS = [
+  "{count} promises were kept today. You could add to that.",
+  "Right now, {activeUsers} people have skin in the game. Join them?",
+  "${totalStaked} is on the line across all users today.",
+  "Someone just completed a ${amount} promise. Your turn?",
+  "{count} people made promises this morning. Starting your day with intention?",
+] as const;
+
+// ─────────────────────────────────────────────────────────────
+// PARTNER ACTION NOTIFICATIONS (Push from backend)
+// When partners/sponsors interact with your promise
+// ─────────────────────────────────────────────────────────────
+
+export const PARTNER_ACTION_NOTIFICATIONS = {
+  /** Someone sponsored your promise */
+  sponsored: [
+    '💰 {fromName} added ${amount} to your stake!',
+    '+${amount} from {fromName}. No pressure.',
+    '{fromName} just made your promise more expensive.',
+    'Your stake just grew by ${amount}. Thanks, {fromName}.',
+    '{fromName} is betting against you. +${amount}.',
+  ],
+
+  /** Someone left a roast message */
+  roastReceived: [
+    '📝 {fromName} left you a message',
+    '🔥 New roast from {fromName}',
+    '{fromName} has words for you...',
+    'Message received from {fromName}',
+    '{fromName} is watching. They left a note.',
+  ],
+
+  /** Partner approved your completion */
+  partnerApproved: [
+    '✅ Your partner confirmed you did it!',
+    'Partner says you\'re good. Promise complete!',
+    'Verified! Your partner approved.',
+    'Your partner gave the thumbs up. Nice.',
+    'Confirmation received. You actually did it.',
+  ],
+
+  /** Partner rejected your completion */
+  partnerRejected: [
+    '❌ Your partner says nope.',
+    'Partner rejected your completion.',
+    'Denied. Your partner didn\'t buy it.',
+    'Your partner called BS. Promise failed.',
+    'Verification denied. Oops.',
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
 

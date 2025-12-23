@@ -51,6 +51,65 @@ interface SubmitRoastRequest {
   fromName: string;
 }
 
+// Notification messages for when someone leaves a roast
+const ROAST_MESSAGES = [
+  '📝 {fromName} left you a message',
+  '🔥 New roast from {fromName}',
+  '{fromName} has words for you...',
+  'Message received from {fromName}',
+  '{fromName} is watching. They left a note.',
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatMessage(template: string, vars: Record<string, string | number>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+  }
+  return result;
+}
+
+/**
+ * Send a push notification via Expo Push API
+ */
+async function sendPushNotification(
+  pushToken: string | null,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  if (!pushToken) {
+    console.log('[submit-roast] No push token, skipping notification');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: 'default',
+        data,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('[submit-roast] Push notification sent:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[submit-roast] Failed to send push notification:', error);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -169,7 +228,7 @@ Deno.serve(async (req: Request) => {
     // 5. Check promise is still active
     const { data: promise, error: promiseError } = await supabase
       .from('promises')
-      .select('id, status')
+      .select('id, status, user_id')
       .eq('id', shareLink.promise_id)
       .single();
 
@@ -230,6 +289,25 @@ Deno.serve(async (req: Request) => {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
+      );
+    }
+
+    // 8. Send push notification to promise owner
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('expo_push_token')
+      .eq('id', promise.user_id)
+      .single();
+
+    if (profile?.expo_push_token) {
+      const message = formatMessage(pickRandom(ROAST_MESSAGES), {
+        fromName: sanitizedName,
+      });
+      await sendPushNotification(
+        profile.expo_push_token,
+        '🔥 New message!',
+        message,
+        { promiseId: shareLink.promise_id, type: 'roast' },
       );
     }
 

@@ -176,7 +176,7 @@ export async function schedulePromiseReminders(promise: UserPromise): Promise<vo
             type: 'reminder',
             tier,
           },
-          sound: tier === 'hour1' || tier === 'expired' ? 'default' : undefined,
+          sound: tier === 'hour1' || tier === 'expired' ? 'default' : false,
           categoryIdentifier: 'promise-reminder',
         },
         trigger: {
