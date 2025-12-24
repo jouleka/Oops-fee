@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { CardField, createCardTokenFromField, isStripeConfigured } from '@/lib/stripe';
 import { formatCents, payoutToCard, savePayoutMethod, withdrawWallet } from '@/lib/wallet/api';
 
 function hapticMedium() {
@@ -62,12 +63,9 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   const [method, setMethod] = useState<PayoutMethod>('paypal');
   const [amountText, setAmountText] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
-  // Debit card fields
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
+  // Debit card - use saved card or enter new one via CardField
   const [useSavedCard, setUseSavedCard] = useState(true);
+  const [cardComplete, setCardComplete] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,19 +102,8 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   const hasStripeConnect = Boolean(walletState.stripeConnectAccountId);
   const hasSavedCard = Boolean(walletState.payoutCard);
   
-  // Parse expiry MM/YY
-  const expiryParts = expiry.split('/');
-  const expMonth = expiryParts[0] ? parseInt(expiryParts[0], 10) : 0;
-  const expYear = expiryParts[1] ? parseInt(`20${expiryParts[1]}`, 10) : 0;
-  
-  // Validate card fields (only needed if entering new card)
-  const isValidCard = useSavedCard && hasSavedCard
-    ? true
-    : cardNumber.replace(/\s/g, '').length >= 15 &&
-      expMonth >= 1 && expMonth <= 12 &&
-      expYear >= new Date().getFullYear() &&
-      cvc.length >= 3 &&
-      cardholderName.trim().length > 0;
+  // Validate card - either using saved card or CardField is complete
+  const isValidCard = (useSavedCard && hasSavedCard) || cardComplete;
   
   // Calculate fee for debit card payout
   const debitFeeAmount = Math.round(amountCents * (DEBIT_FEE_PERCENT / 100));
@@ -151,16 +138,34 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
     try {
       // Handle debit card payout
       if (method === 'debit') {
+        let cardToken: string | undefined;
+
+        // If not using saved card, tokenize the new card first
+        if (!(useSavedCard && hasSavedCard)) {
+          if (!isStripeConfigured()) {
+            setError('Payments require the mobile app');
+            hapticError();
+            setLoading(false);
+            return;
+          }
+
+          // CardField component handles card details - create token from it
+          const tokenResult = await createCardTokenFromField();
+
+          if (!tokenResult.success || !tokenResult.tokenId) {
+            setError(tokenResult.error || 'Failed to process card');
+            hapticError();
+            setLoading(false);
+            return;
+          }
+
+          cardToken = tokenResult.tokenId;
+        }
+
         const result = await payoutToCard({
           amountCents,
           useSavedCard: useSavedCard && hasSavedCard,
-          ...(!(useSavedCard && hasSavedCard) && {
-            cardNumber: cardNumber.replace(/\s/g, ''),
-            expMonth,
-            expYear,
-            cvc,
-            cardholderName: cardholderName.trim(),
-          }),
+          cardToken,
         });
 
         if (result.success) {
@@ -221,11 +226,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   }, [
     amountCents,
     canWithdraw,
-    cardNumber,
-    cardholderName,
-    cvc,
-    expMonth,
-    expYear,
     hasSavedCard,
     loading,
     method,
@@ -241,10 +241,8 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
     setAmountText('');
     setSuccess(false);
     setError(null);
-    setCardNumber('');
-    setExpiry('');
-    setCvc('');
-    setCardholderName('');
+    setCardComplete(false);
+    setUseSavedCard(true);
     setSuccessCardLast4(null);
   };
 
@@ -252,22 +250,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
     if (loading) return;
     resetForm();
     onClose();
-  };
-
-  // Format card number with spaces
-  const formatCardNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 16);
-    const groups = cleaned.match(/.{1,4}/g);
-    return groups ? groups.join(' ') : cleaned;
-  };
-
-  // Format expiry as MM/YY
-  const formatExpiry = (text: string) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 4);
-    if (cleaned.length >= 3) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    }
-    return cleaned;
   };
 
   return (
@@ -538,99 +520,55 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                           />
                         )}
                         <Text style={styles.sectionLabel}>
-                          {hasSavedCard ? 'Use a different card' : 'Debit Card Details'}
+                          {hasSavedCard ? 'Use a different card' : 'Debit Card'}
                         </Text>
                       </View>
 
                       {(!hasSavedCard || !useSavedCard) && (
-                        <View style={styles.cardInputs}>
-                          {/* Card Number */}
-                          <View style={styles.cardInputWrapper}>
-                            <Ionicons
-                              name="card-outline"
-                              size={20}
-                              color={Colors.textMuted}
-                              style={styles.cardInputIcon}
-                            />
-                            <TextInput
-                              style={styles.cardInput}
-                              value={cardNumber}
-                              onChangeText={(t) => {
-                                setCardNumber(formatCardNumber(t));
-                                setError(null);
+                        <View style={styles.cardFieldContainer}>
+                          {/* Stripe CardField - single line, no country/postal */}
+                          {CardField ? (
+                            <CardField
+                              postalCodeEnabled={false}
+                              cardStyle={{
+                                backgroundColor: '#1C1C1E',
+                                textColor: '#FFFFFF',
+                                placeholderColor: '#8E8E93',
+                                fontSize: 17,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: '#3A3A3C',
+                                cursorColor: '#007AFF',
                               }}
-                              placeholder="4242 4242 4242 4242"
-                              placeholderTextColor={Colors.textMuted}
-                              keyboardType="number-pad"
-                              maxLength={19}
-                            />
-                          </View>
-
-                          {/* Expiry and CVC Row */}
-                          <View style={styles.cardRowInputs}>
-                            <View style={[styles.cardInputWrapper, styles.cardInputHalf]}>
-                              <TextInput
-                                style={styles.cardInput}
-                                value={expiry}
-                                onChangeText={(t) => {
-                                  setExpiry(formatExpiry(t));
+                              style={styles.cardField}
+                              onCardChange={(cardDetails: { complete: boolean }) => {
+                                setCardComplete(cardDetails.complete);
+                                if (cardDetails.complete) {
                                   setError(null);
-                                }}
-                                placeholder="MM/YY"
-                                placeholderTextColor={Colors.textMuted}
-                                keyboardType="number-pad"
-                                maxLength={5}
-                              />
-                            </View>
-                            <View style={[styles.cardInputWrapper, styles.cardInputHalf]}>
-                              <TextInput
-                                style={styles.cardInput}
-                                value={cvc}
-                                onChangeText={(t) => {
-                                  setCvc(t.replace(/\D/g, '').slice(0, 4));
-                                  setError(null);
-                                }}
-                                placeholder="CVC"
-                                placeholderTextColor={Colors.textMuted}
-                                keyboardType="number-pad"
-                                maxLength={4}
-                                secureTextEntry
-                              />
-                            </View>
-                          </View>
-
-                          {/* Cardholder Name */}
-                          <View style={styles.cardInputWrapper}>
-                            <Ionicons
-                              name="person-outline"
-                              size={20}
-                              color={Colors.textMuted}
-                              style={styles.cardInputIcon}
-                            />
-                            <TextInput
-                              style={styles.cardInput}
-                              value={cardholderName}
-                              onChangeText={(t) => {
-                                setCardholderName(t);
-                                setError(null);
+                                }
                               }}
-                              placeholder="Name on card"
-                              placeholderTextColor={Colors.textMuted}
-                              autoCapitalize="words"
-                              autoCorrect={false}
                             />
-                          </View>
-
-                          {/* Debit card notice */}
-                          <View style={styles.debitNotice}>
-                            <Ionicons name="information-circle" size={16} color={Colors.textMuted} />
-                            <Text style={styles.debitNoticeText}>
-                              Only Visa/Mastercard debit cards eligible for instant payout
-                            </Text>
-                          </View>
+                          ) : (
+                            <View style={styles.cardFieldPlaceholder}>
+                              <Text style={styles.cardFieldPlaceholderText}>
+                                Card input requires mobile app
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={styles.cardFieldHint}>
+                            Card number • MM/YY • CVC
+                          </Text>
                         </View>
                       )}
                     </Pressable>
+
+                    {/* Debit card notice */}
+                    <View style={styles.debitNotice}>
+                      <Ionicons name="information-circle" size={16} color={Colors.textMuted} />
+                      <Text style={styles.debitNoticeText}>
+                        Only Visa/Mastercard debit cards eligible for instant payout
+                      </Text>
+                    </View>
 
                     {/* Fee breakdown */}
                     {isValidAmount && (
@@ -995,34 +933,31 @@ const styles = StyleSheet.create({
   radioIcon: {
     marginRight: Spacing.sm,
   },
-  cardInputs: {
+  cardFieldContainer: {
     marginTop: Spacing.md,
-    gap: Spacing.sm,
   },
-  cardInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardField: {
+    width: '100%',
+    height: 54,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 10,
+  },
+  cardFieldPlaceholder: {
+    height: 54,
     backgroundColor: Colors.bgElevated,
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  cardInputIcon: {
-    marginRight: Spacing.sm,
+  cardFieldPlaceholderText: {
+    ...Typography.caption,
+    color: Colors.textMuted,
   },
-  cardInput: {
-    flex: 1,
-    ...Typography.body,
-    color: Colors.text,
-    paddingVertical: Spacing.md,
-  },
-  cardRowInputs: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  cardInputHalf: {
-    flex: 1,
+  cardFieldHint: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.xs,
   },
   debitNotice: {
     flexDirection: 'row',

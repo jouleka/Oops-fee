@@ -12,14 +12,23 @@
  */
 
 export {
+  CardField,
+  CardForm,
+  createCardToken,
+  createCardTokenFromField,
   createSetupIntent,
   isStripeConfigured,
   presentAddCardSheet,
   presentPaymentForSCA,
+  presentPayoutCardSheet,
   presentTopUpSheet,
   removePaymentMethod,
   StripeProvider,
+  useStripe,
+  type CardParams,
+  type CardTokenResult,
   type PaymentSheetResult,
+  type PayoutCardResult,
   type RemovePaymentResult,
   type SetupIntentResult,
 } from './client';

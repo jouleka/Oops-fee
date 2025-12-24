@@ -31,15 +31,10 @@ const INSTANT_PAYOUT_FEE_CAP_CENTS = 1500; // $15 cap
 
 interface PayoutToCardRequest {
   amount_cents: number;
-  // Card details for new card
-  card_number?: string;
-  exp_month?: number;
-  exp_year?: number;
-  cvc?: string;
+  // Stripe token ID from client-side tokenization
+  card_token?: string;
   // Or use saved card (fingerprint to identify)
   use_saved_card?: boolean;
-  // Cardholder name (required for new cards)
-  cardholder_name?: string;
 }
 
 interface PayoutToCardResponse {
@@ -85,12 +80,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const {
       amount_cents,
-      card_number,
-      exp_month,
-      exp_year,
-      cvc,
+      card_token,
       use_saved_card,
-      cardholder_name,
     } = body as PayoutToCardRequest;
 
     // Validate amount
@@ -121,13 +112,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate card details provided (either new card OR use saved)
-    const hasNewCardDetails = card_number && exp_month && exp_year;
-    if (!hasNewCardDetails && !use_saved_card) {
+    // Validate card details provided (either new card token OR use saved)
+    if (!card_token && !use_saved_card) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Provide card details or use_saved_card flag',
+          message: 'Provide card_token or use_saved_card flag',
         } as PayoutToCardResponse),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -139,7 +129,7 @@ Deno.serve(async (req: Request) => {
     // Get user's profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('balance_cents, email, display_name, payout_connect_account_id, payout_card_last4, payout_card_fingerprint')
+      .select('balance_cents, display_name, payout_connect_account_id, payout_card_last4, payout_card_fingerprint')
       .eq('id', user.id)
       .single();
 
@@ -186,7 +176,8 @@ Deno.serve(async (req: Request) => {
         const account = await stripe.accounts.create({
           type: 'custom',
           country: 'US',
-          email: profile.email || user.email,
+          default_currency: 'usd',
+          email: user.email,
           capabilities: {
             // Only request card_payments capability for receiving card payouts
             transfers: { requested: true },
@@ -197,7 +188,7 @@ Deno.serve(async (req: Request) => {
             url: 'https://oopsfee.app',
           },
           individual: {
-            email: profile.email || user.email,
+            email: user.email,
             first_name: profile.display_name?.split(' ')[0] || 'User',
             last_name: profile.display_name?.split(' ').slice(1).join(' ') || user.id.slice(0, 8),
           },
@@ -279,31 +270,22 @@ Deno.serve(async (req: Request) => {
       }
 
     } else {
-      // Add new card
-      if (!card_number || !exp_month || !exp_year) {
+      // Add new card using token from client
+      if (!card_token) {
         return new Response(
           JSON.stringify({
             success: false,
-            message: 'Card number, expiration month, and year are required',
+            message: 'Card token is required for new cards',
           } as PayoutToCardResponse),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
-      console.log(`[payout-to-card] Adding new card for user ${user.id}`);
+      console.log(`[payout-to-card] Adding new card for user ${user.id} using token`);
 
       try {
-        // Create card token first
-        const token = await stripe.tokens.create({
-          card: {
-            number: card_number,
-            exp_month: exp_month,
-            exp_year: exp_year,
-            cvc: cvc,
-            currency: 'usd',
-            name: cardholder_name || profile.display_name || 'Cardholder',
-          },
-        });
+        // First retrieve the token to check if it's a debit card
+        const token = await stripe.tokens.retrieve(card_token);
 
         // Verify it's a debit card
         if (token.card?.funding !== 'debit') {
@@ -318,7 +300,7 @@ Deno.serve(async (req: Request) => {
 
         // Add as external account to Connect account
         const externalAccount = await stripe.accounts.createExternalAccount(connectAccountId, {
-          external_account: token.id,
+          external_account: card_token,
           default_for_currency: true,
         });
 
@@ -365,13 +347,29 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Step 3: Create instant payout
-    console.log(`[payout-to-card] Creating instant payout of ${netDisplay} to card ${externalAccountId}`);
+    // Step 3: Transfer funds from platform to Connect account, then payout
+    console.log(`[payout-to-card] Transferring ${netDisplay} to Connect account ${connectAccountId}`);
 
     let payout;
     try {
-      // Create payout to the debit card
-      // Note: Net amount is sent (amount minus fee)
+      // First, transfer from platform to Connect account
+      const transfer = await stripe.transfers.create({
+        amount: netPayoutCents,
+        currency: 'usd',
+        destination: connectAccountId,
+        description: `OopsFee withdrawal for user ${user.id}`,
+        metadata: {
+          user_id: user.id,
+          gross_amount: amount_cents,
+          fee_amount: feeAmountCents,
+        },
+      });
+
+      console.log(`[payout-to-card] Transfer created: ${transfer.id}`);
+
+      // Now create instant payout from Connect account to their card
+      console.log(`[payout-to-card] Creating instant payout of ${netDisplay} to card ${externalAccountId}`);
+      
       payout = await stripe.payouts.create(
         {
           amount: netPayoutCents,
@@ -381,6 +379,7 @@ Deno.serve(async (req: Request) => {
           description: `OopsFee instant withdrawal`,
           metadata: {
             user_id: user.id,
+            transfer_id: transfer.id,
             gross_amount: amount_cents,
             fee_amount: feeAmountCents,
           },

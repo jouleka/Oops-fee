@@ -61,12 +61,8 @@ export interface WithdrawResponse {
 
 export interface PayoutToCardParams {
   amountCents: number;
-  // New card details
-  cardNumber?: string;
-  expMonth?: number;
-  expYear?: number;
-  cvc?: string;
-  cardholderName?: string;
+  // Stripe token ID (from client-side tokenization)
+  cardToken?: string;
   // Or use saved card
   useSavedCard?: boolean;
 }
@@ -386,11 +382,7 @@ export async function payoutToCard(params: PayoutToCardParams): Promise<PayoutTo
       },
       body: JSON.stringify({
         amount_cents: params.amountCents,
-        card_number: params.cardNumber,
-        exp_month: params.expMonth,
-        exp_year: params.expYear,
-        cvc: params.cvc,
-        cardholder_name: params.cardholderName,
+        card_token: params.cardToken,
         use_saved_card: params.useSavedCard,
       }),
     });

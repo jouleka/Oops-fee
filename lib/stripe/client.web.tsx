@@ -54,6 +54,27 @@ export interface RemovePaymentResult {
   error?: string;
 }
 
+export interface CardTokenResult {
+  success: boolean;
+  tokenId?: string;
+  error?: string;
+}
+
+export interface PayoutCardResult {
+  success: boolean;
+  cancelled?: boolean;
+  tokenId?: string;
+  error?: string;
+}
+
+export interface CardParams {
+  number: string;
+  expMonth: number;
+  expYear: number;
+  cvc: string;
+  name?: string;
+}
+
 // ─────────────────────────────────────────────────────────────
 // API Functions (stubs for web)
 // ─────────────────────────────────────────────────────────────
@@ -102,4 +123,45 @@ export async function removePaymentMethod(): Promise<RemovePaymentResult> {
   console.warn('[Stripe] removePaymentMethod is not supported on web.');
   return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };
 }
+
+/**
+ * Not available on web
+ */
+export async function createCardToken(_card: CardParams): Promise<CardTokenResult> {
+  console.warn('[Stripe] createCardToken is not supported on web.');
+  return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };
+}
+
+/**
+ * Not available on web
+ */
+export async function presentPayoutCardSheet(): Promise<PayoutCardResult> {
+  console.warn('[Stripe] presentPayoutCardSheet is not supported on web.');
+  return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };
+}
+
+/**
+ * Not available on web
+ */
+export async function createCardTokenFromField(): Promise<CardTokenResult> {
+  console.warn('[Stripe] createCardTokenFromField is not supported on web.');
+  return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };
+}
+
+/**
+ * CardField stub for web
+ */
+export const CardField = null;
+
+/**
+ * CardForm stub for web
+ */
+export const CardForm = null;
+
+/**
+ * useStripe stub for web
+ */
+export const useStripe = () => ({
+  createToken: async () => ({ error: { message: 'Not available on web' } }),
+});
 

@@ -226,11 +226,13 @@ Deno.serve(async (req: Request) => {
         );
 
         // Create PaymentIntent (not confirmed - app will present PaymentSheet)
+        // Restrict to card-based methods (Card, Apple Pay, Google Pay, Link)
+        // NOT Cash App, Amazon Pay, Crypto, etc.
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount_cents,
           currency: 'usd',
           customer: customerId,
-          automatic_payment_methods: { enabled: true },
+          payment_method_types: ['card', 'link'],
           metadata: {
             type: 'wallet_topup',
             user_id: user.id,

@@ -31,6 +31,14 @@ let RNStripeProvider: any = null;
 let initPaymentSheet: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let presentPaymentSheet: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let createTokenNative: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let CardFieldComponent: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let CardFormComponent: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let useStripeHook: any = null;
 
 if (!isExpoGo) {
   try {
@@ -39,6 +47,10 @@ if (!isExpoGo) {
     RNStripeProvider = stripe.StripeProvider;
     initPaymentSheet = stripe.initPaymentSheet;
     presentPaymentSheet = stripe.presentPaymentSheet;
+    createTokenNative = stripe.createToken;
+    CardFieldComponent = stripe.CardField;
+    CardFormComponent = stripe.CardForm;
+    useStripeHook = stripe.useStripe;
   } catch (e) {
     console.warn('[Stripe] Native module not available:', e);
   }
@@ -183,6 +195,13 @@ export async function presentAddCardSheet(): Promise<PaymentSheetResult> {
         merchantCountryCode: 'US',
         testEnv: __DEV__,
       } : undefined,
+      // Don't collect billing address - card BIN is enough
+      billingDetailsCollectionConfiguration: {
+        address: 'never',
+        phone: 'never',
+        email: 'never',
+        name: 'never',
+      },
       // Allow saving card for future use (which is the whole point)
       returnURL: 'oopsfee://payment-complete',
       // Style - Stripe requires hex colors, no rgba
@@ -262,6 +281,12 @@ export async function presentPaymentForSCA(
     const { error: initError } = await initPaymentSheet({
       paymentIntentClientSecret,
       merchantDisplayName: 'OopsFee',
+      billingDetailsCollectionConfiguration: {
+        address: 'never',
+        phone: 'never',
+        email: 'never',
+        name: 'never',
+      },
       returnURL: 'oopsfee://payment-complete',
       appearance: {
         colors: {
@@ -344,6 +369,13 @@ export async function presentTopUpSheet(
         merchantCountryCode: 'US',
         testEnv: __DEV__,
       } : undefined,
+      // Don't collect billing address
+      billingDetailsCollectionConfiguration: {
+        address: 'never',
+        phone: 'never',
+        email: 'never',
+        name: 'never',
+      },
       returnURL: 'oopsfee://payment-complete',
       // Style matching the app theme
       appearance: {
@@ -423,4 +455,202 @@ export async function removePaymentMethod(): Promise<RemovePaymentResult> {
     console.error('[Stripe] Remove error:', message);
     return { success: false, error: message };
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Payout Card Collection (uses PaymentSheet UI)
+// ─────────────────────────────────────────────────────────────
+
+export interface PayoutCardResult {
+  success: boolean;
+  cancelled?: boolean;
+  tokenId?: string;
+  error?: string;
+}
+
+/**
+ * Present PaymentSheet to collect a debit card for payouts.
+ * Uses the same nice UI as payment method setup.
+ * Returns a token that can be used for payout-to-card.
+ */
+export async function presentPayoutCardSheet(): Promise<PayoutCardResult> {
+  if (isExpoGo) {
+    return { 
+      success: false, 
+      error: 'Stripe requires a development build. Expo Go is not supported.' 
+    };
+  }
+
+  if (!isStripeConfigured() || !initPaymentSheet || !presentPaymentSheet || !createTokenNative) {
+    return { success: false, error: 'Stripe is not configured' };
+  }
+
+  try {
+    // Get SetupIntent from server (same as payment method)
+    const { clientSecret, customerId, ephemeralKey } = await createSetupIntent();
+
+    // Initialize PaymentSheet
+    const { error: initError } = await initPaymentSheet({
+      customerId,
+      customerEphemeralKeySecret: ephemeralKey,
+      setupIntentClientSecret: clientSecret,
+      merchantDisplayName: 'OopsFee - Payout Card',
+      applePay: Platform.OS === 'ios' ? {
+        merchantCountryCode: 'US',
+      } : undefined,
+      googlePay: Platform.OS === 'android' ? {
+        merchantCountryCode: 'US',
+        testEnv: __DEV__,
+      } : undefined,
+      billingDetailsCollectionConfiguration: {
+        address: 'never',
+        phone: 'never',
+        email: 'never',
+        name: 'never',
+      },
+      returnURL: 'oopsfee://payment-complete',
+      appearance: {
+        colors: {
+          primary: '#FFD60A', // Yellow for payouts
+          background: '#000000',
+          componentBackground: '#1C1C1E',
+          componentBorder: '#3A3A3C',
+          componentDivider: '#3A3A3C',
+          primaryText: '#FFFFFF',
+          secondaryText: '#B3B3B3',
+          componentText: '#FFFFFF',
+          placeholderText: '#737373',
+          icon: '#B3B3B3',
+          error: '#FF453A',
+        },
+        shapes: {
+          borderRadius: 12,
+          borderWidth: 1,
+        },
+      },
+    });
+
+    if (initError) {
+      console.error('[Stripe] Payout card init error:', initError);
+      return { success: false, error: initError.message };
+    }
+
+    // Present PaymentSheet
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code === 'Canceled') {
+        return { success: false, cancelled: true };
+      }
+      console.error('[Stripe] Payout card present error:', presentError);
+      return { success: false, error: presentError.message };
+    }
+
+    // Card was added successfully. Now create a token from it.
+    // The card is now attached to the customer, we can create a token.
+    const { token, error: tokenError } = await createTokenNative({ type: 'Card' });
+
+    if (tokenError || !token?.id) {
+      // Card was saved but token creation failed
+      // This is okay - we can still use the saved card via customer
+      console.warn('[Stripe] Token creation after setup failed, but card was saved');
+      return { success: true, tokenId: undefined };
+    }
+
+    return { success: true, tokenId: token.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[Stripe] Payout card error:', message);
+    return { success: false, error: message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Card Field Component & Tokenization (legacy)
+// ─────────────────────────────────────────────────────────────
+
+export interface CardTokenResult {
+  success: boolean;
+  tokenId?: string;
+  error?: string;
+}
+
+// Re-export CardField component for use in withdraw modals
+// Must be used with createCardTokenFromField()
+export const CardField = CardFieldComponent;
+
+// Re-export CardForm component (better multi-line layout)
+export const CardForm = CardFormComponent;
+
+// Re-export useStripe hook
+export const useStripe = useStripeHook;
+
+/**
+ * Create a token from a rendered CardField/CardForm component.
+ * 
+ * The CardField/CardForm must be rendered in your component before calling this.
+ * This function reads card details from the component and creates a token.
+ * 
+ * Usage:
+ * 1. Render <CardField /> or <CardForm /> in your component
+ * 2. When user fills in card and taps submit, call createCardTokenFromField()
+ * 
+ * @param currency - Currency code for Connect external account cards (default: 'usd')
+ */
+export async function createCardTokenFromField(currency = 'usd'): Promise<CardTokenResult> {
+  if (isExpoGo) {
+    return { 
+      success: false, 
+      error: 'Stripe requires a development build. Expo Go is not supported.' 
+    };
+  }
+
+  if (!isStripeConfigured() || !createTokenNative) {
+    return { success: false, error: 'Stripe is not configured' };
+  }
+
+  try {
+    // createToken reads from the mounted CardField/CardForm component
+    // currency is required when adding card as external account to Connect account
+    const { token, error } = await createTokenNative({
+      type: 'Card',
+      currency,
+    });
+
+    if (error) {
+      console.error('[Stripe] Token creation error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!token?.id) {
+      return { success: false, error: 'No token returned' };
+    }
+
+    return { success: true, tokenId: token.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to tokenize card';
+    console.error('[Stripe] Token error:', message);
+    return { success: false, error: message };
+  }
+}
+
+// Legacy type for backwards compatibility
+export interface CardParams {
+  number: string;
+  expMonth: number;
+  expYear: number;
+  cvc: string;
+  name?: string;
+}
+
+/**
+ * @deprecated Use CardField component with createCardTokenFromField() instead.
+ * Raw card params are not supported by Stripe React Native SDK.
+ */
+export async function createCardToken(_card: CardParams): Promise<CardTokenResult> {
+  console.warn('[Stripe] createCardToken with raw params is deprecated. Use CardField + createCardTokenFromField()');
+  return { 
+    success: false, 
+    error: 'Use CardField component with createCardTokenFromField() instead' 
+  };
 }

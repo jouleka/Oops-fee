@@ -93,12 +93,13 @@ Deno.serve(async (req: Request) => {
     );
 
     // 5. Create SetupIntent
+    // Only allow card-based payment methods that support off_session charges
+    // This enables Card, Apple Pay, Google Pay, and Link (all card-based)
+    // but NOT Amazon Pay, Cash App, etc. which require customer approval each time
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      // Enable automatic payment methods (cards, apple pay, google pay)
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      payment_method_types: ['card'],
+      usage: 'off_session', // Explicitly mark for future off-session use
       metadata: {
         supabase_user_id: user.id,
       },

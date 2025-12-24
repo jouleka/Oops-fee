@@ -1,12 +1,12 @@
 /**
  * TopUpModal
- * Add funds to wallet via PaymentSheet (Apple Pay, Google Pay, or card).
+ * Add funds to wallet.
  *
  * Features:
  * - Amount input with min ($5) / max ($500)
  * - Quick preset buttons ($25, $50, $100)
- * - PaymentSheet with Apple Pay / Google Pay support
- * - Falls back to saved card for web/Expo Go
+ * - If user has saved card → charges it directly (one tap)
+ * - If no card or charge fails → shows PaymentSheet
  */
 
 import * as Haptics from 'expo-haptics';
@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { isStripeConfigured, presentTopUpSheet } from '@/lib/stripe';
-import { confirmTopUp, createTopUpIntent, formatCents } from '@/lib/wallet/api';
+import { confirmTopUp, createTopUpIntent, formatCents, topUpWallet } from '@/lib/wallet/api';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -55,7 +55,7 @@ interface TopUpModalProps {
 
 export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
   const insets = useSafeAreaInsets();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, paymentState } = useAuth();
   const [amountText, setAmountText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,20 +80,51 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
     setError(null);
 
     try {
-      // Step 1: Create PaymentIntent for PaymentSheet
-      const setupResult = await createTopUpIntent(amountCents);
+      // If user has a saved card, charge it directly (no PaymentSheet)
+      if (paymentState.hasPaymentMethod) {
+        const result = await topUpWallet(amountCents);
 
-      if (!setupResult.success || !setupResult.clientSecret || !setupResult.customerId || !setupResult.ephemeralKey) {
-        setError(setupResult.message || 'Failed to initialize payment');
+        if (result.success) {
+          hapticSuccess();
+          setSuccess(true);
+          await refreshProfile();
+          setTimeout(() => {
+            onSuccess();
+            setAmountText('');
+            setSuccess(false);
+          }, 1500);
+          return;
+        }
+
+        // Check if card needs 3DS authentication
+        if (result.requiresAction && result.clientSecret) {
+          // TODO: Handle SCA if needed
+          setError('Your bank requires additional verification. Please try again.');
+          hapticError();
+          setLoading(false);
+          return;
+        }
+
+        // Card failed - show error but don't fall back to PaymentSheet
+        // User can go to profile to update their card
+        setError(result.message || 'Payment failed. Try updating your card in Profile.');
         hapticError();
         setLoading(false);
         return;
       }
 
-      // Step 2: Present PaymentSheet (Apple Pay, Google Pay, or card)
-      // Check if native Stripe is available (not on web or Expo Go)
+      // No saved card - show PaymentSheet to add one
       if (!isStripeConfigured()) {
         setError('Payments require the mobile app');
+        hapticError();
+        setLoading(false);
+        return;
+      }
+
+      const setupResult = await createTopUpIntent(amountCents);
+
+      if (!setupResult.success || !setupResult.clientSecret || !setupResult.customerId || !setupResult.ephemeralKey) {
+        setError(setupResult.message || 'Failed to initialize payment');
         hapticError();
         setLoading(false);
         return;
@@ -106,7 +137,6 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
       );
 
       if (sheetResult.cancelled) {
-        // User cancelled - no error message needed
         setLoading(false);
         return;
       }
@@ -118,7 +148,7 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
         return;
       }
 
-      // Step 3: Confirm the top-up (credit wallet)
+      // Confirm the top-up (credit wallet)
       const confirmResult = await confirmTopUp(setupResult.paymentIntentId!);
 
       if (confirmResult.success) {
@@ -127,12 +157,10 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
         await refreshProfile();
         setTimeout(() => {
           onSuccess();
-          // Reset state after close
           setAmountText('');
           setSuccess(false);
         }, 1500);
       } else {
-        // Payment succeeded but wallet credit failed - this is bad
         setError(confirmResult.message || 'Payment succeeded but wallet credit failed. Contact support.');
         hapticError();
       }
@@ -142,7 +170,7 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
     } finally {
       setLoading(false);
     }
-  }, [amountCents, isValidAmount, loading, onSuccess, refreshProfile]);
+  }, [amountCents, isValidAmount, loading, onSuccess, refreshProfile, paymentState.hasPaymentMethod]);
 
   const handleClose = () => {
     if (loading) return;
@@ -153,11 +181,19 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
   };
 
   const getPaymentLabel = () => {
+    // If user has a saved card, show that
+    if (paymentState.hasPaymentMethod) {
+      const brandName = paymentState.brand 
+        ? paymentState.brand.charAt(0).toUpperCase() + paymentState.brand.slice(1)
+        : 'Card';
+      return paymentState.last4 ? `${brandName} •••• ${paymentState.last4}` : brandName;
+    }
+    // No saved card - will show PaymentSheet
     if (Platform.OS === 'ios') {
-      return 'Apple Pay, Card, or other';
+      return 'Apple Pay or Card';
     }
     if (Platform.OS === 'android') {
-      return 'Google Pay, Card, or other';
+      return 'Google Pay or Card';
     }
     return 'Card';
   };
@@ -178,11 +214,9 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
             <View style={styles.header}>
               <Text style={styles.title}>Add Funds</Text>
               <Text style={styles.subtitle}>
-                {Platform.OS === 'ios' 
-                  ? 'Pay with Apple Pay, card, or other methods.'
-                  : Platform.OS === 'android'
-                  ? 'Pay with Google Pay, card, or other methods.'
-                  : 'Top up your wallet to stake on promises.'}
+                {paymentState.hasPaymentMethod
+                  ? 'Charges your saved payment method.'
+                  : 'Add a card to top up your wallet.'}
               </Text>
             </View>
 
