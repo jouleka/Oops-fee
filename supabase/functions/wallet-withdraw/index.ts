@@ -131,10 +131,13 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Create a unique withdrawal ID
-      const withdrawalId = `withdraw-${user.id}-${Date.now()}`;
+      // Create a unique withdrawal ID (max 63 chars for PayPal)
+      const shortUserId = user.id.replace(/-/g, '').slice(0, 12);
+      const withdrawalId = `wd-${shortUserId}-${Date.now()}`;
 
       // Call PayPal Payouts API
+      console.log(`[wallet-withdraw] Creating PayPal payout: ${centsToDollars(amount_cents)} USD to ${destination}`);
+      
       const payoutResult = await createPayout({
         claimId: withdrawalId,
         recipientEmail: destination,
@@ -146,10 +149,24 @@ Deno.serve(async (req: Request) => {
 
       if (!payoutResult.success) {
         console.error('[wallet-withdraw] PayPal payout failed:', payoutResult.error);
+        
+        // Provide more helpful error messages for common issues
+        let userMessage = payoutResult.error || 'PayPal payout failed';
+        
+        // Check for common sandbox issues
+        const errorLower = (payoutResult.error || '').toLowerCase();
+        if (errorLower.includes('receiver') || errorLower.includes('email')) {
+          userMessage = `Invalid PayPal email. Make sure this email is linked to a verified PayPal account.`;
+        } else if (errorLower.includes('insufficient') || errorLower.includes('balance')) {
+          userMessage = 'PayPal payout service temporarily unavailable. Please try again later.';
+        } else if (errorLower.includes('authorization') || errorLower.includes('permission')) {
+          userMessage = 'PayPal payout service is not configured. Contact support.';
+        }
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
-            message: payoutResult.error || 'PayPal payout failed' 
+            message: userMessage 
           } as WithdrawResponse),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );

@@ -119,7 +119,7 @@ export async function createPayout(params: PayoutParams): Promise<PayoutResult> 
         },
         receiver: recipientEmail,
         note: note,
-        sender_item_id: `claim-${claimId}`,
+        sender_item_id: claimId.slice(0, 63), // PayPal limit: 63 chars
       },
     ],
   };
@@ -136,10 +136,32 @@ export async function createPayout(params: PayoutParams): Promise<PayoutResult> 
   const data = await response.json();
 
   if (!response.ok) {
-    console.error('[PayPal] Payout failed:', data);
+    console.error('[PayPal] Payout failed:', JSON.stringify(data, null, 2));
+    
+    // Extract detailed error message from PayPal's response
+    let errorMessage = 'Payout failed';
+    
+    if (data.details && Array.isArray(data.details) && data.details.length > 0) {
+      // PayPal returns validation errors in details array
+      const issues = data.details
+        .map((d: { issue?: string; description?: string; field?: string }) => 
+          d.issue || d.description || d.field || 'Unknown error'
+        )
+        .join('; ');
+      errorMessage = issues;
+    } else if (data.message) {
+      errorMessage = data.message;
+      // Append name if available for more context
+      if (data.name) {
+        errorMessage = `${data.name}: ${data.message}`;
+      }
+    } else if (data.error_description) {
+      errorMessage = data.error_description;
+    }
+    
     return {
       success: false,
-      error: data.message || data.error_description || 'Payout failed',
+      error: errorMessage,
     };
   }
 
@@ -287,11 +309,18 @@ export const PayPalWebhookEvents = {
 export type PayPalWebhookEventType = typeof PayPalWebhookEvents[keyof typeof PayPalWebhookEvents];
 
 /**
- * Extract claim ID from sender_item_id (format: "claim-{claimId}")
+ * Extract claim ID from sender_item_id.
+ * For friend claims, this is the UUID directly.
+ * For wallet withdrawals, it starts with "wd-" and should return null.
  */
 export function extractClaimIdFromPayoutItem(senderItemId: string): string | null {
-  if (senderItemId.startsWith('claim-')) {
-    return senderItemId.slice(6);
+  // Wallet withdrawals start with "wd-" - these are not friend claims
+  if (senderItemId.startsWith('wd-')) {
+    return null;
+  }
+  // UUID format check (friend claims)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(senderItemId)) {
+    return senderItemId;
   }
   return null;
 }

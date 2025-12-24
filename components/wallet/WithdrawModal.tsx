@@ -342,9 +342,9 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                           color={Colors.warning}
                         />
                         <View style={styles.stripeSetupInfo}>
-                          <Text style={styles.stripeSetupLabel}>Bank Not Connected</Text>
+                          <Text style={styles.stripeSetupLabel}>Bank Transfers Not Available</Text>
                           <Text style={styles.stripeSetupHint}>
-                            Use PayPal to withdraw, or contact support to set up bank transfers.
+                            Direct bank payouts require additional verification. For instant withdrawals, use PayPal instead – it&apos;s free and funds arrive in minutes!
                           </Text>
                         </View>
                       </View>
