@@ -30,9 +30,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { getClaimContext, startClaimOnboarding, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
 
-// Stripe publishable key for tokenization
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 }
@@ -227,13 +224,20 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   const debitFeeAmount = Math.round(amountCents * (DEBIT_FEE_PERCENT / 100));
   const debitNetAmount = amountCents - debitFeeAmount;
   
+  // Get Stripe publishable key from context
+  const stripePublishableKey = context.stripePublishableKey ?? '';
+  
   // Load Stripe.js when debit view is shown (web only)
   useEffect(() => {
     if (view !== 'debit' || Platform.OS !== 'web') return;
+    if (!stripePublishableKey) {
+      setError('Payment configuration not available. Please try again later.');
+      return;
+    }
     
     // Check if already loaded
     if (window.Stripe) {
-      stripeRef.current = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+      stripeRef.current = window.Stripe(stripePublishableKey);
       setStripeLoaded(true);
       return;
     }
@@ -244,7 +248,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     script.async = true;
     script.onload = () => {
       if (window.Stripe) {
-        stripeRef.current = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        stripeRef.current = window.Stripe(stripePublishableKey);
         setStripeLoaded(true);
       }
     };
@@ -260,7 +264,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
         }
       }
     };
-  }, [view]);
+  }, [view, stripePublishableKey]);
   
   // Mount card element when Stripe is loaded
   useEffect(() => {

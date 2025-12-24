@@ -14,6 +14,9 @@
 import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 
+// Stripe publishable key (safe to expose - this is the public key)
+const STRIPE_PUBLISHABLE_KEY = Deno.env.get('STRIPE_PUBLISHABLE_KEY') ?? '';
+
 // ─────────────────────────────────────────────────────────────
 // Main Handler
 // ─────────────────────────────────────────────────────────────
@@ -173,6 +176,9 @@ Deno.serve(async (req: Request) => {
       isExpired,
       isTransferred,
       daysUntilExpiry,
+      
+      // Stripe publishable key for client-side tokenization
+      stripePublishableKey: STRIPE_PUBLISHABLE_KEY,
     };
 
     return new Response(JSON.stringify(response), {

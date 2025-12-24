@@ -50,6 +50,9 @@ export interface ClaimContext {
   isExpired: boolean;          // True if claim has expired
   isTransferred: boolean;      // True if funds already sent
   daysUntilExpiry: number | null; // Days left to claim (if claimable)
+  
+  // Stripe config for client-side tokenization
+  stripePublishableKey?: string;
 }
 
 export interface CreateConnectAccountResponse {
