@@ -25,6 +25,7 @@ export type SponsorPledge = Database['public']['Tables']['sponsor_pledges']['Row
 export type RoastMessage = Database['public']['Tables']['roast_messages']['Row'];
 export type Payment = Database['public']['Tables']['payments']['Row'];
 export type FriendClaim = Database['public']['Tables']['friend_claims']['Row'];
+export type WalletTransaction = Database['public']['Tables']['wallet_transactions']['Row'];
 
 // ============================================================================
 // Insert Type Aliases
@@ -37,6 +38,7 @@ export type SponsorPledgeInsert = Database['public']['Tables']['sponsor_pledges'
 export type RoastMessageInsert = Database['public']['Tables']['roast_messages']['Insert'];
 export type PaymentInsert = Database['public']['Tables']['payments']['Insert'];
 export type FriendClaimInsert = Database['public']['Tables']['friend_claims']['Insert'];
+export type WalletTransactionInsert = Database['public']['Tables']['wallet_transactions']['Insert'];
 
 // ============================================================================
 // Update Type Aliases
@@ -60,6 +62,8 @@ export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'requires_actio
 export type ShareLinkType = 'sponsor' | 'roast' | 'partner';
 export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
 export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
+export type WalletTransactionType = 'topup' | 'stake' | 'refund' | 'credit' | 'withdraw';
+export type PayoutMethod = 'stripe' | 'paypal' | 'wallet';
 
 // ============================================================================
 // Utility Types

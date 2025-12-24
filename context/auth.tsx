@@ -40,6 +40,24 @@ import type { Session, User } from '@supabase/supabase-js';
 // Types
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Wallet state derived from profile
+ */
+export interface WalletState {
+  /** Current balance in cents */
+  balanceCents: number;
+  /** Current balance formatted as dollars */
+  balanceDollars: number;
+  /** Whether user has any balance */
+  hasBalance: boolean;
+  /** PayPal email for withdrawals (if set) */
+  paypalPayoutEmail: string | null;
+  /** Stripe Connect account ID for withdrawals (if set) */
+  stripeConnectAccountId: string | null;
+  /** Whether user has a payout method configured */
+  hasPayoutMethod: boolean;
+}
+
 export interface AuthState {
   /** Current session, null if not authenticated */
   session: Session | null;
@@ -49,6 +67,8 @@ export interface AuthState {
   profile: Profile | null;
   /** Payment state (for blocking stake creation) */
   paymentState: UserPaymentState;
+  /** Wallet state (balance and payout methods) */
+  walletState: WalletState;
   /** Whether auth state is still loading */
   isLoading: boolean;
   /** Whether user is authenticated */
@@ -433,12 +453,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [profile]
   );
 
+  const walletState: WalletState = useMemo(() => {
+    const balanceCents = profile?.balance_cents ?? 0;
+    const paypalPayoutEmail = profile?.paypal_payout_email ?? null;
+    const stripeConnectAccountId = profile?.stripe_connect_account_id ?? null;
+
+    return {
+      balanceCents,
+      balanceDollars: balanceCents / 100,
+      hasBalance: balanceCents > 0,
+      paypalPayoutEmail,
+      stripeConnectAccountId,
+      hasPayoutMethod: Boolean(paypalPayoutEmail || stripeConnectAccountId),
+    };
+  }, [profile]);
+
   const value = useMemo<AuthContextType>(
     () => ({
       session,
       user: session?.user ?? null,
       profile,
       paymentState,
+      walletState,
       isLoading,
       isAuthenticated: Boolean(session?.user),
       signInWithApple,
@@ -452,6 +488,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       paymentState,
+      walletState,
       isLoading,
       signInWithApple,
       signInWithGoogle,

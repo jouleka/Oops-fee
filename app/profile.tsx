@@ -1,16 +1,18 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PulsingDot } from '@/components/home/PulsingDot';
+import { TopUpModal, WithdrawModal } from '@/components/wallet';
 import { getLiveBettorCount } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { isStripeConfigured } from '@/lib/stripe';
+import { formatCents } from '@/lib/wallet/api';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -48,7 +50,9 @@ function getPaymentName(brand: string | null): string {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, user, profile, signOut, isLoading, paymentState } = useAuth();
+  const { isAuthenticated, user, profile, signOut, isLoading, paymentState, walletState, refreshProfile } = useAuth();
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -138,6 +142,79 @@ export default function ProfileScreen() {
               </View>
             </Animated.View>
 
+            {/* Wallet */}
+            {isStripeConfigured() && (
+              <Animated.View entering={FadeInDown.delay(110).duration(300)} style={styles.section}>
+                <Text style={styles.sectionTitle}>Wallet</Text>
+                <View style={styles.walletCard}>
+                  <View style={styles.walletHeader}>
+                    <View style={styles.walletBalanceContainer}>
+                      <Text style={styles.walletBalanceLabel}>Balance</Text>
+                      <Text style={styles.walletBalanceValue}>
+                        {formatCents(walletState.balanceCents)}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.walletStatusBadge,
+                        walletState.hasBalance && styles.walletStatusBadgeActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.walletStatusText,
+                          walletState.hasBalance && styles.walletStatusTextActive,
+                        ]}
+                      >
+                        {walletState.hasBalance ? 'Funds available' : 'Empty'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.walletDivider} />
+
+                  <View style={styles.walletActions}>
+                    <Pressable
+                      onPress={() => {
+                        hapticMedium();
+                        setShowTopUp(true);
+                      }}
+                      style={({ pressed }) => [
+                        styles.walletActionBtn,
+                        styles.walletActionBtnPrimary,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                    >
+                      <Text style={styles.walletActionIcon}>+</Text>
+                      <Text style={styles.walletActionText}>Add Funds</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => {
+                        hapticMedium();
+                        setShowWithdraw(true);
+                      }}
+                      disabled={!walletState.hasBalance}
+                      style={({ pressed }) => [
+                        styles.walletActionBtn,
+                        pressed && { opacity: 0.8 },
+                        !walletState.hasBalance && styles.walletActionBtnDisabled,
+                      ]}
+                    >
+                      <Text style={[styles.walletActionIcon, !walletState.hasBalance && styles.walletActionIconDisabled]}>↓</Text>
+                      <Text style={[styles.walletActionText, !walletState.hasBalance && styles.walletActionTextDisabled]}>Withdraw</Text>
+                    </Pressable>
+                  </View>
+
+                  {walletState.hasBalance && (
+                    <Text style={styles.walletHint}>
+                      Wallet funds are automatically used for stakes
+                    </Text>
+                  )}
+                </View>
+              </Animated.View>
+            )}
+
             {/* Payment Method */}
             {isStripeConfigured() && (
               <Animated.View entering={FadeInDown.delay(125).duration(300)} style={styles.section}>
@@ -186,6 +263,24 @@ export default function ProfileScreen() {
                 <Text style={styles.signOutText}>Sign Out</Text>
               </Pressable>
             </Animated.View>
+
+            {/* Wallet Modals */}
+            <TopUpModal
+              visible={showTopUp}
+              onClose={() => setShowTopUp(false)}
+              onSuccess={() => {
+                setShowTopUp(false);
+                refreshProfile();
+              }}
+            />
+            <WithdrawModal
+              visible={showWithdraw}
+              onClose={() => setShowWithdraw(false)}
+              onSuccess={() => {
+                setShowWithdraw(false);
+                refreshProfile();
+              }}
+            />
           </>
         ) : (
           <GuestState onSignIn={handleSignIn} />
@@ -447,6 +542,99 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.border,
     marginHorizontal: Spacing.lg,
+  },
+
+  // Wallet
+  walletCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  walletHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  walletBalanceContainer: {
+    gap: 2,
+  },
+  walletBalanceLabel: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  walletBalanceValue: {
+    ...Typography.displaySmall,
+    color: Colors.money,
+    fontFamily: Fonts.mono,
+  },
+  walletStatusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.bgCardHover,
+  },
+  walletStatusBadgeActive: {
+    backgroundColor: Colors.successDim,
+  },
+  walletStatusText: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  walletStatusTextActive: {
+    color: Colors.success,
+  },
+  walletDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  walletActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+  },
+  walletActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.bgCardHover,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  walletActionBtnPrimary: {
+    backgroundColor: Colors.successDim,
+    borderColor: Colors.success + '40',
+  },
+  walletActionBtnDisabled: {
+    opacity: 0.5,
+  },
+  walletActionIcon: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.success,
+  },
+  walletActionIconDisabled: {
+    color: Colors.textMuted,
+  },
+  walletActionText: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  walletActionTextDisabled: {
+    color: Colors.textMuted,
+  },
+  walletHint: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
 
   // Sign Out

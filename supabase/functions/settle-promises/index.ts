@@ -548,6 +548,11 @@ async function markPromiseFailed(
 
 /**
  * Charge user for a failed promise using off-session payment
+ * 
+ * WALLET-FIRST LOGIC:
+ * 1. If wallet balance >= total amount: debit wallet only, skip Stripe charge
+ * 2. If wallet balance > 0 but < total: debit wallet, charge card for remainder
+ * 3. If wallet balance == 0: charge card for full amount
  */
 async function chargeForFailedPromise(
   promise: Promise,
@@ -555,10 +560,10 @@ async function chargeForFailedPromise(
   stripe: ReturnType<typeof createStripeClient>,
   attemptNumber: number,
 ): Promise<SettlementResult> {
-  // Get user's payment info and push token
+  // Get user's payment info, push token, and wallet balance
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, default_payment_method_id, expo_push_token')
+    .select('stripe_customer_id, default_payment_method_id, expo_push_token, balance_cents')
     .eq('id', promise.user_id)
     .single();
 
@@ -571,26 +576,9 @@ async function chargeForFailedPromise(
     };
   }
 
-  const { stripe_customer_id, default_payment_method_id } = profile as Profile;
-
-  // No payment method - can't charge
-  if (!stripe_customer_id || !default_payment_method_id) {
-    console.log(`[settle-promises] No payment method for promise ${promise.id}`);
-    
-    // Update promise to reflect no payment possible
-    await supabase
-      .from('promises')
-      .update({
-        payment_status: 'abandoned',
-      })
-      .eq('id', promise.id);
-
-    return {
-      promiseId: promise.id,
-      action: 'no_payment_method',
-      message: 'No payment method on file',
-    };
-  }
+  const { stripe_customer_id, default_payment_method_id, balance_cents } = profile as Profile & { balance_cents: number };
+  const pushToken = (profile as Profile).expo_push_token;
+  const walletBalance = balance_cents ?? 0;
 
   // Calculate total amount including sponsor contributions
   // Stake is stored in dollars, sponsor_total is stored in cents
@@ -599,15 +587,94 @@ async function chargeForFailedPromise(
   const amountInCents = stakeCents + sponsorCents;
   const totalAmount = amountInCents / 100; // For display/logging
 
+  console.log(`[settle-promises] Promise ${promise.id}: total=$${totalAmount}, wallet=${walletBalance}c`);
+
+  // ─────────────────────────────────────────────────────────────
+  // WALLET-FIRST: Try to cover as much as possible from wallet
+  // ─────────────────────────────────────────────────────────────
+  
+  let walletDebitAmount = 0;
+  let cardChargeAmount = amountInCents;
+
+  if (walletBalance >= amountInCents) {
+    // Wallet covers everything - no card charge needed
+    walletDebitAmount = amountInCents;
+    cardChargeAmount = 0;
+    console.log(`[settle-promises] Wallet covers full amount (${walletBalance}c >= ${amountInCents}c)`);
+  } else if (walletBalance > 0) {
+    // Partial wallet coverage - charge card for remainder
+    walletDebitAmount = walletBalance;
+    cardChargeAmount = amountInCents - walletBalance;
+    console.log(`[settle-promises] Partial wallet: using ${walletDebitAmount}c from wallet, ${cardChargeAmount}c from card`);
+  }
+
+  // Debit wallet if there's anything to debit
+  if (walletDebitAmount > 0) {
+    const { data: debitResult, error: debitError } = await supabase.rpc('debit_wallet_with_log', {
+      target_user_id: promise.user_id,
+      amount_cents: walletDebitAmount,
+      tx_type: 'stake',
+      promise_id: promise.id,
+      description_text: `Failed promise settlement: "${promise.text.substring(0, 50)}..."`,
+    });
+
+    if (debitError || debitResult === -1) {
+      // Wallet debit failed (race condition - balance changed)
+      console.error(`[settle-promises] Wallet debit failed for promise ${promise.id}:`, debitError);
+      // Fall back to full card charge
+      walletDebitAmount = 0;
+      cardChargeAmount = amountInCents;
+    } else {
+      console.log(`[settle-promises] Wallet debited: ${walletDebitAmount}c, new balance: ${debitResult}c`);
+    }
+  }
+
+  // If wallet covered everything, we're done
+  if (cardChargeAmount === 0) {
+    await handlePaymentSuccess(promise, supabase, null, attemptNumber, amountInCents, pushToken, walletDebitAmount);
+    return {
+      promiseId: promise.id,
+      action: 'charged',
+      message: `Payment succeeded (wallet only: ${formatAmount(walletDebitAmount)})`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CARD CHARGE: Charge card for remaining amount
+  // ─────────────────────────────────────────────────────────────
+
+  // No payment method - can't charge card portion
+  if (!stripe_customer_id || !default_payment_method_id) {
+    console.log(`[settle-promises] No payment method for promise ${promise.id}`);
+    
+    // If we debited wallet but can't charge card, the wallet debit already happened
+    // We should NOT refund it - the user still owes the remainder
+    // Update promise to reflect partial payment
+    await supabase
+      .from('promises')
+      .update({
+        payment_status: walletDebitAmount > 0 ? 'partial' : 'abandoned',
+      })
+      .eq('id', promise.id);
+
+    return {
+      promiseId: promise.id,
+      action: 'no_payment_method',
+      message: walletDebitAmount > 0 
+        ? `Partial payment: ${formatAmount(walletDebitAmount)} from wallet, ${formatAmount(cardChargeAmount)} still owed (no card)`
+        : 'No payment method on file',
+    };
+  }
+
   try {
-    // Create off-session PaymentIntent
-    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, amount: $${totalAmount} (stake: $${promise.stake}, sponsor: $${sponsorCents / 100})`);
+    // Create off-session PaymentIntent for remaining amount
+    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, card amount: $${cardChargeAmount / 100} (of total $${totalAmount})`);
 
     // Use idempotency key to prevent duplicate charges from cron retries
     const idempotencyKey = `settle-promise-${promise.id}-attempt-${attemptNumber}`;
     
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
+      amount: cardChargeAmount,
       currency: 'usd',
       customer: stripe_customer_id,
       payment_method: default_payment_method_id,
@@ -617,29 +684,32 @@ async function chargeForFailedPromise(
         promise_id: promise.id,
         user_id: promise.user_id,
         attempt_number: String(attemptNumber),
+        wallet_portion_cents: String(walletDebitAmount),
+        card_portion_cents: String(cardChargeAmount),
+        total_amount_cents: String(amountInCents),
       },
-      description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."`,
+      description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."${walletDebitAmount > 0 ? ` (${formatAmount(walletDebitAmount)} from wallet)` : ''}`,
     }, {
       idempotencyKey,
     });
 
     console.log(`[settle-promises] PaymentIntent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
 
-    const pushToken = (profile as Profile).expo_push_token;
-
     // Handle different payment statuses
     if (paymentIntent.status === 'succeeded') {
-      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents, pushToken);
+      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents, pushToken, walletDebitAmount);
       return {
         promiseId: promise.id,
         action: 'charged',
-        message: 'Payment succeeded',
+        message: walletDebitAmount > 0 
+          ? `Payment succeeded (wallet: ${formatAmount(walletDebitAmount)}, card: ${formatAmount(cardChargeAmount)})`
+          : 'Payment succeeded',
         paymentIntentId: paymentIntent.id,
       };
     }
 
     if (paymentIntent.status === 'requires_action') {
-      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, amountInCents, pushToken);
+      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, cardChargeAmount, pushToken);
       return {
         promiseId: promise.id,
         action: 'requires_action',
@@ -675,12 +745,10 @@ async function chargeForFailedPromise(
 
     console.error(`[settle-promises] Payment failed for promise ${promise.id}:`, stripeError);
 
-    const pushToken = (profile as Profile).expo_push_token;
-
-    // Log the failed payment attempt (store amount in cents)
+    // Log the failed payment attempt (store card charge amount, not total)
     await supabase.from('payments').insert({
       promise_id: promise.id,
-      amount: amountInCents,
+      amount: cardChargeAmount, // Amount we tried to charge to card
       currency: 'usd',
       status: 'failed',
       attempt_number: attemptNumber,
@@ -690,7 +758,7 @@ async function chargeForFailedPromise(
 
     // Send push notification for failed payment
     const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeFailed)
-      .replace('${amount}', formatAmount(amountInCents))
+      .replace('${amount}', formatAmount(cardChargeAmount))
       .replace('"${promise}"', `"${promise.text.substring(0, 30)}..."`);
     await sendPushNotification(
       pushToken,
@@ -700,26 +768,32 @@ async function chargeForFailedPromise(
     );
 
     // Schedule retry or mark as abandoned
-    await handlePaymentFailure(promise, supabase, attemptNumber, stripeError, pushToken, amountInCents);
+    // Note: Wallet portion already debited, only card portion needs retry
+    await handlePaymentFailure(promise, supabase, attemptNumber, stripeError, pushToken, cardChargeAmount);
 
     return {
       promiseId: promise.id,
       action: 'charge_failed',
-      message: stripeError.message || 'Payment failed',
+      message: walletDebitAmount > 0
+        ? `Card charge failed (${formatAmount(cardChargeAmount)}). Wallet already debited: ${formatAmount(walletDebitAmount)}`
+        : (stripeError.message || 'Payment failed'),
     };
   }
 }
 
 /**
  * Handle successful payment
+ * 
+ * @param walletDebitAmount - Amount already debited from wallet (0 if none)
  */
 async function handlePaymentSuccess(
   promise: Promise,
   supabase: ReturnType<typeof createAdminClient>,
-  paymentIntentId: string,
+  paymentIntentId: string | null,
   attemptNumber: number,
-  amountInCents: number,
+  totalAmountInCents: number,
   pushToken: string | null,
+  walletDebitAmount: number = 0,
 ): Promise<void> {
   // Update promise
   await supabase
@@ -730,21 +804,24 @@ async function handlePaymentSuccess(
     })
     .eq('id', promise.id);
 
-  // Log the successful payment (store amount in cents)
-  await supabase.from('payments').insert({
-    promise_id: promise.id,
-    amount: amountInCents,
-    currency: 'usd',
-    stripe_payment_intent_id: paymentIntentId,
-    status: 'succeeded',
-    attempt_number: attemptNumber,
-  });
+  // Log the successful payment (only if there was a card charge)
+  const cardChargeAmount = totalAmountInCents - walletDebitAmount;
+  if (paymentIntentId && cardChargeAmount > 0) {
+    await supabase.from('payments').insert({
+      promise_id: promise.id,
+      amount: cardChargeAmount, // Only the card portion
+      currency: 'usd',
+      stripe_payment_intent_id: paymentIntentId,
+      status: 'succeeded',
+      attempt_number: attemptNumber,
+    });
+  }
 
-  console.log(`[settle-promises] Payment succeeded for promise ${promise.id}`);
+  console.log(`[settle-promises] Payment succeeded for promise ${promise.id} (total: ${totalAmountInCents}c, wallet: ${walletDebitAmount}c, card: ${cardChargeAmount}c)`);
 
   // Send push notification to user
   const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeSuccess)
-    .replace('${amount}', formatAmount(amountInCents));
+    .replace('${amount}', formatAmount(totalAmountInCents));
   await sendPushNotification(
     pushToken,
     'Promise Failed',
@@ -756,7 +833,7 @@ async function handlePaymentSuccess(
   // FRIEND PAYOUT: Update friend claim and notify friend
   // ─────────────────────────────────────────────────────────────
   if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-    await handleFriendClaimNotification(promise, supabase, amountInCents);
+    await handleFriendClaimNotification(promise, supabase, totalAmountInCents);
   }
 }
 
@@ -809,10 +886,14 @@ async function handleFriendClaimNotification(
       // ─────────────────────────────────────────────────────────────
       console.log(`[settle-promises] Friend ${friendClaim.friend_email} is an in-app user (${friendProfile.id}), crediting wallet`);
 
-      // Credit wallet via RPC
-      const { error: creditError } = await supabase.rpc('credit_wallet', {
+      // Credit wallet via RPC with transaction logging
+      const { data: creditResult, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
         target_user_id: friendProfile.id,
         amount_cents: amountInCents,
+        tx_type: 'credit',
+        promise_id: promise.id,
+        claim_id: friendClaim.id,
+        description_text: `Won from ${userName}'s failed promise`,
       });
 
       if (creditError) {
@@ -833,7 +914,7 @@ async function handleFriendClaimNotification(
           console.error(`[settle-promises] Error updating friend claim ${friendClaim.id}:`, updateError);
         }
 
-        console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${friendProfile.id}`);
+        console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${friendProfile.id}, new balance: ${creditResult}c`);
 
         // Send push notification to friend
         const amountDisplay = formatAmount(amountInCents);

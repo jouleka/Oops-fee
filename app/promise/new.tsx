@@ -510,6 +510,8 @@ function ConfirmModal({
   deadlineAt,
   moneyDestination,
   friendName,
+  walletUsageDollars,
+  cardChargeDollars,
   onCancel,
   onConfirm,
   confirming,
@@ -522,11 +524,14 @@ function ConfirmModal({
   deadlineAt: number;
   moneyDestination: MoneyDestination;
   friendName?: string;
+  walletUsageDollars: number;
+  cardChargeDollars: number;
   onCancel: () => void;
   onConfirm: () => void;
   confirming: boolean;
 }) {
   const hasMultiplier = multiplier > 1 && baseStake > 0;
+  const hasWalletUsage = walletUsageDollars > 0;
   const closingRef = useRef(false);
   const translateY = useSharedValue(0);
 
@@ -619,6 +624,22 @@ function ConfirmModal({
               </View>
             )}
 
+            {hasWalletUsage && (
+              <View style={styles.confirmWalletNote}>
+                <Text style={styles.confirmWalletNoteIcon}>💰</Text>
+                <View style={styles.confirmWalletNoteBody}>
+                  <Text style={styles.confirmWalletNoteText}>
+                    ${walletUsageDollars.toFixed(2)} from wallet
+                  </Text>
+                  {cardChargeDollars > 0 && (
+                    <Text style={styles.confirmWalletNoteSubtext}>
+                      + ${cardChargeDollars.toFixed(2)} from card
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+
             <View style={styles.confirmMetaDividerHorizontal} />
             <View style={styles.confirmMetaRowSingle}>
               <Text style={styles.confirmMetaLabel}>GOES TO</Text>
@@ -662,7 +683,7 @@ export default function NewPromiseScreen() {
   const params = useLocalSearchParams<{ templateId?: string }>();
   const { createPromise, isWorking, promises } = usePromiseStore();
   const { requireAuth } = useRequireAuth();
-  const { paymentState, isAuthenticated } = useAuth();
+  const { paymentState, walletState, isAuthenticated } = useAuth();
 
   const templateId = useMemo(() => {
     const raw = params.templateId;
@@ -713,6 +734,13 @@ export default function NewPromiseScreen() {
 
   // Effective stake with multiplier applied
   const effectiveStake = stake * failureMultiplier;
+
+  // Wallet usage calculation
+  const effectiveStakeCents = effectiveStake * 100;
+  const walletUsageCents = Math.min(walletState.balanceCents, effectiveStakeCents);
+  const cardChargeCents = effectiveStakeCents - walletUsageCents;
+  const walletUsageDollars = walletUsageCents / 100;
+  const cardChargeDollars = cardChargeCents / 100;
 
   // Stakes gating: if honor is selected and stake goes above threshold, switch to photo
   useEffect(() => {
@@ -993,6 +1021,36 @@ export default function NewPromiseScreen() {
                   <Text style={styles.warningText}>$0 is allowed. So is lying for free. Classic combo.</Text>
                 </Animated.View>
               )}
+
+              {/* Wallet Usage Indicator */}
+              {effectiveStake > 0 && walletState.hasBalance && (
+                <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.walletUsageRow}>
+                  <View style={styles.walletUsageIcon}>
+                    <Text style={styles.walletUsageIconText}>💰</Text>
+                  </View>
+                  <View style={styles.walletUsageBody}>
+                    {cardChargeCents > 0 ? (
+                      <>
+                        <Text style={styles.walletUsageText}>
+                          Using <Text style={styles.walletUsageAmount}>${walletUsageDollars.toFixed(2)}</Text> from wallet
+                        </Text>
+                        <Text style={styles.walletUsageSubtext}>
+                          + ${cardChargeDollars.toFixed(2)} from card
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.walletUsageText}>
+                        Covered by wallet <Text style={styles.walletUsageAmount}>✓</Text>
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.walletBalanceBadge}>
+                    <Text style={styles.walletBalanceBadgeText}>
+                      ${walletState.balanceDollars.toFixed(2)}
+                    </Text>
+                  </View>
+                </Animated.View>
+              )}
             </View>
           </Animated.View>
 
@@ -1215,6 +1273,8 @@ export default function NewPromiseScreen() {
         deadlineAt={deadlineAt}
         moneyDestination={moneyDestination}
         friendName={friendName}
+        walletUsageDollars={walletUsageDollars}
+        cardChargeDollars={cardChargeDollars}
         confirming={confirming}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={doCreate}
@@ -1544,6 +1604,58 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.warning,
     flex: 1,
+  },
+
+  // Wallet usage indicator
+  walletUsageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.successDim,
+    borderWidth: 1,
+    borderColor: Colors.success + '33',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+  },
+  walletUsageIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.success + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletUsageIconText: {
+    fontSize: 14,
+  },
+  walletUsageBody: {
+    flex: 1,
+    gap: 2,
+  },
+  walletUsageText: {
+    ...Typography.caption,
+    color: Colors.success,
+    fontWeight: '600',
+  },
+  walletUsageAmount: {
+    fontFamily: Fonts.mono,
+    fontWeight: '700',
+  },
+  walletUsageSubtext: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.mono,
+  },
+  walletBalanceBadge: {
+    backgroundColor: Colors.success + '22',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radius.sm,
+  },
+  walletBalanceBadgeText: {
+    ...Typography.captionMono,
+    color: Colors.success,
+    fontWeight: '600',
   },
 
   destinationList: {
@@ -2022,6 +2134,18 @@ const styles = StyleSheet.create({
   },
   confirmMultiplierNoteIcon: { fontSize: 14 },
   confirmMultiplierNoteText: { ...Typography.caption, color: Colors.danger, flex: 1 },
+  confirmWalletNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.successDim,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+  },
+  confirmWalletNoteIcon: { fontSize: 14 },
+  confirmWalletNoteBody: { flex: 1, gap: 2 },
+  confirmWalletNoteText: { ...Typography.caption, color: Colors.success, fontWeight: '600' },
+  confirmWalletNoteSubtext: { ...Typography.caption, color: Colors.textSecondary, fontFamily: Fonts.mono },
   confirmMetaDivider: { width: 1, height: 42, backgroundColor: Colors.border },
   confirmMetaDividerHorizontal: { height: 1, backgroundColor: Colors.borderSubtle },
   confirmMetaRowSingle: {

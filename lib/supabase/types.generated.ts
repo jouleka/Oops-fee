@@ -149,6 +149,8 @@ export type Database = {
           payment_method_brand: string | null
           payment_method_last4: string | null
           payment_method_type: string | null
+          paypal_payout_email: string | null
+          stripe_connect_account_id: string | null
           stripe_customer_id: string | null
           updated_at: string | null
         }
@@ -168,6 +170,8 @@ export type Database = {
           payment_method_brand?: string | null
           payment_method_last4?: string | null
           payment_method_type?: string | null
+          paypal_payout_email?: string | null
+          stripe_connect_account_id?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
@@ -187,6 +191,8 @@ export type Database = {
           payment_method_brand?: string | null
           payment_method_last4?: string | null
           payment_method_type?: string | null
+          paypal_payout_email?: string | null
+          stripe_connect_account_id?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
@@ -408,6 +414,70 @@ export type Database = {
           },
         ]
       }
+      wallet_transactions: {
+        Row: {
+          amount_cents: number
+          balance_after: number
+          created_at: string | null
+          description: string | null
+          id: string
+          paypal_batch_id: string | null
+          related_claim_id: string | null
+          related_promise_id: string | null
+          stripe_payment_intent_id: string | null
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          balance_after: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          paypal_batch_id?: string | null
+          related_claim_id?: string | null
+          related_promise_id?: string | null
+          stripe_payment_intent_id?: string | null
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          balance_after?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          paypal_batch_id?: string | null
+          related_claim_id?: string | null
+          related_promise_id?: string | null
+          stripe_payment_intent_id?: string | null
+          type?: Database["public"]["Enums"]["wallet_transaction_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_related_claim_id_fkey"
+            columns: ["related_claim_id"]
+            isOneToOne: false
+            referencedRelation: "friend_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_related_promise_id_fkey"
+            columns: ["related_promise_id"]
+            isOneToOne: false
+            referencedRelation: "promises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -417,15 +487,51 @@ export type Database = {
         Args: { amount_cents: number; target_user_id: string }
         Returns: undefined
       }
+      credit_wallet_with_log: {
+        Args: {
+          amount_cents: number
+          claim_id?: string
+          description_text?: string
+          promise_id?: string
+          stripe_pi_id?: string
+          target_user_id: string
+          tx_type: Database["public"]["Enums"]["wallet_transaction_type"]
+        }
+        Returns: number
+      }
       debit_wallet: {
         Args: { amount_cents: number; target_user_id: string }
         Returns: boolean
+      }
+      debit_wallet_with_log: {
+        Args: {
+          amount_cents: number
+          description_text?: string
+          promise_id?: string
+          target_user_id: string
+          tx_type: Database["public"]["Enums"]["wallet_transaction_type"]
+        }
+        Returns: number
+      }
+      debit_wallet_withdraw: {
+        Args: {
+          amount_cents: number
+          description_text?: string
+          paypal_batch?: string
+          target_user_id: string
+        }
+        Returns: number
       }
       generate_claim_token: { Args: never; Returns: string }
       update_last_active: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      wallet_transaction_type:
+        | "topup"
+        | "stake"
+        | "refund"
+        | "credit"
+        | "withdraw"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -552,6 +658,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      wallet_transaction_type: [
+        "topup",
+        "stake",
+        "refund",
+        "credit",
+        "withdraw",
+      ],
+    },
   },
 } as const

@@ -31,6 +31,8 @@ interface ChargeResponse {
   requiresAction?: boolean;
   clientSecret?: string;
   paymentIntentId?: string;
+  walletUsed?: number;  // Amount debited from wallet (in dollars)
+  cardCharged?: number; // Amount charged to card (in dollars)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -346,10 +348,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get user's payment method
+    // Get user's payment method and wallet balance
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('stripe_customer_id, default_payment_method_id')
+      .select('stripe_customer_id, default_payment_method_id, balance_cents')
       .eq('id', user.id)
       .single();
 
@@ -365,11 +367,81 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { stripe_customer_id, default_payment_method_id } = profile;
+    const { stripe_customer_id, default_payment_method_id, balance_cents } = profile;
+    const walletBalance = balance_cents ?? 0;
 
-    // No payment method
+    // Calculate amounts
+    // Stake is stored in dollars, sponsor_total is stored in cents
+    const sponsorCents = promise.sponsor_total ?? 0;
+    const stakeCents = promise.stake * 100;
+    const totalAmountCents = stakeCents + sponsorCents;
+    const totalAmount = totalAmountCents / 100; // For display
+
+    // Determine wallet vs card split
+    const walletToUse = Math.min(walletBalance, totalAmountCents);
+    const cardToCharge = totalAmountCents - walletToUse;
+
+    console.log(`[charge-promise] Promise ${promiseId}: total=$${totalAmount}, wallet=$${walletToUse / 100} (available: $${walletBalance / 100}), card=$${cardToCharge / 100}`);
+
+    // No payment method - check if wallet covers it
     if (!stripe_customer_id || !default_payment_method_id) {
-      // Mark promise as failed but payment abandoned
+      if (walletToUse >= totalAmountCents) {
+        // Wallet covers the full amount! Debit wallet and proceed
+        console.log(`[charge-promise] No card but wallet covers full amount: $${walletToUse / 100}`);
+        
+        const { data: debitResult, error: debitError } = await supabase
+          .rpc('debit_wallet_with_log', {
+            target_user_id: user.id,
+            amount_cents: totalAmountCents,
+            tx_type: 'stake',
+            promise_id: promiseId,
+            description_text: `Failed promise: "${promise.text.substring(0, 50)}..."`,
+          });
+
+        if (debitError || debitResult === -1) {
+          console.error(`[charge-promise] Wallet debit failed:`, debitError || 'Insufficient balance');
+          // Fall through to abandoned case
+        } else {
+          // Wallet debit successful
+          await supabase
+            .from('promises')
+            .update({
+              status: 'failed',
+              failed_at: new Date().toISOString(),
+              payment_status: 'succeeded',
+              payment_client_secret: null,
+            })
+            .eq('id', promiseId);
+
+          // Log payment (wallet-only)
+          await supabase.from('payments').insert({
+            promise_id: promiseId,
+            amount: totalAmountCents,
+            currency: 'usd',
+            status: 'succeeded',
+            attempt_number: 1,
+          });
+
+          // Notify friend if applicable
+          if (promise.money_destination === 'friend' && promise.friend_claim_id) {
+            await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              charged: true,
+              amount: totalAmount,
+              walletUsed: totalAmount,
+              cardCharged: 0,
+              message: `$${totalAmount} debited from wallet. The universe has collected.`,
+            } as ChargeResponse),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+      }
+
+      // No card and wallet doesn't cover it - abandon
       await supabase
         .from('promises')
         .update({
@@ -390,21 +462,88 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create and confirm PaymentIntent
-    // Stake is stored in dollars, sponsor_total is stored in cents
-    // Convert everything to cents for Stripe
-    const sponsorCents = promise.sponsor_total ?? 0;
-    const stakeCents = promise.stake * 100;
-    const amountInCents = stakeCents + sponsorCents;
-    const totalAmount = amountInCents / 100; // For display
-    console.log(`[charge-promise] Charging $${totalAmount} (stake: $${promise.stake}, sponsor: $${sponsorCents / 100}) for promise ${promiseId}`);
+    // ─────────────────────────────────────────────────────────────
+    // WALLET-FIRST LOGIC: Debit wallet before charging card
+    // ─────────────────────────────────────────────────────────────
+
+    let walletDebited = 0;
+
+    // If wallet has funds, debit wallet first
+    if (walletToUse > 0) {
+      console.log(`[charge-promise] Debiting $${walletToUse / 100} from wallet for promise ${promiseId}`);
+      
+      const { data: debitResult, error: debitError } = await supabase
+        .rpc('debit_wallet_with_log', {
+          target_user_id: user.id,
+          amount_cents: walletToUse,
+          tx_type: 'stake',
+          promise_id: promiseId,
+          description_text: cardToCharge > 0 
+            ? `Partial stake (wallet portion) for: "${promise.text.substring(0, 40)}..."`
+            : `Failed promise: "${promise.text.substring(0, 50)}..."`,
+        });
+
+      if (debitError) {
+        console.error(`[charge-promise] Wallet debit RPC error:`, debitError);
+        // Continue anyway - will charge full amount to card
+      } else if (debitResult === -1) {
+        console.log(`[charge-promise] Wallet insufficient at debit time, charging full amount to card`);
+        // Balance changed between check and debit - charge full amount to card
+      } else {
+        walletDebited = walletToUse;
+        console.log(`[charge-promise] Wallet debited successfully: $${walletDebited / 100}, new balance: $${debitResult / 100}`);
+      }
+    }
+
+    // If wallet covered everything, we're done (no card charge needed)
+    if (walletDebited >= totalAmountCents) {
+      await supabase
+        .from('promises')
+        .update({
+          status: 'failed',
+          failed_at: new Date().toISOString(),
+          payment_status: 'succeeded',
+          payment_client_secret: null,
+        })
+        .eq('id', promiseId);
+
+      // Log payment (wallet-only)
+      await supabase.from('payments').insert({
+        promise_id: promiseId,
+        amount: totalAmountCents,
+        currency: 'usd',
+        status: 'succeeded',
+        attempt_number: 1,
+      });
+
+      // Notify friend if applicable
+      if (promise.money_destination === 'friend' && promise.friend_claim_id) {
+        await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          charged: true,
+          amount: totalAmount,
+          walletUsed: totalAmount,
+          cardCharged: 0,
+          message: `$${totalAmount} debited from wallet. The universe has collected.`,
+        } as ChargeResponse),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Calculate remaining amount to charge to card
+    const amountToChargeCard = totalAmountCents - walletDebited;
+    console.log(`[charge-promise] Charging $${amountToChargeCard / 100} to card (wallet covered: $${walletDebited / 100}) for promise ${promiseId}`);
 
     try {
-      // Use idempotency key to prevent duplicate charges
-      const idempotencyKey = `charge-promise-${promiseId}-${user.id}`;
+      // Use idempotency key to prevent duplicate charges (include wallet amount for uniqueness)
+      const idempotencyKey = `charge-promise-${promiseId}-${user.id}-card${amountToChargeCard}`;
       
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
+        amount: amountToChargeCard,
         currency: 'usd',
         customer: stripe_customer_id,
         payment_method: default_payment_method_id,
@@ -414,8 +553,12 @@ Deno.serve(async (req: Request) => {
           promise_id: promiseId,
           user_id: user.id,
           trigger: 'manual_fail',
+          wallet_portion_cents: walletDebited.toString(),
+          card_portion_cents: amountToChargeCard.toString(),
         },
-        description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."`,
+        description: walletDebited > 0
+          ? `OopsFee: Failed promise (card portion) "${promise.text.substring(0, 40)}..."`
+          : `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."`,
       }, {
         idempotencyKey,
       });
@@ -434,10 +577,10 @@ Deno.serve(async (req: Request) => {
           })
           .eq('id', promiseId);
 
-        // Log payment (store in cents)
+        // Log payment (store total in cents)
         await supabase.from('payments').insert({
           promise_id: promiseId,
-          amount: amountInCents,
+          amount: totalAmountCents, // Total amount (wallet + card)
           currency: 'usd',
           stripe_payment_intent_id: paymentIntent.id,
           status: 'succeeded',
@@ -447,17 +590,29 @@ Deno.serve(async (req: Request) => {
         // Notify friend if money_destination is 'friend'
         console.log(`[charge-promise] Promise money_destination: ${promise.money_destination}, friend_claim_id: ${promise.friend_claim_id}`);
         if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-          await handleFriendClaimNotification(promise, supabase, amountInCents);
+          await handleFriendClaimNotification(promise, supabase, totalAmountCents);
         } else {
           console.log(`[charge-promise] Skipping friend notification - conditions not met`);
+        }
+
+        // Build response message
+        const walletDollars = walletDebited / 100;
+        const cardDollars = amountToChargeCard / 100;
+        let message: string;
+        if (walletDebited > 0) {
+          message = `$${totalAmount} collected ($${walletDollars} from wallet, $${cardDollars} from card).`;
+        } else {
+          message = `$${totalAmount} charged. The universe has collected.`;
         }
 
         return new Response(
           JSON.stringify({
             success: true,
             charged: true,
-            amount: totalAmount, // Return in dollars for display
-            message: `$${totalAmount} charged. The universe has collected.`,
+            amount: totalAmount,
+            walletUsed: walletDollars,
+            cardCharged: cardDollars,
+            message,
             paymentIntentId: paymentIntent.id,
           } as ChargeResponse),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -476,22 +631,29 @@ Deno.serve(async (req: Request) => {
           })
           .eq('id', promiseId);
 
-        // Log payment attempt (store in cents)
+        // Log payment attempt (store total in cents)
         await supabase.from('payments').insert({
           promise_id: promiseId,
-          amount: amountInCents,
+          amount: totalAmountCents,
           currency: 'usd',
           stripe_payment_intent_id: paymentIntent.id,
           status: 'requires_action',
           attempt_number: 1,
         });
 
+        const walletDollars = walletDebited / 100;
+        const cardDollars = amountToChargeCard / 100;
+
         return new Response(
           JSON.stringify({
             success: true,
             charged: false,
-            amount: totalAmount, // Return in dollars
-            message: 'Your bank requires confirmation. One more tap to face the music.',
+            amount: totalAmount,
+            walletUsed: walletDollars,
+            cardCharged: cardDollars,
+            message: walletDebited > 0
+              ? `Your bank requires confirmation for the $${cardDollars} card charge. $${walletDollars} already debited from wallet.`
+              : 'Your bank requires confirmation. One more tap to face the music.',
             requiresAction: true,
             clientSecret: paymentIntent.client_secret,
             paymentIntentId: paymentIntent.id,
@@ -525,10 +687,30 @@ Deno.serve(async (req: Request) => {
       const err = stripeError as { code?: string; message?: string };
       console.error('[charge-promise] Stripe error:', err);
 
-      // Log failed payment (store in cents)
+      // If we debited wallet but card failed, refund the wallet
+      if (walletDebited > 0) {
+        console.log(`[charge-promise] Card charge failed, refunding $${walletDebited / 100} to wallet`);
+        const { error: refundError } = await supabase
+          .rpc('credit_wallet_with_log', {
+            target_user_id: user.id,
+            amount_cents: walletDebited,
+            tx_type: 'refund',
+            promise_id: promiseId,
+            description_text: `Refund: card charge failed for "${promise.text.substring(0, 40)}..."`,
+          });
+        
+        if (refundError) {
+          console.error(`[charge-promise] CRITICAL: Failed to refund wallet:`, refundError);
+          // This is a serious issue - wallet was debited but couldn't be refunded
+        } else {
+          console.log(`[charge-promise] Wallet refund successful`);
+        }
+      }
+
+      // Log failed payment (store total in cents)
       await supabase.from('payments').insert({
         promise_id: promiseId,
-        amount: amountInCents,
+        amount: totalAmountCents,
         currency: 'usd',
         status: 'failed',
         attempt_number: 1,
@@ -555,6 +737,8 @@ Deno.serve(async (req: Request) => {
           success: true,
           charged: false,
           amount: totalAmount,
+          walletUsed: 0, // Wallet was refunded
+          cardCharged: 0,
           message: `Payment failed: ${err.message || 'Card declined'}. We'll try again.`,
         } as ChargeResponse),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
