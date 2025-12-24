@@ -174,24 +174,8 @@ type PayoutView = 'picker' | 'paypal' | 'stripe' | 'debit';
 
 const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant card payouts
 
-// Stripe.js types for web
-declare global {
-  interface Window {
-    Stripe?: (key: string) => {
-      elements: () => {
-        create: (type: string, options?: Record<string, unknown>) => {
-          mount: (el: HTMLElement | string) => void;
-          on: (event: string, handler: (e: { complete?: boolean; error?: { message: string } }) => void) => void;
-          unmount: () => void;
-        };
-      };
-      createToken: (element: unknown, data?: Record<string, unknown>) => Promise<{
-        token?: { id: string };
-        error?: { message: string };
-      }>;
-    };
-  }
-}
+// Check if we're on web at runtime (avoid SSR issues)
+const isWeb = Platform.OS === 'web';
 
 function ClaimState({ context, token }: { context: ClaimContext; token: string }) {
   const [view, setView] = useState<PayoutView>('picker');
@@ -203,9 +187,12 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   const [stripeLoaded, setStripeLoaded] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
-  const stripeRef = useRef<ReturnType<NonNullable<typeof window.Stripe>> | null>(null);
-  const cardElementRef = useRef<ReturnType<ReturnType<NonNullable<typeof window.Stripe>>['elements']>['create']> | null>(null);
-  const cardMountRef = useRef<HTMLDivElement | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripeRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardElementRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardMountRef = useRef<any>(null);
   
   // Cardholder name (still needed for token)
   const [cardholderName, setCardholderName] = useState('');
@@ -229,15 +216,17 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   
   // Load Stripe.js when debit view is shown (web only)
   useEffect(() => {
-    if (view !== 'debit' || Platform.OS !== 'web') return;
+    if (view !== 'debit' || !isWeb) return;
     if (!stripePublishableKey) {
       setError('Payment configuration not available. Please try again later.');
       return;
     }
     
     // Check if already loaded
-    if (window.Stripe) {
-      stripeRef.current = window.Stripe(stripePublishableKey);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any;
+    if (win.Stripe) {
+      stripeRef.current = win.Stripe(stripePublishableKey);
       setStripeLoaded(true);
       return;
     }
@@ -247,8 +236,8 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     script.src = 'https://js.stripe.com/v3/';
     script.async = true;
     script.onload = () => {
-      if (window.Stripe) {
-        stripeRef.current = window.Stripe(stripePublishableKey);
+      if (win.Stripe) {
+        stripeRef.current = win.Stripe(stripePublishableKey);
         setStripeLoaded(true);
       }
     };
@@ -268,33 +257,42 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   
   // Mount card element when Stripe is loaded
   useEffect(() => {
-    if (!stripeLoaded || !stripeRef.current || !cardMountRef.current) return;
+    if (!stripeLoaded || !stripeRef.current) return;
     if (cardElementRef.current) return; // Already mounted
+    if (!isWeb) return;
     
-    const elements = stripeRef.current.elements();
-    const cardElement = elements.create('card', {
-      style: {
-        base: {
-          color: '#ffffff',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          fontSize: '16px',
-          '::placeholder': {
-            color: '#666666',
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      const mountEl = cardMountRef.current;
+      if (!mountEl) return;
+      
+      const elements = stripeRef.current.elements();
+      const cardElement = elements.create('card', {
+        style: {
+          base: {
+            color: '#ffffff',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            fontSize: '16px',
+            '::placeholder': {
+              color: '#666666',
+            },
+          },
+          invalid: {
+            color: '#ff4444',
           },
         },
-        invalid: {
-          color: '#ff4444',
-        },
-      },
-    });
+      });
+      
+      cardElement.mount(mountEl);
+      cardElement.on('change', (event: { complete?: boolean; error?: { message: string } }) => {
+        setCardComplete(event.complete ?? false);
+        setCardError(event.error?.message ?? null);
+      });
+      
+      cardElementRef.current = cardElement;
+    }, 100);
     
-    cardElement.mount(cardMountRef.current);
-    cardElement.on('change', (event) => {
-      setCardComplete(event.complete ?? false);
-      setCardError(event.error?.message ?? null);
-    });
-    
-    cardElementRef.current = cardElement;
+    return () => clearTimeout(timeoutId);
   }, [stripeLoaded]);
 
   const handleStripeOnboarding = useCallback(async () => {
@@ -548,34 +546,28 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
           <Text style={styles.inputLabel}>Debit Card Details</Text>
           
           {/* Stripe Card Element (web only) */}
-          {Platform.OS === 'web' ? (
-            <>
-              {!stripeLoaded ? (
-                <View style={styles.stripeLoadingContainer}>
-                  <ActivityIndicator size="small" color={Colors.accent} />
-                  <Text style={styles.stripeLoadingText}>Loading secure card input...</Text>
-                </View>
-              ) : (
-                <View style={styles.stripeCardContainer}>
-                  <div
-                    ref={(el) => { cardMountRef.current = el; }}
-                    style={{
-                      backgroundColor: '#1a1a1a',
-                      borderRadius: 8,
-                      padding: 16,
-                      border: cardError ? '1px solid #ff4444' : '1px solid #333',
-                    }}
-                  />
-                  {cardError && (
-                    <Text style={styles.cardErrorText}>{cardError}</Text>
-                  )}
-                </View>
-              )}
-            </>
+          {!stripeLoaded ? (
+            <View style={styles.stripeLoadingContainer}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+              <Text style={styles.stripeLoadingText}>Loading secure card input...</Text>
+            </View>
           ) : (
-            <Text style={styles.inputHint}>
-              Debit card payouts are only available on web.
-            </Text>
+            <View style={styles.stripeCardContainer}>
+              <View
+                ref={cardMountRef}
+                // @ts-ignore - web-only div styling
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  borderRadius: 8,
+                  padding: 16,
+                  border: cardError ? '1px solid #ff4444' : '1px solid #333',
+                  minHeight: 44,
+                }}
+              />
+              {cardError && (
+                <Text style={styles.cardErrorText}>{cardError}</Text>
+              )}
+            </View>
           )}
           
           {/* Cardholder Name */}
