@@ -86,6 +86,18 @@ export async function presentPaymentForSCA(
 /**
  * Not available on web
  */
+export async function presentTopUpSheet(
+  _clientSecret: string,
+  _customerId: string,
+  _ephemeralKey: string
+): Promise<PaymentSheetResult> {
+  console.warn('[Stripe] presentTopUpSheet is not supported on web.');
+  return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };
+}
+
+/**
+ * Not available on web
+ */
 export async function removePaymentMethod(): Promise<RemovePaymentResult> {
   console.warn('[Stripe] removePaymentMethod is not supported on web.');
   return { success: false, error: 'Stripe is not available on web. Please use the mobile app.' };

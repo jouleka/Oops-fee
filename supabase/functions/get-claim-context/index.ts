@@ -60,7 +60,10 @@ Deno.serve(async (req: Request) => {
         payout_method,
         paypal_email,
         paypal_batch_id,
-        paypal_payout_item_id
+        paypal_payout_item_id,
+        card_payout_transfer_id,
+        card_last4,
+        card_brand
       `)
       .eq('claim_token', token)
       .single();
@@ -158,9 +161,13 @@ Deno.serve(async (req: Request) => {
       stripeAccountStatus: claim.stripe_account_status,
       
       // PayPal payout info
-      payoutMethod: claim.payout_method, // 'stripe' | 'paypal' | null
+      payoutMethod: claim.payout_method, // 'stripe' | 'paypal' | 'card' | null
       paypalEmail: claim.paypal_email,
       paypalBatchId: claim.paypal_batch_id,
+      
+      // Card payout info
+      cardLast4: claim.card_last4,
+      cardBrand: claim.card_brand,
       
       canClaim,
       isExpired,

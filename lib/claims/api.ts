@@ -12,7 +12,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
 export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
-export type PayoutMethod = 'stripe' | 'paypal' | null;
+export type PayoutMethod = 'stripe' | 'paypal' | 'card' | null;
 
 export interface ClaimContext {
   // Claim info
@@ -37,9 +37,13 @@ export interface ClaimContext {
   stripeAccountStatus: StripeAccountStatus | null;
   
   // PayPal payout info
-  payoutMethod: PayoutMethod; // 'stripe' | 'paypal' | null (not yet chosen)
+  payoutMethod: PayoutMethod; // 'stripe' | 'paypal' | 'card' | null (not yet chosen)
   paypalEmail: string | null; // Email used for PayPal payout
   paypalBatchId: string | null; // PayPal batch ID for tracking
+  
+  // Card payout info
+  cardLast4: string | null; // Last 4 of debit card used
+  cardBrand: string | null; // Card brand (visa, mastercard, etc)
   
   // Derived states
   canClaim: boolean;           // True if claim_status='notified' and not expired
@@ -56,6 +60,17 @@ export interface CreateConnectAccountResponse {
 export interface PayPalClaimResponse {
   success: boolean;
   batchId?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface CardClaimResponse {
+  success: boolean;
+  payoutAmount?: number;    // Net amount in cents
+  feeAmount?: number;       // Fee in cents
+  payoutId?: string;
+  cardLast4?: string;
+  cardBrand?: string;
   message?: string;
   error?: string;
 }
@@ -136,5 +151,54 @@ export async function claimViaPayPal(
   }
 
   return data;
+}
+
+/**
+ * Claim payout via debit card.
+ * Sends an instant payout to the provided debit card.
+ */
+export async function claimViaDebitCard(
+  token: string,
+  cardDetails: {
+    cardNumber: string;
+    expMonth: number;
+    expYear: number;
+    cvc?: string;
+    cardholderName: string;
+  }
+): Promise<CardClaimResponse> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/claim-payout-to-card`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      token,
+      card_number: cardDetails.cardNumber,
+      exp_month: cardDetails.expMonth,
+      exp_year: cardDetails.expYear,
+      cvc: cardDetails.cvc,
+      cardholder_name: cardDetails.cardholderName,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return {
+      success: false,
+      error: data.error || 'Failed to process card payout',
+    };
+  }
+
+  return {
+    success: true,
+    payoutAmount: data.payout_amount,
+    feeAmount: data.fee_amount,
+    payoutId: data.payout_id,
+    cardLast4: data.card_last4,
+    cardBrand: data.card_brand,
+    message: data.message,
+  };
 }
 

@@ -17,16 +17,20 @@ const MAX_AMOUNT_CENTS = 50000; // $500
 
 interface TopUpRequest {
   amount_cents: number;
+  setup_only?: boolean;      // If true, create PaymentIntent but don't confirm (for PaymentSheet)
+  payment_intent_id?: string; // For confirming a previously created PaymentIntent
 }
 
 interface TopUpResponse {
   success: boolean;
-  balance?: number;        // New balance in cents
-  charged?: number;        // Amount charged in cents
+  balance?: number;          // New balance in cents
+  charged?: number;          // Amount charged in cents
   message: string;
   requiresAction?: boolean;
   clientSecret?: string;
   paymentIntentId?: string;
+  customerId?: string;       // For PaymentSheet initialization
+  ephemeralKey?: string;     // For PaymentSheet initialization
 }
 
 Deno.serve(async (req: Request) => {
@@ -51,9 +55,109 @@ Deno.serve(async (req: Request) => {
 
     // Parse request
     const body = await req.json();
-    const { amount_cents } = body as TopUpRequest;
+    const { amount_cents, setup_only, payment_intent_id } = body as TopUpRequest;
 
-    // Validate amount
+    const supabase = createAdminClient();
+    const stripe = createStripeClient();
+
+    // Get user's profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('stripe_customer_id, default_payment_method_id, balance_cents')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[wallet-topup] Profile not found:', profileError);
+      return new Response(
+        JSON.stringify({ success: false, message: 'Profile not found' } as TopUpResponse),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const { stripe_customer_id } = profile;
+
+    // ─────────────────────────────────────────────────────────────
+    // MODE 1: Confirm a previously created PaymentIntent (after PaymentSheet success)
+    // ─────────────────────────────────────────────────────────────
+    if (payment_intent_id) {
+      console.log(`[wallet-topup] Confirming PaymentIntent ${payment_intent_id} for user ${user.id}`);
+      
+      try {
+        // Retrieve the PaymentIntent to verify it succeeded
+        const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+        
+        if (paymentIntent.status !== 'succeeded') {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: `Payment not completed. Status: ${paymentIntent.status}` 
+            } as TopUpResponse),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        // Verify this PaymentIntent belongs to this user's customer
+        if (paymentIntent.customer !== stripe_customer_id) {
+          return new Response(
+            JSON.stringify({ success: false, message: 'Payment does not belong to this user' } as TopUpResponse),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        // Credit the wallet
+        const amountCents = paymentIntent.amount;
+        const amountDisplay = `$${(amountCents / 100).toFixed(amountCents % 100 === 0 ? 0 : 2)}`;
+
+        const { data: newBalance, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
+          target_user_id: user.id,
+          amount_cents: amountCents,
+          tx_type: 'topup',
+          promise_id: null,
+          claim_id: null,
+          stripe_pi_id: payment_intent_id,
+          description_text: `Top-up ${amountDisplay}`,
+        });
+
+        if (creditError) {
+          console.error('[wallet-topup] Credit wallet error:', creditError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: 'Payment succeeded but wallet credit failed. Contact support.',
+              paymentIntentId: payment_intent_id,
+            } as TopUpResponse),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        console.log(`[wallet-topup] User ${user.id} credited ${amountCents} cents, new balance: ${newBalance}`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            balance: newBalance,
+            charged: amountCents,
+            message: `Added ${amountDisplay} to your wallet`,
+            paymentIntentId: payment_intent_id,
+          } as TopUpResponse),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      } catch (err: unknown) {
+        console.error('[wallet-topup] Confirm error:', err);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: err instanceof Error ? err.message : 'Failed to confirm payment' 
+          } as TopUpResponse),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Validate amount (required for setup_only and off-session modes)
+    // ─────────────────────────────────────────────────────────────
     if (!amount_cents || typeof amount_cents !== 'number') {
       return new Response(
         JSON.stringify({ success: false, message: 'Missing or invalid amount_cents' } as TopUpResponse),
@@ -89,27 +193,82 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabase = createAdminClient();
-    const stripe = createStripeClient();
+    const amountDisplay = `$${(amount_cents / 100).toFixed(amount_cents % 100 === 0 ? 0 : 2)}`;
 
-    // Get user's payment method
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('stripe_customer_id, default_payment_method_id, balance_cents')
-      .eq('id', user.id)
-      .single();
+    // ─────────────────────────────────────────────────────────────
+    // MODE 2: Setup only - Create PaymentIntent for PaymentSheet (Apple Pay / Google Pay)
+    // ─────────────────────────────────────────────────────────────
+    if (setup_only) {
+      console.log(`[wallet-topup] Creating PaymentIntent for PaymentSheet, amount: ${amountDisplay}, user: ${user.id}`);
+      
+      try {
+        // Ensure we have a Stripe customer
+        let customerId = stripe_customer_id;
+        
+        if (!customerId) {
+          // Create a new Stripe customer
+          const customer = await stripe.customers.create({
+            metadata: { supabase_user_id: user.id },
+          });
+          customerId = customer.id;
+          
+          // Save to profile
+          await supabase
+            .from('profiles')
+            .update({ stripe_customer_id: customerId })
+            .eq('id', user.id);
+        }
 
-    if (profileError || !profile) {
-      console.error('[wallet-topup] Profile not found:', profileError);
-      return new Response(
-        JSON.stringify({ success: false, message: 'Profile not found' } as TopUpResponse),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+        // Create ephemeral key for PaymentSheet
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+          { customer: customerId },
+          { apiVersion: '2024-04-10' }
+        );
+
+        // Create PaymentIntent (not confirmed - app will present PaymentSheet)
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount_cents,
+          currency: 'usd',
+          customer: customerId,
+          automatic_payment_methods: { enabled: true },
+          metadata: {
+            type: 'wallet_topup',
+            user_id: user.id,
+          },
+          description: `OopsFee: Wallet top-up ${amountDisplay}`,
+        });
+
+        console.log(`[wallet-topup] Created PaymentIntent ${paymentIntent.id} for PaymentSheet`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Ready for PaymentSheet',
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+            customerId: customerId,
+            ephemeralKey: ephemeralKey.secret,
+          } as TopUpResponse),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      } catch (err: unknown) {
+        console.error('[wallet-topup] Setup error:', err);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: err instanceof Error ? err.message : 'Failed to setup payment' 
+          } as TopUpResponse),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
     }
 
-    const { stripe_customer_id, default_payment_method_id } = profile;
+    // ─────────────────────────────────────────────────────────────
+    // MODE 3: Off-session charge (legacy - charge saved card directly)
+    // ─────────────────────────────────────────────────────────────
+    const { default_payment_method_id } = profile;
 
-    // Require payment method
+    // Require payment method for off-session
     if (!stripe_customer_id || !default_payment_method_id) {
       return new Response(
         JSON.stringify({ 
@@ -120,8 +279,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const amountDisplay = `$${(amount_cents / 100).toFixed(amount_cents % 100 === 0 ? 0 : 2)}`;
-    console.log(`[wallet-topup] Charging ${amountDisplay} for user ${user.id}`);
+    console.log(`[wallet-topup] Off-session charging ${amountDisplay} for user ${user.id}`);
 
     try {
       // Use idempotency key to prevent duplicate charges

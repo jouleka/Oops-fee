@@ -16,6 +16,7 @@ export {
   isStripeConfigured,
   presentAddCardSheet,
   presentPaymentForSCA,
+  presentTopUpSheet,
   removePaymentMethod,
   StripeProvider,
   type PaymentSheetResult,

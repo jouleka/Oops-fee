@@ -1,12 +1,12 @@
 /**
  * TopUpModal
- * Add funds to wallet by charging user's saved card.
+ * Add funds to wallet via PaymentSheet (Apple Pay, Google Pay, or card).
  *
  * Features:
  * - Amount input with min ($5) / max ($500)
  * - Quick preset buttons ($25, $50, $100)
- * - Shows payment method to be charged
- * - Calls wallet-topup edge function
+ * - PaymentSheet with Apple Pay / Google Pay support
+ * - Falls back to saved card for web/Expo Go
  */
 
 import * as Haptics from 'expo-haptics';
@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -27,7 +28,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
-import { formatCents, topUpWallet } from '@/lib/wallet/api';
+import { isStripeConfigured, presentTopUpSheet } from '@/lib/stripe';
+import { confirmTopUp, createTopUpIntent, formatCents } from '@/lib/wallet/api';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -53,7 +55,7 @@ interface TopUpModalProps {
 
 export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
   const insets = useSafeAreaInsets();
-  const { paymentState, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const [amountText, setAmountText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,13 +75,53 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
     if (!isValidAmount || loading) return;
 
     hapticMedium();
+    Keyboard.dismiss();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await topUpWallet(amountCents);
+      // Step 1: Create PaymentIntent for PaymentSheet
+      const setupResult = await createTopUpIntent(amountCents);
 
-      if (result.success) {
+      if (!setupResult.success || !setupResult.clientSecret || !setupResult.customerId || !setupResult.ephemeralKey) {
+        setError(setupResult.message || 'Failed to initialize payment');
+        hapticError();
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Present PaymentSheet (Apple Pay, Google Pay, or card)
+      // Check if native Stripe is available (not on web or Expo Go)
+      if (!isStripeConfigured()) {
+        setError('Payments require the mobile app');
+        hapticError();
+        setLoading(false);
+        return;
+      }
+
+      const sheetResult = await presentTopUpSheet(
+        setupResult.clientSecret,
+        setupResult.customerId,
+        setupResult.ephemeralKey
+      );
+
+      if (sheetResult.cancelled) {
+        // User cancelled - no error message needed
+        setLoading(false);
+        return;
+      }
+
+      if (!sheetResult.success) {
+        setError(sheetResult.error || 'Payment failed');
+        hapticError();
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Confirm the top-up (credit wallet)
+      const confirmResult = await confirmTopUp(setupResult.paymentIntentId!);
+
+      if (confirmResult.success) {
         hapticSuccess();
         setSuccess(true);
         await refreshProfile();
@@ -89,12 +131,9 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
           setAmountText('');
           setSuccess(false);
         }, 1500);
-      } else if (result.requiresAction) {
-        // SCA required - would need to handle with Stripe confirmation
-        setError('Additional authentication required. Please try again.');
-        hapticError();
       } else {
-        setError(result.message);
+        // Payment succeeded but wallet credit failed - this is bad
+        setError(confirmResult.message || 'Payment succeeded but wallet credit failed. Contact support.');
         hapticError();
       }
     } catch (e) {
@@ -114,10 +153,13 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
   };
 
   const getPaymentLabel = () => {
-    if (!paymentState.hasPaymentMethod) return 'No card on file';
-    const brand = paymentState.brand || 'Card';
-    const last4 = paymentState.last4 ? ` •••• ${paymentState.last4}` : '';
-    return `${brand.charAt(0).toUpperCase() + brand.slice(1)}${last4}`;
+    if (Platform.OS === 'ios') {
+      return 'Apple Pay, Card, or other';
+    }
+    if (Platform.OS === 'android') {
+      return 'Google Pay, Card, or other';
+    }
+    return 'Card';
   };
 
   return (
@@ -135,7 +177,13 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Add Funds</Text>
-              <Text style={styles.subtitle}>Top up your wallet to stake on promises.</Text>
+              <Text style={styles.subtitle}>
+                {Platform.OS === 'ios' 
+                  ? 'Pay with Apple Pay, card, or other methods.'
+                  : Platform.OS === 'android'
+                  ? 'Pay with Google Pay, card, or other methods.'
+                  : 'Top up your wallet to stake on promises.'}
+              </Text>
             </View>
 
             {success ? (
@@ -210,12 +258,12 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
                 {/* Add Button */}
                 <Animated.View entering={FadeInDown.delay(200).duration(300)}>
                   <Pressable
-                    disabled={!isValidAmount || loading || !paymentState.hasPaymentMethod}
+                    disabled={!isValidAmount || loading}
                     onPress={handleTopUp}
                     style={({ pressed }) => [
                       styles.addBtn,
                       pressed && styles.pressed,
-                      (!isValidAmount || !paymentState.hasPaymentMethod) && styles.disabled,
+                      !isValidAmount && styles.disabled,
                     ]}
                   >
                     <LinearGradient
@@ -228,9 +276,7 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
                         <ActivityIndicator color={Colors.text} />
                       ) : (
                         <Text style={styles.btnText}>
-                          {!paymentState.hasPaymentMethod
-                            ? 'Add a card first'
-                            : `Add ${isValidAmount ? formatCents(amountCents) : 'Funds'}`}
+                          Add {isValidAmount ? formatCents(amountCents) : 'Funds'}
                         </Text>
                       )}
                     </LinearGradient>

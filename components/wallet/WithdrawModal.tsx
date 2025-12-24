@@ -1,13 +1,14 @@
 /**
  * WithdrawModal
- * Withdraw funds from wallet to PayPal or bank account.
+ * Withdraw funds from wallet to debit card, PayPal, or bank account.
  *
  * Features:
  * - Amount input (up to current balance)
- * - Toggle: PayPal or Bank Account
+ * - Toggle: Debit Card (instant), PayPal, or Bank Account
+ * - Debit: instant payout to saved or new card (1.5% fee)
  * - PayPal: email input (or saved email)
  * - Stripe: Connect account display (onboarding placeholder)
- * - Calls wallet-withdraw edge function
+ * - Calls payout-to-card or wallet-withdraw edge functions
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
-import { formatCents, savePayoutMethod, withdrawWallet } from '@/lib/wallet/api';
+import { formatCents, payoutToCard, savePayoutMethod, withdrawWallet } from '@/lib/wallet/api';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -44,8 +45,9 @@ function hapticError() {
 }
 
 const MIN_WITHDRAWAL = 500; // $5 minimum withdrawal
+const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant debit card payouts
 
-type PayoutMethod = 'paypal' | 'stripe';
+type PayoutMethod = 'paypal' | 'stripe' | 'debit';
 
 interface WithdrawModalProps {
   visible: boolean;
@@ -60,10 +62,18 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   const [method, setMethod] = useState<PayoutMethod>('paypal');
   const [amountText, setAmountText] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
+  // Debit card fields
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  const [useSavedCard, setUseSavedCard] = useState(true);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
+  const [successCardLast4, setSuccessCardLast4] = useState<string | null>(null);
 
   // Pre-fill saved payout methods
   useEffect(() => {
@@ -76,8 +86,11 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
       if (walletState.balanceCents > 0) {
         setAmountText((walletState.balanceCents / 100).toFixed(2));
       }
-      // Default to saved method if available
-      if (walletState.stripeConnectAccountId && !walletState.paypalPayoutEmail) {
+      // Default to best available method (debit > paypal > stripe)
+      if (walletState.payoutCard) {
+        setMethod('debit');
+        setUseSavedCard(true);
+      } else if (walletState.stripeConnectAccountId && !walletState.paypalPayoutEmail) {
         setMethod('stripe');
       }
     }
@@ -89,10 +102,31 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail.trim());
   const hasStripeConnect = Boolean(walletState.stripeConnectAccountId);
+  const hasSavedCard = Boolean(walletState.payoutCard);
+  
+  // Parse expiry MM/YY
+  const expiryParts = expiry.split('/');
+  const expMonth = expiryParts[0] ? parseInt(expiryParts[0], 10) : 0;
+  const expYear = expiryParts[1] ? parseInt(`20${expiryParts[1]}`, 10) : 0;
+  
+  // Validate card fields (only needed if entering new card)
+  const isValidCard = useSavedCard && hasSavedCard
+    ? true
+    : cardNumber.replace(/\s/g, '').length >= 15 &&
+      expMonth >= 1 && expMonth <= 12 &&
+      expYear >= new Date().getFullYear() &&
+      cvc.length >= 3 &&
+      cardholderName.trim().length > 0;
+  
+  // Calculate fee for debit card payout
+  const debitFeeAmount = Math.round(amountCents * (DEBIT_FEE_PERCENT / 100));
+  const debitNetAmount = amountCents - debitFeeAmount;
 
   const canWithdraw =
     isValidAmount &&
-    ((method === 'paypal' && isValidEmail) || (method === 'stripe' && hasStripeConnect));
+    ((method === 'paypal' && isValidEmail) || 
+     (method === 'stripe' && hasStripeConnect) ||
+     (method === 'debit' && isValidCard));
 
   const handleMethodSwitch = (m: PayoutMethod) => {
     hapticMedium();
@@ -115,6 +149,37 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
     setError(null);
 
     try {
+      // Handle debit card payout
+      if (method === 'debit') {
+        const result = await payoutToCard({
+          amountCents,
+          useSavedCard: useSavedCard && hasSavedCard,
+          ...(!(useSavedCard && hasSavedCard) && {
+            cardNumber: cardNumber.replace(/\s/g, ''),
+            expMonth,
+            expYear,
+            cvc,
+            cardholderName: cardholderName.trim(),
+          }),
+        });
+
+        if (result.success) {
+          hapticSuccess();
+          setSuccess(true);
+          setSuccessCardLast4(result.cardLast4 ?? null);
+          await refreshProfile();
+          setTimeout(() => {
+            onSuccess();
+            // Reset state after close
+            resetForm();
+          }, 1500);
+        } else {
+          setError(result.message);
+          hapticError();
+        }
+        return;
+      }
+
       // If using PayPal and email is different from saved, save it first
       if (method === 'paypal' && paypalEmail.trim() !== walletState.paypalPayoutEmail) {
         setSavingEmail(true);
@@ -140,9 +205,7 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
         setTimeout(() => {
           onSuccess();
           // Reset state after close
-          setAmountText('');
-          setSuccess(false);
-          setError(null);
+          resetForm();
         }, 1500);
       } else {
         setError(result.message);
@@ -158,21 +221,53 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   }, [
     amountCents,
     canWithdraw,
+    cardNumber,
+    cardholderName,
+    cvc,
+    expMonth,
+    expYear,
+    hasSavedCard,
     loading,
     method,
     onSuccess,
     paypalEmail,
     refreshProfile,
+    useSavedCard,
     walletState.paypalPayoutEmail,
     walletState.stripeConnectAccountId,
   ]);
 
+  const resetForm = () => {
+    setAmountText('');
+    setSuccess(false);
+    setError(null);
+    setCardNumber('');
+    setExpiry('');
+    setCvc('');
+    setCardholderName('');
+    setSuccessCardLast4(null);
+  };
+
   const handleClose = () => {
     if (loading) return;
-    setAmountText('');
-    setError(null);
-    setSuccess(false);
+    resetForm();
     onClose();
+  };
+
+  // Format card number with spaces
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 16);
+    const groups = cleaned.match(/.{1,4}/g);
+    return groups ? groups.join(' ') : cleaned;
+  };
+
+  // Format expiry as MM/YY
+  const formatExpiry = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 4);
+    if (cleaned.length >= 3) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    }
+    return cleaned;
   };
 
   return (
@@ -199,11 +294,13 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
               <Animated.View entering={FadeIn.duration(300)} style={styles.successBox}>
                 <Text style={styles.successEmoji}>✓</Text>
                 <Text style={styles.successText}>
-                  Withdrew {formatCents(amountCents)}!
+                  {method === 'debit' ? `Sent ${formatCents(debitNetAmount)}!` : `Withdrew ${formatCents(amountCents)}!`}
                 </Text>
                 <Text style={styles.successSubtext}>
                   {method === 'paypal'
                     ? `Sent to ${paypalEmail}`
+                    : method === 'debit'
+                    ? `Instant transfer to card •••• ${successCardLast4 ?? ''}`
                     : 'Transferred to your bank'}
                 </Text>
               </Animated.View>
@@ -242,15 +339,43 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                     <Pressable
                       style={[
                         styles.methodBtn,
+                        styles.methodBtnThird,
+                        method === 'debit' && styles.methodBtnActive,
+                      ]}
+                      onPress={() => handleMethodSwitch('debit')}
+                    >
+                      <View style={styles.methodBtnContent}>
+                        <Ionicons
+                          name="flash"
+                          size={18}
+                          color={method === 'debit' ? Colors.accent : Colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.methodText,
+                            method === 'debit' && styles.methodTextActive,
+                          ]}
+                        >
+                          Debit
+                        </Text>
+                      </View>
+                      <View style={styles.instantBadge}>
+                        <Text style={styles.instantText}>Instant</Text>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      style={[
+                        styles.methodBtn,
+                        styles.methodBtnThird,
                         method === 'paypal' && styles.methodBtnActive,
                       ]}
                       onPress={() => handleMethodSwitch('paypal')}
                     >
-                    <Ionicons
-                      name="logo-paypal"
-                      size={20}
-                      color={method === 'paypal' ? Colors.accent : Colors.textSecondary}
-                    />
+                      <Ionicons
+                        name="logo-paypal"
+                        size={18}
+                        color={method === 'paypal' ? Colors.accent : Colors.textSecondary}
+                      />
                       <Text
                         style={[
                           styles.methodText,
@@ -263,15 +388,16 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                     <Pressable
                       style={[
                         styles.methodBtn,
+                        styles.methodBtnThird,
                         method === 'stripe' && styles.methodBtnActive,
                       ]}
                       onPress={() => handleMethodSwitch('stripe')}
                     >
-                    <Ionicons
-                      name="card-outline"
-                      size={20}
-                      color={method === 'stripe' ? Colors.accent : Colors.textSecondary}
-                    />
+                      <Ionicons
+                        name="business-outline"
+                        size={18}
+                        color={method === 'stripe' ? Colors.accent : Colors.textSecondary}
+                      />
                       <Text
                         style={[
                           styles.methodText,
@@ -344,8 +470,182 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                         <View style={styles.stripeSetupInfo}>
                           <Text style={styles.stripeSetupLabel}>Bank Transfers Not Available</Text>
                           <Text style={styles.stripeSetupHint}>
-                            Direct bank payouts require additional verification. For instant withdrawals, use PayPal instead – it&apos;s free and funds arrive in minutes!
+                            Direct bank payouts require additional verification. For instant withdrawals, use Debit Card – funds arrive in seconds!
                           </Text>
+                        </View>
+                      </View>
+                    )}
+                  </Animated.View>
+                )}
+
+                {/* Debit Card Input */}
+                {method === 'debit' && (
+                  <Animated.View entering={FadeIn.duration(200)} style={styles.destinationSection}>
+                    {/* Saved Card Option */}
+                    {hasSavedCard && (
+                      <Pressable
+                        style={[
+                          styles.savedCardOption,
+                          useSavedCard && styles.savedCardOptionActive,
+                        ]}
+                        onPress={() => {
+                          hapticMedium();
+                          setUseSavedCard(true);
+                          setError(null);
+                        }}
+                      >
+                        <View style={styles.savedCardRow}>
+                          <Ionicons
+                            name={useSavedCard ? 'radio-button-on' : 'radio-button-off'}
+                            size={20}
+                            color={useSavedCard ? Colors.accent : Colors.textSecondary}
+                          />
+                          <Ionicons
+                            name="card"
+                            size={24}
+                            color={Colors.accent}
+                            style={styles.cardIcon}
+                          />
+                          <View style={styles.savedCardInfo}>
+                            <Text style={styles.savedCardLabel}>
+                              {walletState.payoutCard?.brand?.toUpperCase()} •••• {walletState.payoutCard?.last4}
+                            </Text>
+                            <Text style={styles.savedCardHint}>Saved card</Text>
+                          </View>
+                        </View>
+                      </Pressable>
+                    )}
+
+                    {/* New Card Option */}
+                    <Pressable
+                      style={[
+                        styles.newCardOption,
+                        (!hasSavedCard || !useSavedCard) && styles.newCardOptionActive,
+                      ]}
+                      onPress={() => {
+                        hapticMedium();
+                        setUseSavedCard(false);
+                        setError(null);
+                      }}
+                    >
+                      <View style={styles.newCardHeader}>
+                        {hasSavedCard && (
+                          <Ionicons
+                            name={!useSavedCard ? 'radio-button-on' : 'radio-button-off'}
+                            size={20}
+                            color={!useSavedCard ? Colors.accent : Colors.textSecondary}
+                            style={styles.radioIcon}
+                          />
+                        )}
+                        <Text style={styles.sectionLabel}>
+                          {hasSavedCard ? 'Use a different card' : 'Debit Card Details'}
+                        </Text>
+                      </View>
+
+                      {(!hasSavedCard || !useSavedCard) && (
+                        <View style={styles.cardInputs}>
+                          {/* Card Number */}
+                          <View style={styles.cardInputWrapper}>
+                            <Ionicons
+                              name="card-outline"
+                              size={20}
+                              color={Colors.textMuted}
+                              style={styles.cardInputIcon}
+                            />
+                            <TextInput
+                              style={styles.cardInput}
+                              value={cardNumber}
+                              onChangeText={(t) => {
+                                setCardNumber(formatCardNumber(t));
+                                setError(null);
+                              }}
+                              placeholder="4242 4242 4242 4242"
+                              placeholderTextColor={Colors.textMuted}
+                              keyboardType="number-pad"
+                              maxLength={19}
+                            />
+                          </View>
+
+                          {/* Expiry and CVC Row */}
+                          <View style={styles.cardRowInputs}>
+                            <View style={[styles.cardInputWrapper, styles.cardInputHalf]}>
+                              <TextInput
+                                style={styles.cardInput}
+                                value={expiry}
+                                onChangeText={(t) => {
+                                  setExpiry(formatExpiry(t));
+                                  setError(null);
+                                }}
+                                placeholder="MM/YY"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="number-pad"
+                                maxLength={5}
+                              />
+                            </View>
+                            <View style={[styles.cardInputWrapper, styles.cardInputHalf]}>
+                              <TextInput
+                                style={styles.cardInput}
+                                value={cvc}
+                                onChangeText={(t) => {
+                                  setCvc(t.replace(/\D/g, '').slice(0, 4));
+                                  setError(null);
+                                }}
+                                placeholder="CVC"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="number-pad"
+                                maxLength={4}
+                                secureTextEntry
+                              />
+                            </View>
+                          </View>
+
+                          {/* Cardholder Name */}
+                          <View style={styles.cardInputWrapper}>
+                            <Ionicons
+                              name="person-outline"
+                              size={20}
+                              color={Colors.textMuted}
+                              style={styles.cardInputIcon}
+                            />
+                            <TextInput
+                              style={styles.cardInput}
+                              value={cardholderName}
+                              onChangeText={(t) => {
+                                setCardholderName(t);
+                                setError(null);
+                              }}
+                              placeholder="Name on card"
+                              placeholderTextColor={Colors.textMuted}
+                              autoCapitalize="words"
+                              autoCorrect={false}
+                            />
+                          </View>
+
+                          {/* Debit card notice */}
+                          <View style={styles.debitNotice}>
+                            <Ionicons name="information-circle" size={16} color={Colors.textMuted} />
+                            <Text style={styles.debitNoticeText}>
+                              Only Visa/Mastercard debit cards eligible for instant payout
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </Pressable>
+
+                    {/* Fee breakdown */}
+                    {isValidAmount && (
+                      <View style={styles.feeBreakdown}>
+                        <View style={styles.feeRow}>
+                          <Text style={styles.feeLabel}>Amount</Text>
+                          <Text style={styles.feeValue}>{formatCents(amountCents)}</Text>
+                        </View>
+                        <View style={styles.feeRow}>
+                          <Text style={styles.feeLabel}>Instant transfer fee (1.5%)</Text>
+                          <Text style={styles.feeValue}>-{formatCents(debitFeeAmount)}</Text>
+                        </View>
+                        <View style={[styles.feeRow, styles.feeRowTotal]}>
+                          <Text style={styles.feeLabelTotal}>You receive</Text>
+                          <Text style={styles.feeValueTotal}>{formatCents(debitNetAmount)}</Text>
                         </View>
                       </View>
                     )}
@@ -391,6 +691,10 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                             ? 'Enter PayPal email'
                             : method === 'stripe' && !hasStripeConnect
                             ? 'Bank not connected'
+                            : method === 'debit' && !isValidCard
+                            ? 'Enter card details'
+                            : method === 'debit'
+                            ? `Send ${formatCents(debitNetAmount)} Instantly`
                             : `Withdraw ${formatCents(amountCents)}`}
                         </Text>
                       )}
@@ -401,7 +705,9 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                 {/* Fee Notice */}
                 <Animated.View entering={FadeInDown.delay(250).duration(300)}>
                   <Text style={styles.feeNotice}>
-                    No withdrawal fees. Funds typically arrive in 1-3 business days.
+                    {method === 'debit'
+                      ? '⚡ Funds arrive in seconds. 1.5% instant transfer fee.'
+                      : 'No withdrawal fees. Funds typically arrive in 1-3 business days.'}
                   </Text>
                 </Animated.View>
               </>
@@ -523,12 +829,36 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentDim,
     borderColor: Colors.accent,
   },
+  methodBtnThird: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    gap: 4,
+  },
+  methodBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   methodText: {
-    ...Typography.bodySemibold,
+    ...Typography.caption,
+    fontWeight: '600',
     color: Colors.textSecondary,
   },
   methodTextActive: {
     color: Colors.accent,
+  },
+  instantBadge: {
+    backgroundColor: Colors.successDim,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
+  instantText: {
+    ...Typography.caption,
+    fontSize: 10,
+    color: Colors.success,
+    fontWeight: '700',
   },
 
   // Destination inputs
@@ -611,6 +941,133 @@ const styles = StyleSheet.create({
   stripeSetupHint: {
     ...Typography.caption,
     color: Colors.textSecondary,
+  },
+
+  // Debit Card
+  savedCardOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  savedCardOptionActive: {
+    backgroundColor: Colors.accentDim,
+    borderColor: Colors.accent,
+  },
+  savedCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  cardIcon: {
+    marginLeft: Spacing.sm,
+  },
+  savedCardInfo: {
+    marginLeft: Spacing.md,
+    flex: 1,
+  },
+  savedCardLabel: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  savedCardHint: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  newCardOption: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+  },
+  newCardOptionActive: {
+    borderColor: Colors.accent,
+  },
+  newCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  radioIcon: {
+    marginRight: Spacing.sm,
+  },
+  cardInputs: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  cardInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgElevated,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+  },
+  cardInputIcon: {
+    marginRight: Spacing.sm,
+  },
+  cardInput: {
+    flex: 1,
+    ...Typography.body,
+    color: Colors.text,
+    paddingVertical: Spacing.md,
+  },
+  cardRowInputs: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  cardInputHalf: {
+    flex: 1,
+  },
+  debitNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingTop: Spacing.xs,
+  },
+  debitNoticeText: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    flex: 1,
+  },
+  feeBreakdown: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  feeRowTotal: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.sm,
+  },
+  feeLabel: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  feeValue: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  feeLabelTotal: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  feeValueTotal: {
+    ...Typography.bodySemibold,
+    color: Colors.success,
   },
 
   // Error

@@ -8,7 +8,7 @@
  * - Withdraw (PayPal or Stripe Connect)
  */
 
-import { supabase, getSession } from '@/lib/supabase';
+import { getSession, supabase } from '@/lib/supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -38,8 +38,10 @@ export interface TopUpResponse {
   charged?: number;         // Amount charged in cents
   message: string;
   requiresAction?: boolean;
-  clientSecret?: string;    // For SCA confirmation
+  clientSecret?: string;    // For SCA confirmation or PaymentSheet
   paymentIntentId?: string;
+  customerId?: string;      // For PaymentSheet initialization
+  ephemeralKey?: string;    // For PaymentSheet initialization
 }
 
 export interface WithdrawParams {
@@ -55,6 +57,29 @@ export interface WithdrawResponse {
   message: string;
   paypalBatchId?: string;
   stripeTransferId?: string;
+}
+
+export interface PayoutToCardParams {
+  amountCents: number;
+  // New card details
+  cardNumber?: string;
+  expMonth?: number;
+  expYear?: number;
+  cvc?: string;
+  cardholderName?: string;
+  // Or use saved card
+  useSavedCard?: boolean;
+}
+
+export interface PayoutToCardResponse {
+  success: boolean;
+  balance?: number;         // New balance in cents
+  payoutAmount?: number;    // Net amount sent in cents
+  feeAmount?: number;       // Fee charged in cents
+  message: string;
+  payoutId?: string;
+  cardLast4?: string;
+  cardBrand?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -117,7 +142,7 @@ export async function getWalletTransactions(
     stripePaymentIntentId: tx.stripe_payment_intent_id,
     paypalBatchId: tx.paypal_batch_id,
     description: tx.description,
-    createdAt: tx.created_at,
+    createdAt: tx.created_at ?? new Date().toISOString(),
   }));
 }
 
@@ -126,8 +151,9 @@ export async function getWalletTransactions(
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Top up wallet by charging the user's saved card.
+ * Top up wallet by charging the user's saved card (off-session).
  * 
+ * @deprecated Use createTopUpIntent + confirmTopUp for PaymentSheet flow instead
  * @param amountCents Amount to add in cents (min: 500, max: 50000)
  * @returns Response with new balance or error details
  */
@@ -170,6 +196,103 @@ export async function topUpWallet(amountCents: number): Promise<TopUpResponse> {
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Top-up failed',
+    };
+  }
+}
+
+/**
+ * Create a PaymentIntent for wallet top-up (for use with PaymentSheet).
+ * This supports Apple Pay, Google Pay, and card payments.
+ * 
+ * @param amountCents Amount to add in cents (min: 500, max: 50000)
+ * @returns Response with clientSecret, customerId, and ephemeralKey for PaymentSheet
+ */
+export async function createTopUpIntent(amountCents: number): Promise<TopUpResponse> {
+  const session = await getSession();
+  if (!session?.access_token) {
+    return { success: false, message: 'Not authenticated' };
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/wallet-topup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ amount_cents: amountCents, setup_only: true }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Failed to create payment',
+      };
+    }
+
+    return {
+      success: data.success,
+      message: data.message,
+      clientSecret: data.clientSecret,
+      paymentIntentId: data.paymentIntentId,
+      customerId: data.customerId,
+      ephemeralKey: data.ephemeralKey,
+    };
+  } catch (error) {
+    console.error('[wallet] Create top-up intent error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to create payment',
+    };
+  }
+}
+
+/**
+ * Confirm a top-up after PaymentSheet succeeds.
+ * This credits the wallet with the payment amount.
+ * 
+ * @param paymentIntentId The PaymentIntent ID from createTopUpIntent
+ * @returns Response with new balance
+ */
+export async function confirmTopUp(paymentIntentId: string): Promise<TopUpResponse> {
+  const session = await getSession();
+  if (!session?.access_token) {
+    return { success: false, message: 'Not authenticated' };
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/wallet-topup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ payment_intent_id: paymentIntentId }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Failed to confirm top-up',
+      };
+    }
+
+    return {
+      success: data.success,
+      balance: data.balance,
+      charged: data.charged,
+      message: data.message,
+      paymentIntentId: data.paymentIntentId,
+    };
+  } catch (error) {
+    console.error('[wallet] Confirm top-up error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to confirm top-up',
     };
   }
 }
@@ -233,6 +356,74 @@ export async function withdrawWallet(params: WithdrawParams): Promise<WithdrawRe
 }
 
 // ─────────────────────────────────────────────────────────────
+// PAYOUT TO DEBIT CARD (Instant)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Instantly payout funds to a debit card.
+ * 
+ * @param params.amountCents Amount to payout in cents (min: 500, max: 100000)
+ * @param params.cardNumber Debit card number (or use saved card)
+ * @param params.expMonth Card expiration month
+ * @param params.expYear Card expiration year
+ * @param params.cvc Card CVC
+ * @param params.cardholderName Cardholder name
+ * @param params.useSavedCard Use previously saved payout card
+ * @returns Response with new balance, net amount, fee, or error details
+ */
+export async function payoutToCard(params: PayoutToCardParams): Promise<PayoutToCardResponse> {
+  const session = await getSession();
+  if (!session?.access_token) {
+    return { success: false, message: 'Not authenticated' };
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/payout-to-card`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        amount_cents: params.amountCents,
+        card_number: params.cardNumber,
+        exp_month: params.expMonth,
+        exp_year: params.expYear,
+        cvc: params.cvc,
+        cardholder_name: params.cardholderName,
+        use_saved_card: params.useSavedCard,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Payout failed',
+      };
+    }
+
+    return {
+      success: data.success,
+      balance: data.balance,
+      payoutAmount: data.payout_amount,
+      feeAmount: data.fee_amount,
+      message: data.message,
+      payoutId: data.payout_id,
+      cardLast4: data.card_last4,
+      cardBrand: data.card_brand,
+    };
+  } catch (error) {
+    console.error('[wallet] Payout to card error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Payout failed',
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // PAYOUT METHOD MANAGEMENT
 // ─────────────────────────────────────────────────────────────
 
@@ -272,25 +463,38 @@ export async function savePayoutMethod(
 export async function getPayoutMethods(): Promise<{
   paypalEmail: string | null;
   stripeConnectAccountId: string | null;
+  savedCard: { last4: string; brand: string } | null;
 }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { paypalEmail: null, stripeConnectAccountId: null };
+    return { paypalEmail: null, stripeConnectAccountId: null, savedCard: null };
   }
 
+  // Note: payout_card_* columns added in migration 011 - cast to handle pre-migration types
   const { data, error } = await supabase
     .from('profiles')
-    .select('paypal_payout_email, stripe_connect_account_id')
+    .select('paypal_payout_email, stripe_connect_account_id, payout_card_last4, payout_card_brand')
     .eq('id', user.id)
     .single();
 
   if (error || !data) {
-    return { paypalEmail: null, stripeConnectAccountId: null };
+    return { paypalEmail: null, stripeConnectAccountId: null, savedCard: null };
   }
 
+  // Cast to handle columns not yet in generated types (migration 011)
+  const profile = data as unknown as {
+    paypal_payout_email: string | null;
+    stripe_connect_account_id: string | null;
+    payout_card_last4?: string | null;
+    payout_card_brand?: string | null;
+  };
+
   return {
-    paypalEmail: data.paypal_payout_email,
-    stripeConnectAccountId: data.stripe_connect_account_id,
+    paypalEmail: profile.paypal_payout_email,
+    stripeConnectAccountId: profile.stripe_connect_account_id,
+    savedCard: profile.payout_card_last4
+      ? { last4: profile.payout_card_last4, brand: profile.payout_card_brand ?? 'unknown' }
+      : null,
   };
 }
 

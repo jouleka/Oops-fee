@@ -28,7 +28,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { getClaimContext, startClaimOnboarding, claimViaPayPal, type ClaimContext } from '@/lib/claims';
+import { getClaimContext, startClaimOnboarding, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -170,17 +170,61 @@ function CompletedState({ context }: { context: ClaimContext }) {
 // Shows payout method picker: PayPal (fast) or Stripe (bank account)
 // ─────────────────────────────────────────────────────────────
 
-type PayoutView = 'picker' | 'paypal' | 'stripe';
+type PayoutView = 'picker' | 'paypal' | 'stripe' | 'debit';
+
+const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant card payouts
 
 function ClaimState({ context, token }: { context: ClaimContext; token: string }) {
   const [view, setView] = useState<PayoutView>('picker');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paypalEmail, setPaypalEmail] = useState('');
+  
+  // Debit card fields
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  const [successCardLast4, setSuccessCardLast4] = useState<string | null>(null);
+  
+  const amountCents = Math.round((context.amount || context.stake) * 100);
   const amount = formatCurrency(context.amount || context.stake);
 
   // Email validation
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  
+  // Parse expiry MM/YY
+  const expiryParts = expiry.split('/');
+  const expMonth = expiryParts[0] ? parseInt(expiryParts[0], 10) : 0;
+  const expYear = expiryParts[1] ? parseInt(`20${expiryParts[1]}`, 10) : 0;
+  
+  // Validate card fields
+  const isValidCard =
+    cardNumber.replace(/\s/g, '').length >= 15 &&
+    expMonth >= 1 && expMonth <= 12 &&
+    expYear >= new Date().getFullYear() &&
+    cvc.length >= 3 &&
+    cardholderName.trim().length > 0;
+  
+  // Calculate fee for debit card payout
+  const debitFeeAmount = Math.round(amountCents * (DEBIT_FEE_PERCENT / 100));
+  const debitNetAmount = amountCents - debitFeeAmount;
+  
+  // Format card number with spaces
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 16);
+    const groups = cleaned.match(/.{1,4}/g);
+    return groups ? groups.join(' ') : cleaned;
+  };
+
+  // Format expiry as MM/YY
+  const formatExpiry = (text: string) => {
+    const cleaned = text.replace(/\D/g, '').slice(0, 4);
+    if (cleaned.length >= 3) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    }
+    return cleaned;
+  };
 
   const handleStripeOnboarding = useCallback(async () => {
     if (loading) return;
@@ -239,6 +283,44 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
       setLoading(false);
     }
   }, [token, paypalEmail, loading]);
+
+  const handleDebitSubmit = useCallback(async () => {
+    if (loading || !isValidCard) return;
+
+    setLoading(true);
+    setError(null);
+    hapticMedium();
+
+    try {
+      const result = await claimViaDebitCard(token, {
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        expMonth,
+        expYear,
+        cvc,
+        cardholderName: cardholderName.trim(),
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Card payout failed');
+      }
+
+      hapticSuccess();
+      setSuccessCardLast4(result.cardLast4 ?? null);
+      
+      // Reload to show transferred state
+      if (Platform.OS === 'web') {
+        window.location.reload();
+      } else {
+        router.replace(`/claim/${token}?refresh=${Date.now()}`);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to process card payout';
+      setError(message);
+      hapticError();
+    } finally {
+      setLoading(false);
+    }
+  }, [token, cardNumber, expMonth, expYear, cvc, cardholderName, isValidCard, loading]);
 
   // PayPal email input view
   if (view === 'paypal') {
@@ -370,6 +452,134 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     );
   }
 
+  // Debit card input view
+  if (view === 'debit') {
+    return (
+      <View style={styles.stateContainer}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+          <Text style={styles.emoji}>💳</Text>
+          <Text style={styles.title}>Enter your debit card</Text>
+          <Text style={styles.subtitle}>
+            We'll send ${(debitNetAmount / 100).toFixed(2)} instantly to your card.
+          </Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.inputCard}>
+          <Text style={styles.inputLabel}>Debit Card Details</Text>
+          
+          {/* Card Number */}
+          <TextInput
+            style={styles.textInput}
+            placeholder="4242 4242 4242 4242"
+            placeholderTextColor={Colors.textMuted}
+            value={cardNumber}
+            onChangeText={(t) => setCardNumber(formatCardNumber(t))}
+            keyboardType="number-pad"
+            maxLength={19}
+            autoFocus
+          />
+          
+          {/* Expiry and CVC Row */}
+          <View style={styles.cardRowInputs}>
+            <TextInput
+              style={[styles.textInput, styles.cardInputHalf]}
+              placeholder="MM/YY"
+              placeholderTextColor={Colors.textMuted}
+              value={expiry}
+              onChangeText={(t) => setExpiry(formatExpiry(t))}
+              keyboardType="number-pad"
+              maxLength={5}
+            />
+            <TextInput
+              style={[styles.textInput, styles.cardInputHalf]}
+              placeholder="CVC"
+              placeholderTextColor={Colors.textMuted}
+              value={cvc}
+              onChangeText={(t) => setCvc(t.replace(/\D/g, '').slice(0, 4))}
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+            />
+          </View>
+          
+          {/* Cardholder Name */}
+          <TextInput
+            style={styles.textInput}
+            placeholder="Name on card"
+            placeholderTextColor={Colors.textMuted}
+            value={cardholderName}
+            onChangeText={setCardholderName}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+          
+          <Text style={styles.inputHint}>
+            Only Visa/Mastercard debit cards eligible for instant payout
+          </Text>
+        </Animated.View>
+
+        {/* Fee breakdown */}
+        <Animated.View entering={FadeInUp.delay(150).duration(400)} style={styles.feeBreakdownCard}>
+          <View style={styles.feeRow}>
+            <Text style={styles.feeLabel}>Claim amount</Text>
+            <Text style={styles.feeValue}>{amount}</Text>
+          </View>
+          <View style={styles.feeRow}>
+            <Text style={styles.feeLabel}>Instant transfer fee (1.5%)</Text>
+            <Text style={styles.feeValue}>-${(debitFeeAmount / 100).toFixed(2)}</Text>
+          </View>
+          <View style={[styles.feeRow, styles.feeRowTotal]}>
+            <Text style={styles.feeLabelTotal}>You receive</Text>
+            <Text style={styles.feeValueTotal}>${(debitNetAmount / 100).toFixed(2)}</Text>
+          </View>
+        </Animated.View>
+
+        {error && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        )}
+
+        <View style={styles.buttonRow}>
+          <Pressable
+            onPress={() => setView('picker')}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.backBtnText}>← Back</Text>
+          </Pressable>
+
+          <Pressable
+            disabled={loading || !isValidCard}
+            onPress={handleDebitSubmit}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              pressed && styles.pressed,
+              (loading || !isValidCard) && styles.disabled,
+            ]}
+          >
+            <LinearGradient
+              colors={[Colors.accent, '#0A84FF']}
+              style={styles.btnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.text} />
+              ) : (
+                <Text style={styles.claimBtnText}>Send Instantly</Text>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        <Text style={styles.disclaimer}>
+          ⚡ Funds arrive in seconds.{'\n'}
+          1.5% instant transfer fee applies.
+        </Text>
+      </View>
+    );
+  }
+
   // Default: Payout method picker
   return (
     <View style={styles.stateContainer}>
@@ -405,6 +615,22 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
         <Text style={styles.methodPickerLabel}>CHOOSE PAYOUT METHOD</Text>
 
         <Pressable
+          onPress={() => { hapticMedium(); setView('debit'); }}
+          style={({ pressed }) => [styles.methodOption, styles.methodOptionDebit, pressed && styles.pressed]}
+        >
+          <View style={styles.methodOptionContent}>
+            <Text style={styles.methodIcon}>💳</Text>
+            <View style={styles.methodTextContainer}>
+              <Text style={styles.methodTitle}>Debit Card</Text>
+              <Text style={styles.methodSubtitle}>Fastest – no account needed</Text>
+            </View>
+          </View>
+          <View style={styles.methodBadgeInstant}>
+            <Text style={styles.methodBadgeInstantText}>⚡ Instant</Text>
+          </View>
+        </Pressable>
+
+        <Pressable
           onPress={() => { hapticMedium(); setView('paypal'); }}
           style={({ pressed }) => [styles.methodOption, styles.methodOptionPayPal, pressed && styles.pressed]}
         >
@@ -412,11 +638,11 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
             <Text style={styles.methodIcon}>🅿️</Text>
             <View style={styles.methodTextContainer}>
               <Text style={styles.methodTitle}>PayPal</Text>
-              <Text style={styles.methodSubtitle}>Fastest – just enter your email</Text>
+              <Text style={styles.methodSubtitle}>Send to your PayPal email</Text>
             </View>
           </View>
           <View style={styles.methodBadge}>
-            <Text style={styles.methodBadgeText}>Instant</Text>
+            <Text style={styles.methodBadgeText}>Fast</Text>
           </View>
         </Pressable>
 
@@ -623,6 +849,49 @@ function TransferredState({ context }: { context: ClaimContext }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CARD TRANSFERRED STATE (Instant payout sent)
+// ─────────────────────────────────────────────────────────────
+
+function CardTransferredState({ context }: { context: ClaimContext }) {
+  const amount = formatCurrency(context.amount || context.stake);
+  const cardDisplay = context.cardBrand 
+    ? `${context.cardBrand.toUpperCase()} •••• ${context.cardLast4}`
+    : `•••• ${context.cardLast4}`;
+
+  return (
+    <View style={styles.stateContainer}>
+      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+        <Text style={styles.emoji}>⚡</Text>
+        <Text style={styles.title}>Instant payout sent!</Text>
+        <Text style={styles.subtitle}>
+          {amount} has been sent to your debit card.
+        </Text>
+      </Animated.View>
+
+      <Animated.View entering={FadeInUp.delay(200).duration(400)} style={styles.cardSuccessCard}>
+        <Text style={styles.successIcon}>💳</Text>
+        <Text style={styles.successAmount}>{amount}</Text>
+        <View style={styles.cardDetailsRow}>
+          <Text style={styles.cardDetailsLabel}>Sent to:</Text>
+          <Text style={styles.cardDetailsValue}>{cardDisplay}</Text>
+        </View>
+        <Text style={styles.cardSuccessNote}>
+          Funds arrive within minutes!
+        </Text>
+      </Animated.View>
+
+      <View style={styles.promiseCard}>
+        <Text style={styles.promiseLabel}>THE BROKEN PROMISE</Text>
+        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseNote}>
+          {context.userName} didn't follow through. Their loss, your gain!
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // EXPIRED STATE
 // ─────────────────────────────────────────────────────────────
 
@@ -729,7 +998,7 @@ function SuccessRedirect({ context }: { context: ClaimContext }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function ClaimPage() {
-  const { token, success, refresh } = useLocalSearchParams<{
+  const { token, success, refresh: _refresh } = useLocalSearchParams<{
     token: string;
     success?: string;
     refresh?: string;
@@ -797,6 +1066,10 @@ export default function ClaimPage() {
         return <OnboardingState context={context} token={token!} />;
 
       case 'transferred':
+        // Show card-specific transferred state if paid via card
+        if (context.payoutMethod === 'card') {
+          return <CardTransferredState context={context} />;
+        }
         return <TransferredState context={context} />;
 
       case 'expired':
@@ -1086,6 +1359,35 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
+  cardSuccessCard: {
+    backgroundColor: Colors.accentDim,
+    borderRadius: Radius.xl,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  cardDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  cardDetailsLabel: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  cardDetailsValue: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  cardSuccessNote: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontWeight: '600',
+    marginTop: Spacing.xs,
+  },
 
   // Expired card
   expiredCard: {
@@ -1123,6 +1425,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 2,
     padding: Spacing.lg,
+  },
+  methodOptionDebit: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentDim,
   },
   methodOptionPayPal: {
     borderColor: '#0070ba',
@@ -1162,6 +1468,17 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontWeight: '600',
   },
+  methodBadgeInstant: {
+    backgroundColor: Colors.successDim,
+    borderRadius: Radius.full,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  methodBadgeInstantText: {
+    ...Typography.caption,
+    color: Colors.success,
+    fontWeight: '700',
+  },
   methodChevron: {
     ...Typography.h3,
     color: Colors.textTertiary,
@@ -1194,6 +1511,49 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.textMuted,
     marginTop: Spacing.xs,
+  },
+  cardRowInputs: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  cardInputHalf: {
+    flex: 1,
+  },
+  feeBreakdownCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  feeRowTotal: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.sm,
+  },
+  feeLabel: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  feeValue: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  feeLabelTotal: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+  },
+  feeValueTotal: {
+    ...Typography.bodySemibold,
+    color: Colors.success,
   },
 
   // Button row

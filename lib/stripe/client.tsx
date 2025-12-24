@@ -308,6 +308,90 @@ export async function presentPaymentForSCA(
 }
 
 /**
+ * Present PaymentSheet for top-up with Apple Pay / Google Pay support
+ *
+ * Used for wallet top-ups where user can choose Apple Pay, Google Pay, or card
+ */
+export async function presentTopUpSheet(
+  clientSecret: string,
+  customerId: string,
+  ephemeralKey: string
+): Promise<PaymentSheetResult> {
+  if (isExpoGo) {
+    return { 
+      success: false, 
+      error: 'Stripe requires a development build. Expo Go is not supported.' 
+    };
+  }
+
+  if (!isStripeConfigured() || !initPaymentSheet || !presentPaymentSheet) {
+    return { success: false, error: 'Stripe is not configured' };
+  }
+
+  try {
+    // Initialize PaymentSheet with Apple Pay / Google Pay support
+    const { error: initError } = await initPaymentSheet({
+      paymentIntentClientSecret: clientSecret,
+      customerId,
+      customerEphemeralKeySecret: ephemeralKey,
+      merchantDisplayName: 'OopsFee',
+      // Apple Pay configuration
+      applePay: Platform.OS === 'ios' ? {
+        merchantCountryCode: 'US',
+      } : undefined,
+      // Google Pay configuration
+      googlePay: Platform.OS === 'android' ? {
+        merchantCountryCode: 'US',
+        testEnv: __DEV__,
+      } : undefined,
+      returnURL: 'oopsfee://payment-complete',
+      // Style matching the app theme
+      appearance: {
+        colors: {
+          primary: '#34C759', // Success green for top-ups
+          background: '#000000',
+          componentBackground: '#1C1C1E',
+          componentBorder: '#3A3A3C',
+          componentDivider: '#3A3A3C',
+          primaryText: '#FFFFFF',
+          secondaryText: '#B3B3B3',
+          componentText: '#FFFFFF',
+          placeholderText: '#737373',
+          icon: '#B3B3B3',
+          error: '#FF453A',
+        },
+        shapes: {
+          borderRadius: 12,
+          borderWidth: 1,
+        },
+      },
+    });
+
+    if (initError) {
+      console.error('[Stripe] TopUp init error:', initError);
+      return { success: false, error: initError.message };
+    }
+
+    // Present the PaymentSheet
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code === 'Canceled') {
+        return { success: false, cancelled: true };
+      }
+      console.error('[Stripe] TopUp present error:', presentError);
+      return { success: false, error: presentError.message };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[Stripe] TopUp error:', message);
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Remove the user's saved payment method
  *
  * Calls the stripe-remove-payment-method edge function to detach the card
