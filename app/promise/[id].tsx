@@ -430,7 +430,7 @@ export default function PromiseDetailScreen() {
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
   const { promises, setPromiseStatus, updatePromise, deletePromise, isWorking, isHydrated } = usePromiseStore();
-  const { session } = useAuth();
+  const { session, refreshProfile } = useAuth();
 
   const promise: UserPromise | null = useMemo(() => {
     if (!id) return null;
@@ -608,6 +608,10 @@ export default function PromiseDetailScreen() {
           // No alert - the fail banner will show appropriate status
         } else if (data) {
           console.log('[handleFail] Charge result:', data);
+          // Refresh profile to update wallet balance if wallet was used
+          if (data.walletUsed && data.walletUsed > 0) {
+            refreshProfile().catch(() => {});
+          }
           // No alerts - the updated fail banner shows accurate payment status
           // User will see "💸 $X charged" or "🔐 Bank confirmation needed" etc.
         }
@@ -621,7 +625,7 @@ export default function PromiseDetailScreen() {
     await setPromiseStatus(promise.id, 'failed');
     setConfirmFail(false);
     setIsProcessingFail(false);
-  }, [promise, setPromiseStatus, session, isProcessingFail]);
+  }, [promise, setPromiseStatus, session, isProcessingFail, refreshProfile]);
 
   const handleDelete = useCallback(async () => {
     if (!promise) return;

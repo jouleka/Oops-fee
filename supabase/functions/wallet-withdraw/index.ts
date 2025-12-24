@@ -172,7 +172,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.log(`[wallet-withdraw] PayPal payout created: batch ${payoutResult.batchId}`);
+      console.log(`[wallet-withdraw] PayPal payout created: batch ${payoutResult.batchId}, status: ${payoutResult.status}`);
 
       // Debit wallet via RPC function (with PayPal batch ID)
       const { data: newBalance, error: debitError } = await supabase.rpc('debit_wallet_withdraw', {
