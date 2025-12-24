@@ -156,16 +156,15 @@ export async function claimViaPayPal(
 /**
  * Claim payout via debit card.
  * Sends an instant payout to the provided debit card.
+ * 
+ * @param token - The claim token from the URL
+ * @param cardToken - Stripe token from client-side tokenization (tok_xxx)
+ * @param cardholderName - Name on the card
  */
 export async function claimViaDebitCard(
   token: string,
-  cardDetails: {
-    cardNumber: string;
-    expMonth: number;
-    expYear: number;
-    cvc?: string;
-    cardholderName: string;
-  }
+  cardToken: string,
+  cardholderName: string
 ): Promise<CardClaimResponse> {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/claim-payout-to-card`, {
     method: 'POST',
@@ -174,11 +173,8 @@ export async function claimViaDebitCard(
     },
     body: JSON.stringify({
       token,
-      card_number: cardDetails.cardNumber,
-      exp_month: cardDetails.expMonth,
-      exp_year: cardDetails.expYear,
-      cvc: cardDetails.cvc,
-      cardholder_name: cardDetails.cardholderName,
+      card_token: cardToken,
+      cardholder_name: cardholderName,
     }),
   });
 

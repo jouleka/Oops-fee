@@ -36,10 +36,7 @@ const INSTANT_PAYOUT_FEE_CAP_CENTS = 1500; // $15 cap
 
 interface ClaimPayoutToCardRequest {
   token: string;
-  card_number: string;
-  exp_month: number;
-  exp_year: number;
-  cvc?: string;
+  card_token: string;        // Stripe token from client-side tokenization (tok_xxx)
   cardholder_name: string;
 }
 
@@ -78,7 +75,7 @@ Deno.serve(async (req: Request) => {
   try {
     // Parse request body
     const body: ClaimPayoutToCardRequest = await req.json();
-    const { token, card_number, exp_month, exp_year, cvc, cardholder_name } = body;
+    const { token, card_token, cardholder_name } = body;
 
     // Validate required fields
     if (!token) {
@@ -88,9 +85,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!card_number || !exp_month || !exp_year || !cardholder_name) {
+    if (!card_token || !cardholder_name) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing card details' }),
+        JSON.stringify({ success: false, error: 'Missing card token or cardholder name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -192,6 +189,7 @@ Deno.serve(async (req: Request) => {
       const account = await stripe.accounts.create({
         type: 'custom',
         country: 'US',
+        default_currency: 'usd',
         email: claim.friend_email || undefined,
         capabilities: {
           transfers: { requested: true },
@@ -238,26 +236,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Step 2: Add debit card as external account
+    // Step 2: Add debit card as external account using client-provided token
     let externalAccountId: string;
     let cardLast4: string;
     let cardBrand: string;
 
     try {
-      // Create card token
-      const tokenResult = await stripe.tokens.create({
-        card: {
-          number: card_number,
-          exp_month: exp_month,
-          exp_year: exp_year,
-          cvc: cvc,
-          currency: 'usd',
-          name: cardholder_name,
-        },
-      });
-
+      // First, retrieve the token to check card details
+      const tokenData = await stripe.tokens.retrieve(card_token);
+      
       // Verify it's a debit card
-      if (tokenResult.card?.funding !== 'debit') {
+      if (tokenData.card?.funding !== 'debit') {
         // Clean up Connect account
         await stripe.accounts.del(connectAccountId).catch(() => {});
 
@@ -276,9 +265,9 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Add as external account
+      // Add as external account using the client-provided token
       const externalAccount = await stripe.accounts.createExternalAccount(connectAccountId, {
-        external_account: tokenResult.id,
+        external_account: card_token,
         default_for_currency: true,
       });
 
@@ -320,7 +309,43 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Step 3: Create instant payout
+    // Step 3: Transfer funds from platform to Connect account
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: netPayoutCents,
+        currency: 'usd',
+        destination: connectAccountId,
+        description: `OopsFee claim payout for claim ${claim.id}`,
+        metadata: {
+          claim_id: claim.id,
+          gross_amount: grossAmountCents,
+          fee_amount: feeAmountCents,
+        },
+      });
+      console.log(`[claim-payout-to-card] Transfer created: ${transfer.id}`);
+    } catch (transferError: unknown) {
+      const err = transferError as { message?: string };
+      console.error('[claim-payout-to-card] Transfer failed:', err);
+
+      // Clean up Connect account
+      await stripe.accounts.del(connectAccountId).catch(() => {});
+
+      // Revert payout method
+      await supabase
+        .from('friend_claims')
+        .update({ payout_method: null })
+        .eq('id', claim.id);
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Payout service temporarily unavailable. Please try again later.',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Step 4: Create instant payout from Connect account to debit card
     let payout;
     try {
       payout = await stripe.payouts.create(
@@ -369,7 +394,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Step 4: Update claim as transferred
+    // Step 5: Update claim as transferred
     const { error: finalUpdateError } = await supabase
       .from('friend_claims')
       .update({

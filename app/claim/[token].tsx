@@ -13,7 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -29,6 +29,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { getClaimContext, startClaimOnboarding, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
+
+// Stripe publishable key for tokenization
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -174,16 +177,40 @@ type PayoutView = 'picker' | 'paypal' | 'stripe' | 'debit';
 
 const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant card payouts
 
+// Stripe.js types for web
+declare global {
+  interface Window {
+    Stripe?: (key: string) => {
+      elements: () => {
+        create: (type: string, options?: Record<string, unknown>) => {
+          mount: (el: HTMLElement | string) => void;
+          on: (event: string, handler: (e: { complete?: boolean; error?: { message: string } }) => void) => void;
+          unmount: () => void;
+        };
+      };
+      createToken: (element: unknown, data?: Record<string, unknown>) => Promise<{
+        token?: { id: string };
+        error?: { message: string };
+      }>;
+    };
+  }
+}
+
 function ClaimState({ context, token }: { context: ClaimContext; token: string }) {
   const [view, setView] = useState<PayoutView>('picker');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paypalEmail, setPaypalEmail] = useState('');
   
-  // Debit card fields
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
+  // Stripe.js state (web only)
+  const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const stripeRef = useRef<ReturnType<NonNullable<typeof window.Stripe>> | null>(null);
+  const cardElementRef = useRef<ReturnType<ReturnType<NonNullable<typeof window.Stripe>>['elements']>['create']> | null>(null);
+  const cardMountRef = useRef<HTMLDivElement | null>(null);
+  
+  // Cardholder name (still needed for token)
   const [cardholderName, setCardholderName] = useState('');
   const [successCardLast4, setSuccessCardLast4] = useState<string | null>(null);
   
@@ -193,38 +220,78 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   // Email validation
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   
-  // Parse expiry MM/YY
-  const expiryParts = expiry.split('/');
-  const expMonth = expiryParts[0] ? parseInt(expiryParts[0], 10) : 0;
-  const expYear = expiryParts[1] ? parseInt(`20${expiryParts[1]}`, 10) : 0;
-  
-  // Validate card fields
-  const isValidCard =
-    cardNumber.replace(/\s/g, '').length >= 15 &&
-    expMonth >= 1 && expMonth <= 12 &&
-    expYear >= new Date().getFullYear() &&
-    cvc.length >= 3 &&
-    cardholderName.trim().length > 0;
+  // Validate card is complete (Stripe handles validation)
+  const isValidCard = cardComplete && cardholderName.trim().length > 0;
   
   // Calculate fee for debit card payout
   const debitFeeAmount = Math.round(amountCents * (DEBIT_FEE_PERCENT / 100));
   const debitNetAmount = amountCents - debitFeeAmount;
   
-  // Format card number with spaces
-  const formatCardNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 16);
-    const groups = cleaned.match(/.{1,4}/g);
-    return groups ? groups.join(' ') : cleaned;
-  };
-
-  // Format expiry as MM/YY
-  const formatExpiry = (text: string) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 4);
-    if (cleaned.length >= 3) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  // Load Stripe.js when debit view is shown (web only)
+  useEffect(() => {
+    if (view !== 'debit' || Platform.OS !== 'web') return;
+    
+    // Check if already loaded
+    if (window.Stripe) {
+      stripeRef.current = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+      setStripeLoaded(true);
+      return;
     }
-    return cleaned;
-  };
+    
+    // Load Stripe.js script
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    script.onload = () => {
+      if (window.Stripe) {
+        stripeRef.current = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        setStripeLoaded(true);
+      }
+    };
+    document.body.appendChild(script);
+    
+    return () => {
+      // Cleanup card element on unmount
+      if (cardElementRef.current) {
+        try {
+          cardElementRef.current.unmount();
+        } catch {
+          // Ignore unmount errors
+        }
+      }
+    };
+  }, [view]);
+  
+  // Mount card element when Stripe is loaded
+  useEffect(() => {
+    if (!stripeLoaded || !stripeRef.current || !cardMountRef.current) return;
+    if (cardElementRef.current) return; // Already mounted
+    
+    const elements = stripeRef.current.elements();
+    const cardElement = elements.create('card', {
+      style: {
+        base: {
+          color: '#ffffff',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontSize: '16px',
+          '::placeholder': {
+            color: '#666666',
+          },
+        },
+        invalid: {
+          color: '#ff4444',
+        },
+      },
+    });
+    
+    cardElement.mount(cardMountRef.current);
+    cardElement.on('change', (event) => {
+      setCardComplete(event.complete ?? false);
+      setCardError(event.error?.message ?? null);
+    });
+    
+    cardElementRef.current = cardElement;
+  }, [stripeLoaded]);
 
   const handleStripeOnboarding = useCallback(async () => {
     if (loading) return;
@@ -286,19 +353,28 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
 
   const handleDebitSubmit = useCallback(async () => {
     if (loading || !isValidCard) return;
+    if (!stripeRef.current || !cardElementRef.current) {
+      setError('Card input not ready. Please wait a moment and try again.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     hapticMedium();
 
     try {
-      const result = await claimViaDebitCard(token, {
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        expMonth,
-        expYear,
-        cvc,
-        cardholderName: cardholderName.trim(),
-      });
+      // Create token using Stripe.js
+      const { token: stripeToken, error: tokenError } = await stripeRef.current.createToken(
+        cardElementRef.current,
+        { name: cardholderName.trim(), currency: 'usd' }
+      );
+
+      if (tokenError || !stripeToken) {
+        throw new Error(tokenError?.message || 'Failed to tokenize card');
+      }
+
+      // Send token to server
+      const result = await claimViaDebitCard(token, stripeToken.id, cardholderName.trim());
 
       if (!result.success) {
         throw new Error(result.error || 'Card payout failed');
@@ -320,7 +396,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     } finally {
       setLoading(false);
     }
-  }, [token, cardNumber, expMonth, expYear, cvc, cardholderName, isValidCard, loading]);
+  }, [token, cardholderName, isValidCard, loading]);
 
   // PayPal email input view
   if (view === 'paypal') {
@@ -467,40 +543,36 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
         <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.inputCard}>
           <Text style={styles.inputLabel}>Debit Card Details</Text>
           
-          {/* Card Number */}
-          <TextInput
-            style={styles.textInput}
-            placeholder="4242 4242 4242 4242"
-            placeholderTextColor={Colors.textMuted}
-            value={cardNumber}
-            onChangeText={(t) => setCardNumber(formatCardNumber(t))}
-            keyboardType="number-pad"
-            maxLength={19}
-            autoFocus
-          />
-          
-          {/* Expiry and CVC Row */}
-          <View style={styles.cardRowInputs}>
-            <TextInput
-              style={[styles.textInput, styles.cardInputHalf]}
-              placeholder="MM/YY"
-              placeholderTextColor={Colors.textMuted}
-              value={expiry}
-              onChangeText={(t) => setExpiry(formatExpiry(t))}
-              keyboardType="number-pad"
-              maxLength={5}
-            />
-            <TextInput
-              style={[styles.textInput, styles.cardInputHalf]}
-              placeholder="CVC"
-              placeholderTextColor={Colors.textMuted}
-              value={cvc}
-              onChangeText={(t) => setCvc(t.replace(/\D/g, '').slice(0, 4))}
-              keyboardType="number-pad"
-              maxLength={4}
-              secureTextEntry
-            />
-          </View>
+          {/* Stripe Card Element (web only) */}
+          {Platform.OS === 'web' ? (
+            <>
+              {!stripeLoaded ? (
+                <View style={styles.stripeLoadingContainer}>
+                  <ActivityIndicator size="small" color={Colors.accent} />
+                  <Text style={styles.stripeLoadingText}>Loading secure card input...</Text>
+                </View>
+              ) : (
+                <View style={styles.stripeCardContainer}>
+                  <div
+                    ref={(el) => { cardMountRef.current = el; }}
+                    style={{
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: 8,
+                      padding: 16,
+                      border: cardError ? '1px solid #ff4444' : '1px solid #333',
+                    }}
+                  />
+                  {cardError && (
+                    <Text style={styles.cardErrorText}>{cardError}</Text>
+                  )}
+                </View>
+              )}
+            </>
+          ) : (
+            <Text style={styles.inputHint}>
+              Debit card payouts are only available on web.
+            </Text>
+          )}
           
           {/* Cardholder Name */}
           <TextInput
@@ -1518,6 +1590,25 @@ const styles = StyleSheet.create({
   },
   cardInputHalf: {
     flex: 1,
+  },
+  stripeLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+  },
+  stripeLoadingText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  stripeCardContainer: {
+    marginVertical: Spacing.sm,
+  },
+  cardErrorText: {
+    ...Typography.caption,
+    color: Colors.danger,
+    marginTop: Spacing.xs,
   },
   feeBreakdownCard: {
     backgroundColor: Colors.bgCard,
