@@ -25,6 +25,7 @@ import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { hapticLight, hapticSuccess } from '@/lib/haptics';
+import { scheduleWeeklyMomentum } from '@/lib/notifications/scheduler';
 import type { UserStats } from '@/lib/promises/types';
 import { computeStats, hasCheckedInToday, recordCheckIn } from '@/lib/stats/store';
 
@@ -58,6 +59,9 @@ export default function HomeScreen() {
       // Always compute stats for streak display
       const computed = await computeStats(promises);
       setStats(computed);
+
+      // Schedule weekly momentum notification with latest stats
+      scheduleWeeklyMomentum(computed).catch(console.error);
 
       // Only show check-in banner if has active promises and hasn't checked in today
       const activePromises = promises.filter(
@@ -132,6 +136,9 @@ export default function HomeScreen() {
       // Refresh stats after check-in
       const computed = await computeStats(promisesRef.current);
       setStats(computed);
+
+      // Reschedule weekly momentum with updated stats
+      scheduleWeeklyMomentum(computed).catch(console.error);
 
       if (committed) {
         hapticSuccess();

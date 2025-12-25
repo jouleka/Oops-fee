@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { PartnerNotification, type PartnerNotificationType } from '@/components/notifications';
+import { SettlementToast, type SettlementType } from '@/components/ui/SettlementToast';
 import {
   cancelAllNotifications,
   cancelPromiseReminders,
+  checkStreakMilestone,
   scheduleDailyCheckIn,
   schedulePromiseReminders,
+  sendImmediateNotification,
 } from '@/lib/notifications/scheduler';
+import { formatMessage, MOMENTUM_NOTIFICATIONS, pickRandom } from '@/constants/notification-copy';
 import {
   clearAllPromises,
   listPromises,
@@ -22,6 +26,30 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { clearWidgetData, syncToWidget } from '@/lib/widgets';
 
 import { useAuth } from './auth';
+
+// ─────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Computes current streak by looking at promises sorted by completion time.
+ * A streak breaks when there's a failure or expiration.
+ */
+function computeCurrentStreak(promises: UserPromise[]): number {
+  const sorted = [...promises]
+    .filter((p) => p.status === 'completed' || p.status === 'failed' || p.status === 'expired')
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  let streak = 0;
+  for (const p of sorted) {
+    if (p.status === 'completed') {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
 
 // Partner notification state type
 export interface PartnerNotificationData {
@@ -60,6 +88,14 @@ interface PartnerNotificationState {
   stake: number;
 }
 
+// Settlement notification state
+interface SettlementNotificationState {
+  visible: boolean;
+  type: SettlementType;
+  promiseText: string;
+  stake: number;
+}
+
 export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const [promises, setPromises] = useState<UserPromise[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -70,6 +106,14 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const [partnerNotification, setPartnerNotification] = useState<PartnerNotificationState>({
     visible: false,
     type: 'approved',
+    promiseText: '',
+    stake: 0,
+  });
+  
+  // Settlement notification state
+  const [settlementNotification, setSettlementNotification] = useState<SettlementNotificationState>({
+    visible: false,
+    type: 'charged',
     promiseText: '',
     stake: 0,
   });
@@ -154,6 +198,23 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
             }
           }
           
+          // Settlement notification - promise was charged or payment failed
+          if (oldPromise?.status === 'active' && promise.status === 'failed') {
+            console.log('[PromiseStore] Promise settled! Payment status:', promise.paymentStatus);
+            const settlementType: SettlementType = 
+              promise.paymentStatus === 'succeeded' ? 'charged' :
+              promise.paymentStatus === 'failed' ? 'failed' :
+              promise.paymentStatus === 'requires_action' ? 'requires_action' :
+              promise.paymentStatus === 'abandoned' ? 'abandoned' : 'charged';
+            
+            setSettlementNotification({
+              visible: true,
+              type: settlementType,
+              promiseText: promise.text,
+              stake: promise.stake,
+            });
+          }
+          
           setPromises(prev => {
             const existingIndex = prev.findIndex(p => p.id === promise.id);
             if (existingIndex >= 0) {
@@ -227,11 +288,48 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await repoSetPromiseStatus(id, status);
       if (!updated) return null;
-      setPromises((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      
+      // Get merged promises list for streak calculation
+      const mergedPromises = promisesRef.current.map((p) => (p.id === id ? updated : p));
+      setPromises(mergedPromises);
 
       // Cancel notifications when promise is resolved
       if (status === 'completed' || status === 'failed' || status === 'expired') {
         cancelPromiseReminders(id).catch(console.error);
+      }
+
+      // Check for streak milestones on completion
+      if (status === 'completed') {
+        // Compute previous streak (before this completion)
+        const previousStreak = computeCurrentStreak(promisesRef.current);
+        const currentStreak = computeCurrentStreak(mergedPromises);
+        
+        checkStreakMilestone(currentStreak).catch(console.error);
+        
+        // Comeback notification: first win after a failure
+        const hadPreviousFailure = promisesRef.current.some(
+          (p) => (p.status === 'failed' || p.status === 'expired') && p.id !== id
+        );
+        if (previousStreak === 0 && currentStreak === 1 && hadPreviousFailure) {
+          sendImmediateNotification(
+            '💪 Redemption Arc',
+            pickRandom(MOMENTUM_NOTIFICATIONS.comeback),
+            { type: 'comeback', promiseId: updated.id }
+          ).catch(console.error);
+        }
+        
+        // Near-miss celebration: completed with less than 2 hours to spare
+        const hoursRemaining = (updated.deadlineAt - Date.now()) / (1000 * 60 * 60);
+        if (hoursRemaining > 0 && hoursRemaining < 2) {
+          sendImmediateNotification(
+            '😅 Photo Finish!',
+            formatMessage(pickRandom(MOMENTUM_NOTIFICATIONS.nearMiss), {
+              amount: updated.stake,
+              hours: Math.max(1, Math.round(hoursRemaining)),
+            }),
+            { type: 'near_miss', promiseId: updated.id }
+          ).catch(console.error);
+        }
       }
 
       return updated;
@@ -272,6 +370,10 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const dismissPartnerNotification = useCallback(() => {
     setPartnerNotification(prev => ({ ...prev, visible: false }));
   }, []);
+  
+  const dismissSettlementNotification = useCallback(() => {
+    setSettlementNotification(prev => ({ ...prev, visible: false }));
+  }, []);
 
   const value = useMemo<PromiseStore>(
     () => ({
@@ -301,6 +403,13 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
         promiseText={partnerNotification.promiseText}
         stake={partnerNotification.stake}
         onDismiss={dismissPartnerNotification}
+      />
+      <SettlementToast
+        visible={settlementNotification.visible}
+        type={settlementNotification.type}
+        promiseText={settlementNotification.promiseText}
+        stake={settlementNotification.stake}
+        onDismiss={dismissSettlementNotification}
       />
     </PromiseStoreContext.Provider>
   );

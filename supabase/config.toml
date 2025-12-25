@@ -79,3 +79,9 @@ verify_jwt = false
 [functions.send-reengagement]
 verify_jwt = false
 
+[functions.send-social-proof]
+verify_jwt = false
+
+[functions.send-behavioral-insights]
+verify_jwt = false
+

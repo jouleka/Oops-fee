@@ -11,8 +11,10 @@ import {
   CHECKIN_REMINDERS,
   DEADLINE_REMINDERS,
   formatMessage,
+  MOMENTUM_NOTIFICATIONS,
   pickRandom,
   STAKE_REMINDERS,
+  STREAK_NOTIFICATIONS,
 } from '@/constants/notification-copy';
 import type { UserPromise } from '@/lib/promises/types';
 import { areNotificationsEnabled, getChannelId } from './setup';
@@ -333,6 +335,70 @@ export async function cancelWeeklyStakeSummary(): Promise<void> {
 }
 
 // ─────────────────────────────────────────────────────────────
+// WEEKLY MOMENTUM
+// ─────────────────────────────────────────────────────────────
+
+const WEEKLY_MOMENTUM_ID = 'oopsfee-weekly-momentum';
+
+interface WeeklyMomentumStats {
+  completed: number;
+  failed: number;
+  totalPromises: number;
+  totalSaved: number;
+}
+
+/**
+ * Schedule weekly momentum notification.
+ * Fires on Sunday at 7 PM. Celebrates wins and builds positive identity.
+ */
+export async function scheduleWeeklyMomentum(stats: WeeklyMomentumStats): Promise<void> {
+  // Skip if no completions to celebrate
+  if (stats.completed === 0) return;
+
+  const hasPermission = await areNotificationsEnabled();
+  if (!hasPermission) return;
+
+  // Cancel existing first to reschedule with fresh stats
+  await cancelWeeklyMomentum();
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: WEEKLY_MOMENTUM_ID,
+      content: {
+        title: '📊 Weekly Wins',
+        body: formatMessage(pickRandom(MOMENTUM_NOTIFICATIONS.weeklySummary), {
+          kept: stats.completed,
+          failed: stats.failed,
+          total: stats.totalPromises,
+          saved: stats.totalSaved,
+        }),
+        data: { type: 'momentum' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 7, // Sunday (expo-notifications: 1=Monday...7=Sunday)
+        hour: 19,
+        minute: 0,
+        channelId: getChannelId('reminders'),
+      },
+    });
+  } catch (error) {
+    console.error('Failed to schedule weekly momentum:', error);
+  }
+}
+
+/**
+ * Cancel the weekly momentum notification.
+ */
+export async function cancelWeeklyMomentum(): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(WEEKLY_MOMENTUM_ID);
+  } catch {
+    // Ignore if not scheduled
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // IMMEDIATE NOTIFICATIONS
 // ─────────────────────────────────────────────────────────────
 
@@ -361,6 +427,31 @@ export async function sendImmediateNotification(
     console.error('Failed to send notification:', error);
     return null;
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// STREAK MILESTONES
+// ─────────────────────────────────────────────────────────────
+
+const STREAK_MILESTONES = [7, 30, 100] as const;
+
+/**
+ * Check if the new streak hits a milestone and send celebration notification.
+ * Milestones: 7 (Week Warrior), 30 (Monthly Monster), 100 (Promise Royalty)
+ */
+export async function checkStreakMilestone(newStreak: number): Promise<void> {
+  if (!STREAK_MILESTONES.includes(newStreak as 7 | 30 | 100)) return;
+
+  const tier = `milestone${newStreak}` as keyof typeof STREAK_NOTIFICATIONS;
+  const messages = STREAK_NOTIFICATIONS[tier];
+  
+  if (!messages || !Array.isArray(messages)) return;
+
+  await sendImmediateNotification(
+    `🔥 ${newStreak}-day streak!`,
+    pickRandom(messages),
+    { type: 'streak_milestone', streak: newStreak }
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
