@@ -40,6 +40,7 @@ export function toRemoteInsert(local: UserPromise, userId: string): PromiseInser
     deadline_at: new Date(local.deadlineAt).toISOString(),
     status: local.status,
     money_destination: moneyDestination,
+    friend_user_id: local.friendUserId ?? null, // in-app friend for direct wallet credit
     verification_type: local.verificationType,
     verification_proof_ref: local.verificationProof ?? null,
     verification_timestamp: local.verificationTimestamp 
@@ -88,6 +89,7 @@ export function toRemoteUpdate(patch: Partial<UserPromise>): RemotePromiseUpdate
     }
     update.money_destination = moneyDestination;
   }
+  if (patch.friendUserId !== undefined) update.friend_user_id = patch.friendUserId;
   if (patch.verificationType !== undefined) update.verification_type = patch.verificationType;
   if (patch.verificationProof !== undefined) update.verification_proof_ref = patch.verificationProof;
   if (patch.verificationTimestamp !== undefined) {
@@ -152,6 +154,7 @@ export function toLocalPromise(remote: PromiseRow): UserPromise {
     updatedAt: remote.updated_at ? new Date(remote.updated_at).getTime() : Date.now(),
     status,
     moneyDestination,
+    friendUserId: remote.friend_user_id ?? undefined, // in-app friend's profile ID
     voiceNoteUri: remote.voice_note_ref ?? undefined,
     completedAt: remote.completed_at ? new Date(remote.completed_at).getTime() : undefined,
     failedAt: remote.failed_at ? new Date(remote.failed_at).getTime() : undefined,
@@ -209,6 +212,53 @@ interface CreateFriendClaimResult {
     emailSent: boolean;
     smsSent: boolean;
   };
+}
+
+interface NotifyFriendNamedInput {
+  promiseId: string;
+  friendUserId: string;
+  stakeAmount: number;
+  promiseText: string;
+}
+
+interface NotifyFriendNamedResult {
+  success: boolean;
+  notification_sent: boolean;
+}
+
+/**
+ * Notify an in-app friend that they've been named as beneficiary
+ * Sends a push notification via edge function
+ */
+async function notifyFriendNamed(input: NotifyFriendNamedInput): Promise<NotifyFriendNamedResult> {
+  const session = (await supabase.auth.getSession()).data.session;
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/notify-friend-named`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        promise_id: input.promiseId,
+        friend_user_id: input.friendUserId,
+        stake_amount: input.stakeAmount,
+        promise_text: input.promiseText,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
 }
 
 /**
@@ -303,6 +353,7 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     updatedAt: now,
     status: 'active',
     moneyDestination: input.moneyDestination,
+    friendUserId: input.moneyDestination === 'friend' ? input.friendUserId || undefined : undefined,
     friendName: input.moneyDestination === 'friend' ? input.friendName?.trim() || undefined : undefined,
     friendEmail: input.moneyDestination === 'friend' ? input.friendEmail?.trim() || undefined : undefined,
     voiceNoteUri: input.voiceNoteUri?.trim() || undefined,
@@ -328,8 +379,9 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     throw new Error('No data returned from insert');
   }
 
-  // If money_destination is 'friend', create friend claim via edge function
-  if (input.moneyDestination === 'friend' && input.friendEmail) {
+  // If money_destination is 'friend' with external email (no in-app friend), create friend claim
+  // Skip if friendUserId is set - in-app friends get direct wallet credits on failure
+  if (input.moneyDestination === 'friend' && input.friendEmail && !input.friendUserId) {
     console.log('[repo.remote] Creating friend claim for promise:', id, 'email:', input.friendEmail);
     try {
       const claimResult = await createFriendClaim({
@@ -345,13 +397,28 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
       // Log error but don't fail promise creation
       console.error('[repo.remote] Failed to create friend claim:', claimError);
     }
+  } else if (input.moneyDestination === 'friend' && input.friendUserId) {
+    // In-app friend: send notification that they've been named as beneficiary
+    console.log('[repo.remote] In-app friend selected:', input.friendUserId, '- sending notification');
+    try {
+      const notifyResult = await notifyFriendNamed({
+        promiseId: id,
+        friendUserId: input.friendUserId,
+        stakeAmount: localPromise.stake,
+        promiseText: localPromise.text,
+      });
+      console.log('[repo.remote] Friend named notification result:', notifyResult);
+    } catch (notifyError) {
+      // Log error but don't fail promise creation
+      console.error('[repo.remote] Failed to notify friend:', notifyError);
+    }
   } else {
     console.log('[repo.remote] Skipping friend claim - moneyDestination:', input.moneyDestination, 'friendEmail:', input.friendEmail);
   }
 
   return {
     ...toLocalPromise(data),
-    // Preserve local-only fields
+    // Preserve local-only fields (friendUserId comes from DB)
     friendName: localPromise.friendName,
     friendEmail: localPromise.friendEmail,
     iToldYouSoMessages: localPromise.iToldYouSoMessages,
@@ -434,8 +501,9 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
     throw new Error('No data returned from upsert');
   }
 
-  // If money_destination is 'friend', create friend claim via edge function
-  if (local.moneyDestination === 'friend' && local.friendEmail) {
+  // If money_destination is 'friend' with external email (no in-app friend), create friend claim
+  // Skip if friendUserId is set - in-app friends get direct wallet credits on failure
+  if (local.moneyDestination === 'friend' && local.friendEmail && !local.friendUserId) {
     console.log('[repo.remote] Creating friend claim for synced promise:', local.id, 'email:', local.friendEmail);
     try {
       const claimResult = await createFriendClaim({
@@ -450,6 +518,21 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
     } catch (claimError) {
       // Log error but don't fail sync
       console.error('[repo.remote] Failed to create friend claim:', claimError);
+    }
+  } else if (local.moneyDestination === 'friend' && local.friendUserId) {
+    // In-app friend: send notification that they've been named as beneficiary
+    console.log('[repo.remote] In-app friend selected for synced promise:', local.friendUserId, '- sending notification');
+    try {
+      const notifyResult = await notifyFriendNamed({
+        promiseId: local.id,
+        friendUserId: local.friendUserId,
+        stakeAmount: local.stake,
+        promiseText: local.text,
+      });
+      console.log('[repo.remote] Friend named notification result:', notifyResult);
+    } catch (notifyError) {
+      // Log error but don't fail sync
+      console.error('[repo.remote] Failed to notify friend:', notifyError);
     }
   } else if (local.moneyDestination === 'friend') {
     console.log('[repo.remote] Skipping friend claim for synced promise - no friendEmail');

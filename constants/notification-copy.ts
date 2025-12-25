@@ -427,6 +427,26 @@ export const PARTNER_ACTION_NOTIFICATIONS = {
 // Friend requests, acceptances, and activity
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// FRIEND PAYOUT NOTIFICATIONS (Push from backend)
+// When a friend wins money from a broken promise
+// ─────────────────────────────────────────────────────────────
+
+export const FRIEND_PAYOUT_NOTIFICATIONS = {
+  /** Notification when named as beneficiary */
+  named: [
+    '🎯 {userName} just put you on their promise',
+    "📍 You're the beneficiary if {userName} fails",
+    '💰 {userName} bet {amount} — yours if they break it',
+  ],
+  /** Notification when you get paid from a failed promise */
+  payout: [
+    '💸 {userName} broke their promise! {amount} is yours',
+    '🎉 Cha-ching! {amount} added to your wallet',
+    '💰 {userName} failed — {amount} just hit your wallet',
+  ],
+} as const;
+
 export const FRIEND_NOTIFICATIONS = {
   /** Someone sent you a friend request */
   requestReceived: [

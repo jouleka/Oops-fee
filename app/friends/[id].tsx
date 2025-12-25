@@ -44,7 +44,7 @@ import { getTimeRemaining as getTimeRemainingShared, type Urgency } from '@/lib/
 const URGENCY_COLORS: Record<Urgency, string> = {
   low: Colors.urgencyLow,
   medium: Colors.urgencyMedium,
-  high: Colors.urgencyCritical,
+  high: Colors.urgencyHigh,
   critical: Colors.urgencyCritical,
 };
 

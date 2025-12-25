@@ -33,8 +33,9 @@ export interface UserPromise {
   status: PromiseStatus;
 
   moneyDestination: MoneyDestination;
+  friendUserId?: string; // in-app friend's profile ID (direct wallet credit)
   friendName?: string; // only when moneyDestination === 'friend'
-  friendEmail?: string; // friend's email for claim notifications
+  friendEmail?: string; // external friend's email for claim notifications
 
   /** Local file:// URI to voice commitment recording */
   voiceNoteUri?: string;
@@ -131,6 +132,7 @@ export type CreatePromiseInput = {
   stake: number;
   deadlineAt: number;
   moneyDestination: MoneyDestination;
+  friendUserId?: string; // in-app friend's profile ID
   friendName?: string;
   friendEmail?: string;
   voiceNoteUri?: string;
@@ -148,6 +150,7 @@ export type PromiseUpdate = Partial<
     | 'stake'
     | 'deadlineAt'
     | 'moneyDestination'
+    | 'friendUserId'
     | 'friendName'
     | 'friendEmail'
     | 'voiceNoteUri'

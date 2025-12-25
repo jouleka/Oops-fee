@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       friend_claims: {
@@ -320,6 +345,7 @@ export type Database = {
           expired_at: string | null
           failed_at: string | null
           friend_claim_id: string | null
+          friend_user_id: string | null
           has_roast: boolean | null
           id: string
           money_destination: string
@@ -350,6 +376,7 @@ export type Database = {
           expired_at?: string | null
           failed_at?: string | null
           friend_claim_id?: string | null
+          friend_user_id?: string | null
           has_roast?: boolean | null
           id: string
           money_destination?: string
@@ -380,6 +407,7 @@ export type Database = {
           expired_at?: string | null
           failed_at?: string | null
           friend_claim_id?: string | null
+          friend_user_id?: string | null
           has_roast?: boolean | null
           id?: string
           money_destination?: string
@@ -409,6 +437,13 @@ export type Database = {
             columns: ["friend_claim_id"]
             isOneToOne: false
             referencedRelation: "friend_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promises_friend_user_id_fkey"
+            columns: ["friend_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -776,6 +811,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       wallet_transaction_type: [

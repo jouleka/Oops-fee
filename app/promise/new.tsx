@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { InlineFriendPicker } from '@/components/promise';
 import { VerificationPicker } from '@/components/verification';
 import { VoiceRecorder } from '@/components/voice';
 import { PROMISE_TEMPLATES, STAKES_THRESHOLDS, STATS_COPY, VERIFICATION_COPY, type PromiseTemplate } from '@/constants/content';
@@ -33,6 +34,7 @@ import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants
 import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { useRequireAuth } from '@/hooks/use-require-auth';
+import type { FriendProfile } from '@/lib/friends';
 import { clampInt, formatShortDateTime } from '@/lib/promises/time';
 import type { MoneyDestination, VerificationType } from '@/lib/promises/types';
 import { getFailureMultiplier, getMultiplierResetProgress } from '@/lib/stats/store';
@@ -72,8 +74,18 @@ const DESTINATIONS: {
   },
 ];
 
-function formatDestinationTitle(destination: MoneyDestination, friendName?: string) {
-  if (destination === 'friend') return friendName?.trim() ? `Friend · ${friendName.trim()}` : 'Friend';
+function formatDestinationTitle(
+  destination: MoneyDestination,
+  friendName?: string,
+  selectedFriend?: FriendProfile | null
+) {
+  if (destination === 'friend') {
+    if (selectedFriend) {
+      const name = selectedFriend.display_name || selectedFriend.username || 'Friend';
+      return selectedFriend.username ? `@${selectedFriend.username}` : name;
+    }
+    return friendName?.trim() ? `Friend · ${friendName.trim()}` : 'Friend';
+  }
   if (destination === 'charity') return 'Charity';
   if (destination === 'anti_charity') return 'Anti-charity';
   return 'OopsFee';
@@ -510,6 +522,7 @@ function ConfirmModal({
   deadlineAt,
   moneyDestination,
   friendName,
+  selectedFriend,
   walletUsageDollars,
   cardChargeDollars,
   onCancel,
@@ -524,6 +537,7 @@ function ConfirmModal({
   deadlineAt: number;
   moneyDestination: MoneyDestination;
   friendName?: string;
+  selectedFriend?: FriendProfile | null;
   walletUsageDollars: number;
   cardChargeDollars: number;
   onCancel: () => void;
@@ -644,7 +658,7 @@ function ConfirmModal({
             <View style={styles.confirmMetaRowSingle}>
               <Text style={styles.confirmMetaLabel}>GOES TO</Text>
               <Text style={styles.confirmMetaValueSmall}>
-                {formatDestinationTitle(moneyDestination, friendName)}
+                {formatDestinationTitle(moneyDestination, friendName, selectedFriend)}
               </Text>
             </View>
           </View>
@@ -709,6 +723,8 @@ export default function NewPromiseScreen() {
   }, [isEditingStake, stake]);
 
   const [moneyDestination, setMoneyDestination] = useState<MoneyDestination>('oopsfee');
+  const [selectedFriend, setSelectedFriend] = useState<FriendProfile | null>(null);
+  const [useExternalFriend, setUseExternalFriend] = useState(false);
   const [friendName, setFriendName] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
   const [voiceNoteUri, setVoiceNoteUri] = useState<string | undefined>(undefined);
@@ -749,9 +765,10 @@ export default function NewPromiseScreen() {
     }
   }, [effectiveStake, verificationType]);
 
-  const friendContactOk = moneyDestination !== 'friend' || 
-    (friendName.trim().length > 0 && friendEmail.trim().length > 0);
-  const friendOk = friendContactOk;
+  // Friend validation: either in-app friend selected OR external with name + email
+  const friendOk = moneyDestination !== 'friend' || 
+    selectedFriend !== null ||
+    (useExternalFriend && friendName.trim().length > 0 && friendEmail.trim().length > 0);
   const canLock = text.trim().length > 0 && stake >= 0 && deadlineAt > nowMs && friendOk;
   const warningFree = stake === 0;
 
@@ -804,14 +821,25 @@ export default function NewPromiseScreen() {
     if (!canLock) return;
     setConfirming(true);
     try {
+      // Determine friend data based on selection
+      const isFriendDestination = moneyDestination === 'friend';
+      const friendUserId = isFriendDestination && selectedFriend ? selectedFriend.id : undefined;
+      const finalFriendName = isFriendDestination
+        ? selectedFriend?.display_name || selectedFriend?.username || friendName.trim()
+        : undefined;
+      const finalFriendEmail = isFriendDestination && useExternalFriend && friendEmail.trim()
+        ? friendEmail.trim()
+        : undefined;
+
       // Use effective stake (with failure multiplier applied)
       const created = await createPromise({
         text: text.trim(),
         stake: effectiveStake,
         deadlineAt,
         moneyDestination,
-        friendName: moneyDestination === 'friend' ? friendName.trim() : undefined,
-        friendEmail: moneyDestination === 'friend' && friendEmail.trim() ? friendEmail.trim() : undefined,
+        friendUserId,
+        friendName: finalFriendName || undefined,
+        friendEmail: finalFriendEmail,
         voiceNoteUri,
         verificationType,
       });
@@ -821,7 +849,7 @@ export default function NewPromiseScreen() {
     } finally {
       setConfirming(false);
     }
-  }, [canLock, createPromise, deadlineAt, effectiveStake, friendEmail, friendName, moneyDestination, text, verificationType, voiceNoteUri]);
+  }, [canLock, createPromise, deadlineAt, effectiveStake, friendEmail, friendName, moneyDestination, selectedFriend, text, useExternalFriend, verificationType, voiceNoteUri]);
 
   return (
     <View style={styles.screen}>
@@ -1102,51 +1130,23 @@ export default function NewPromiseScreen() {
 
             {moneyDestination === 'friend' && (
               <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.friendCard}>
-                <Text style={styles.friendLabel}>FRIEND&apos;S NAME</Text>
-                <TextInput
-                  value={friendName}
-                  onChangeText={setFriendName}
-                  placeholder="Name / @handle"
-                  placeholderTextColor={Colors.textMuted}
-                  maxLength={32}
-                  style={styles.friendInput}
+                <InlineFriendPicker
+                  selectedFriend={selectedFriend}
+                  useExternal={useExternalFriend}
+                  friendName={friendName}
+                  friendEmail={friendEmail}
+                  onSelectFriend={(friend) => {
+                    setSelectedFriend(friend);
+                    if (friend) {
+                      setUseExternalFriend(false);
+                      setFriendName('');
+                      setFriendEmail('');
+                    }
+                  }}
+                  onExternalChange={setUseExternalFriend}
+                  onFriendNameChange={setFriendName}
+                  onFriendEmailChange={setFriendEmail}
                 />
-                <Text style={[styles.friendHelper, friendName.trim().length === 0 && styles.friendHelperDanger]}>
-                  {friendName.trim().length === 0
-                    ? "Name them. Otherwise it's imaginary accountability."
-                    : 'Pick someone who enjoys saying "I told you so."'}
-                </Text>
-
-                <View style={styles.friendContactDivider} />
-
-                <Text style={styles.friendLabel}>CONTACT (AT LEAST ONE)</Text>
-                <Text style={styles.friendContactHint}>How should we notify them if you fail? (7 days to claim, then we keep it. Oops.)</Text>
-
-                <View style={styles.friendContactRow}>
-                  <View style={styles.friendContactInputWrapper}>
-                    <Text style={styles.friendContactIcon}>📧</Text>
-                    <TextInput
-                      value={friendEmail}
-                      onChangeText={setFriendEmail}
-                      placeholder="friend@email.com"
-                      placeholderTextColor={Colors.textMuted}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      maxLength={64}
-                      style={styles.friendContactInput}
-                    />
-                  </View>
-                </View>
-
-                <Text style={[
-                  styles.friendHelper, 
-                  !friendEmail.trim() && styles.friendHelperDanger
-                ]}>
-                  {!friendEmail.trim()
-                    ? "Add their email. They can't claim money we can't reach them about."
-                    : "They have 7 days to claim. After that, it becomes our coffee fund :)"}
-                </Text>
               </Animated.View>
             )}
           </Animated.View>
@@ -1273,12 +1273,14 @@ export default function NewPromiseScreen() {
         deadlineAt={deadlineAt}
         moneyDestination={moneyDestination}
         friendName={friendName}
+        selectedFriend={selectedFriend}
         walletUsageDollars={walletUsageDollars}
         cardChargeDollars={cardChargeDollars}
         confirming={confirming}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={doCreate}
       />
+
     </View>
   );
 }
@@ -1716,66 +1718,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  friendLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-  friendInput: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    borderRadius: Radius.lg,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  friendHelper: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-    marginLeft: Spacing.xs,
-  },
-  friendHelperDanger: {
-    color: Colors.danger,
-    fontWeight: '600',
-  },
-  friendContactDivider: {
-    height: 1,
-    backgroundColor: Colors.borderSubtle,
-    marginVertical: Spacing.sm,
-  },
-  friendContactHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginLeft: Spacing.xs,
-    marginTop: -4,
-    marginBottom: Spacing.xs,
-  },
-  friendContactRow: {
-    marginBottom: Spacing.sm,
-  },
-  friendContactInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    borderRadius: Radius.lg,
-    paddingHorizontal: 14,
-  },
-  friendContactIcon: {
-    fontSize: 16,
-    marginRight: Spacing.sm,
-  },
-  friendContactInput: {
-    flex: 1,
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    paddingVertical: 12,
   },
 
   voiceConfirmation: {

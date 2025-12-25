@@ -54,6 +54,7 @@ interface Promise {
   payment_next_retry_at: string | null;
   money_destination: string | null; // 'oopsfee' | 'charity' | 'friend'
   friend_claim_id: string | null;
+  friend_user_id: string | null; // In-app friend beneficiary (direct wallet credit)
 }
 
 interface FriendClaim {
@@ -105,6 +106,17 @@ const SETTLEMENT_NOTIFICATIONS = {
     "Couldn't collect ${amount}. Your account is blocked.",
     'Payment failed permanently. New stakes disabled.',
     '${amount} uncollected. Account frozen.',
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Friend payout notification copy
+// ─────────────────────────────────────────────────────────────
+const FRIEND_PAYOUT_NOTIFICATIONS = {
+  payout: [
+    '💸 ${userName} broke their promise! ${amount} is yours',
+    '🎉 Cha-ching! ${amount} added to your wallet',
+    '💰 ${userName} failed — ${amount} just hit your wallet',
   ],
 };
 
@@ -828,11 +840,94 @@ async function handlePaymentSuccess(
   );
 
   // ─────────────────────────────────────────────────────────────
-  // FRIEND PAYOUT: Update friend claim and notify friend
+  // FRIEND PAYOUT: Handle in-app friends first, then external claims
   // ─────────────────────────────────────────────────────────────
-  if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-    await handleFriendClaimNotification(promise, supabase, totalAmountInCents);
+  if (promise.money_destination === 'friend') {
+    if (promise.friend_user_id) {
+      // In-app friend: credit wallet directly
+      await handleInAppFriendPayout(promise, supabase, totalAmountInCents);
+    } else if (promise.friend_claim_id) {
+      // External friend: claim email flow
+      await handleFriendClaimNotification(promise, supabase, totalAmountInCents);
+    }
   }
+}
+
+/**
+ * Handle payout to in-app friend: credit their wallet directly.
+ * No claim page needed - instant wallet credit + push notification.
+ */
+async function handleInAppFriendPayout(
+  promise: Promise,
+  supabase: ReturnType<typeof createAdminClient>,
+  amountInCents: number,
+): Promise<void> {
+  console.log(`[settle-promises] Processing in-app friend payout for promise ${promise.id}, friend: ${promise.friend_user_id}`);
+
+  if (!promise.friend_user_id) {
+    console.error(`[settle-promises] No friend_user_id set for promise ${promise.id}`);
+    return;
+  }
+
+  // 1. Get promiser's display name/username for notification
+  const { data: promiserProfile } = await supabase
+    .from('profiles')
+    .select('display_name, username')
+    .eq('id', promise.user_id)
+    .single();
+
+  const userName = promiserProfile?.username 
+    ? `@${promiserProfile.username}` 
+    : promiserProfile?.display_name || 'Someone';
+
+  // 2. Get friend's push token for notification
+  const { data: friendProfile, error: friendProfileError } = await supabase
+    .from('profiles')
+    .select('id, expo_push_token')
+    .eq('id', promise.friend_user_id)
+    .single();
+
+  if (friendProfileError || !friendProfile) {
+    console.error(`[settle-promises] Friend profile not found for ${promise.friend_user_id}:`, friendProfileError);
+    // Friend may have deleted account - money goes to OopsFee (graceful degradation)
+    return;
+  }
+
+  // 3. Credit friend's wallet via RPC with transaction logging
+  const { data: creditResult, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
+    target_user_id: promise.friend_user_id,
+    amount_cents: amountInCents,
+    tx_type: 'credit',
+    promise_id: promise.id,
+    claim_id: null,
+    description_text: `Won from ${userName}'s failed promise`,
+  });
+
+  if (creditError) {
+    console.error(`[settle-promises] Error crediting wallet for ${promise.friend_user_id}:`, creditError);
+    // Log failure but don't throw - this is a secondary operation
+    return;
+  }
+
+  console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${promise.friend_user_id}, new balance: ${creditResult}c`);
+
+  // 4. Send push notification to friend
+  const amountDisplay = formatAmount(amountInCents);
+  const notificationBody = pickRandom(FRIEND_PAYOUT_NOTIFICATIONS.payout)
+    .replace('${userName}', userName)
+    .replace('${amount}', amountDisplay);
+
+  await sendPushNotification(
+    friendProfile.expo_push_token,
+    '💰 You got paid!',
+    notificationBody,
+    { 
+      type: 'friend_payout', 
+      amount: amountInCents, 
+      promiseId: promise.id,
+      fromUserId: promise.user_id,
+    },
+  );
 }
 
 /**
