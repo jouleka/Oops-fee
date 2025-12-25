@@ -276,8 +276,8 @@ Deno.serve(async (req: Request) => {
       successRate,
       currentStreak,
       longestStreak,
-      totalSaved: Math.round(totalSaved / 100), // Convert cents to dollars
-      totalLost: Math.round(totalLost / 100),
+      totalSaved,
+      totalLost,
     };
 
     // 8. Get recent history (last 10 completed/failed promises)

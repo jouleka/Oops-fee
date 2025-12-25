@@ -50,6 +50,24 @@ export default function HomeScreen() {
     return () => clearInterval(t);
   }, []);
 
+  // Redirect to username setup if user is authenticated but has no username
+  // Cast to access username column (added in migration 014)
+  const extendedProfile = profile as typeof profile & { username?: string | null };
+  const hasCheckedUsernameRef = useRef(false);
+  
+  useEffect(() => {
+    // Only check once per session, and only when profile is loaded
+    if (!isAuthenticated || !profile || hasCheckedUsernameRef.current) return;
+    hasCheckedUsernameRef.current = true;
+
+    // If user already has a username, nothing to do
+    if (extendedProfile?.username) return;
+
+    // Redirect to username setup - the screen will determine if skip is allowed
+    // based on presence of pending invite token
+    router.replace('/setup-username');
+  }, [isAuthenticated, profile, extendedProfile?.username]);
+
   // Load stats and check-in status on mount
   useEffect(() => {
     if (!isHydrated || hasCheckedRef.current) return;

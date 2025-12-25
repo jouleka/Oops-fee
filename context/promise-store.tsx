@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { PartnerNotification, type PartnerNotificationType } from '@/components/notifications';
 import { SettlementToast, type SettlementType } from '@/components/ui/SettlementToast';
+import { formatMessage, MOMENTUM_NOTIFICATIONS, pickRandom } from '@/constants/notification-copy';
 import {
   cancelAllNotifications,
   cancelPromiseReminders,
@@ -10,7 +11,6 @@ import {
   schedulePromiseReminders,
   sendImmediateNotification,
 } from '@/lib/notifications/scheduler';
-import { formatMessage, MOMENTUM_NOTIFICATIONS, pickRandom } from '@/constants/notification-copy';
 import {
   clearAllPromises,
   listPromises,

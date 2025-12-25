@@ -4,10 +4,14 @@
  * Allows users to pick a unique username for friend discovery.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
+// Storage key for pending invite token (must match invite/[token].tsx)
+const PENDING_INVITE_TOKEN_KEY = 'oopsfee_pending_invite_token';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -154,12 +158,31 @@ export default function SetupUsernameScreen() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPendingInvite, setHasPendingInvite] = useState(false);
+  const [isCheckingInvite, setIsCheckingInvite] = useState(true);
 
   // Generate suggestions based on display name
   const suggestions = useMemo(
     () => generateSuggestions(profile?.display_name),
     [profile?.display_name]
   );
+
+  // Check if user has a pending invite token (from invite link signup)
+  // If so, they must set a username - can't skip
+  useEffect(() => {
+    const checkPendingInvite = async () => {
+      try {
+        const token = await AsyncStorage.getItem(PENDING_INVITE_TOKEN_KEY);
+        setHasPendingInvite(Boolean(token));
+      } catch {
+        // On error, allow skip to be safe
+        setHasPendingInvite(false);
+      } finally {
+        setIsCheckingInvite(false);
+      }
+    };
+    checkPendingInvite();
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -471,21 +494,35 @@ export default function SetupUsernameScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* Skip option */}
-          <Animated.View
-            entering={FadeIn.delay(300).duration(300)}
-            style={styles.skipSection}
-          >
-            <Pressable
-              onPress={handleSkip}
-              style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
+          {/* Skip option - only show if no pending invite */}
+          {!isCheckingInvite && !hasPendingInvite && (
+            <Animated.View
+              entering={FadeIn.delay(300).duration(300)}
+              style={styles.skipSection}
             >
-              <Text style={styles.skipText}>Skip for now</Text>
-            </Pressable>
-            <Text style={styles.skipHint}>
-              You can set this later in your profile
-            </Text>
-          </Animated.View>
+              <Pressable
+                onPress={handleSkip}
+                style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.skipText}>Skip for now</Text>
+              </Pressable>
+              <Text style={styles.skipHint}>
+                You can set this later in your profile
+              </Text>
+            </Animated.View>
+          )}
+
+          {/* Required notice for invite signups */}
+          {!isCheckingInvite && hasPendingInvite && (
+            <Animated.View
+              entering={FadeIn.delay(300).duration(300)}
+              style={styles.inviteNotice}
+            >
+              <Text style={styles.inviteNoticeText}>
+                Your friend is waiting to connect! Pick a username so they can find you.
+              </Text>
+            </Animated.View>
+          )}
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -687,6 +724,23 @@ const styles = StyleSheet.create({
   skipHint: {
     ...Typography.caption,
     color: Colors.textMuted,
+  },
+
+  // Invite notice (when skip is disabled)
+  inviteNotice: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: Colors.accent + '15',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '30',
+  },
+  inviteNoticeText: {
+    ...Typography.caption,
+    color: Colors.accent,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 
   // Footer

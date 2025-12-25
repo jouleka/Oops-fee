@@ -32,13 +32,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import {
+  getFriendProfile,
+  getInitials,
   type FriendHistoryItem,
   type FriendPromise,
   type FriendStats,
   type GetFriendProfileResponse,
-  getFriendProfile,
-  getInitials,
 } from '@/lib/friends';
+import { getTimeRemaining as getTimeRemainingShared, type Urgency } from '@/lib/promises/time';
+
+const URGENCY_COLORS: Record<Urgency, string> = {
+  low: Colors.urgencyLow,
+  medium: Colors.urgencyMedium,
+  high: Colors.urgencyCritical,
+  critical: Colors.urgencyCritical,
+};
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -48,30 +56,6 @@ function hapticLight() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
 
-function getTimeRemaining(deadlineAt: string): { label: string; isUrgent: boolean } {
-  const deadline = new Date(deadlineAt);
-  const now = Date.now();
-  const msRemaining = deadline.getTime() - now;
-
-  if (msRemaining <= 0) {
-    return { label: 'EXPIRED', isUrgent: true };
-  }
-
-  const hours = Math.floor(msRemaining / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-
-  if (days > 1) {
-    return { label: `${days}d left`, isUrgent: false };
-  }
-  if (days === 1) {
-    return { label: '1 day left', isUrgent: false };
-  }
-  if (hours > 1) {
-    return { label: `${hours}h left`, isUrgent: hours < 6 };
-  }
-  const minutes = Math.floor(msRemaining / (1000 * 60));
-  return { label: `${minutes}m left`, isUrgent: true };
-}
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return '';
@@ -387,11 +371,16 @@ function ActivePromisesSection({ promises, friendName }: { promises: FriendPromi
     );
   }
 
+  // Sort by deadline - most urgent first
+  const sorted = [...promises].sort(
+    (a, b) => new Date(a.deadline_at).getTime() - new Date(b.deadline_at).getTime()
+  );
+
   return (
     <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.section}>
       <Text style={styles.sectionTitle}>ACTIVE PROMISES ({promises.length})</Text>
       <View style={styles.promisesList}>
-        {promises.map((promise, index) => (
+        {sorted.map((promise, index) => (
           <PromiseCard key={promise.id} promise={promise} index={index} />
         ))}
       </View>
@@ -400,8 +389,9 @@ function ActivePromisesSection({ promises, friendName }: { promises: FriendPromi
 }
 
 function PromiseCard({ promise, index }: { promise: FriendPromise; index: number }) {
-  const { label, isUrgent } = getTimeRemaining(promise.deadline_at);
-  const color = isUrgent ? Colors.danger : Colors.success;
+  const deadlineMs = new Date(promise.deadline_at).getTime();
+  const { label, urgency } = getTimeRemainingShared(deadlineMs);
+  const color = URGENCY_COLORS[urgency];
 
   return (
     <Animated.View
@@ -415,7 +405,7 @@ function PromiseCard({ promise, index }: { promise: FriendPromise; index: number
         </Text>
         <View style={styles.promiseMeta}>
           <View style={styles.promiseStakeRow}>
-            <Text style={styles.promiseStake}>${(promise.stake / 100).toFixed(0)}</Text>
+            <Text style={styles.promiseStake}>${promise.stake}</Text>
             {promise.sponsor_count > 0 && (
               <View style={styles.sponsorBadge}>
                 <Text style={styles.sponsorText}>+${(promise.sponsor_total / 100).toFixed(0)}</Text>
@@ -470,7 +460,7 @@ function HistoryCard({ item, index }: { item: FriendHistoryItem; index: number }
       <View style={styles.historyContent}>
         <Text style={styles.historyText} numberOfLines={1}>{item.text}</Text>
         <View style={styles.historyMeta}>
-          <Text style={styles.historyStake}>${(item.stake / 100).toFixed(0)}</Text>
+          <Text style={styles.historyStake}>${item.stake}</Text>
           {date && <Text style={styles.historyDate}>{date}</Text>}
         </View>
       </View>
