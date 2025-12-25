@@ -11,8 +11,7 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 // ─────────────────────────────────────────────────────────────
 
 export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
-export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
-export type PayoutMethod = 'stripe' | 'paypal' | 'card' | null;
+export type PayoutMethod = 'paypal' | 'card' | null;
 
 export interface ClaimContext {
   // Claim info
@@ -33,11 +32,9 @@ export interface ClaimContext {
   // User info
   userName: string;
   
-  // Stripe Connect status
-  stripeAccountStatus: StripeAccountStatus | null;
   
   // PayPal payout info
-  payoutMethod: PayoutMethod; // 'stripe' | 'paypal' | 'card' | null (not yet chosen)
+  payoutMethod: PayoutMethod; // 'paypal' | 'card' | null (not yet chosen)
   paypalEmail: string | null; // Email used for PayPal payout
   paypalBatchId: string | null; // PayPal batch ID for tracking
   
@@ -55,10 +52,6 @@ export interface ClaimContext {
   stripePublishableKey?: string;
 }
 
-export interface CreateConnectAccountResponse {
-  accountId: string;
-  onboardingUrl: string;
-}
 
 export interface PayPalClaimResponse {
   success: boolean;
@@ -101,28 +94,6 @@ export async function getClaimContext(token: string): Promise<ClaimContext> {
 
   if (!response.ok) {
     throw new Error(data.error || 'Failed to get claim context');
-  }
-
-  return data;
-}
-
-/**
- * Start Stripe Connect Express onboarding.
- * Creates a Connect account and returns the onboarding URL.
- */
-export async function startClaimOnboarding(token: string): Promise<CreateConnectAccountResponse> {
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-connect-account`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ token }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to start onboarding');
   }
 
   return data;

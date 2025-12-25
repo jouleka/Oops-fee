@@ -1,13 +1,12 @@
 /**
  * WithdrawModal
- * Withdraw funds from wallet to debit card, PayPal, or bank account.
+ * Withdraw funds from wallet to debit card or PayPal.
  *
  * Features:
  * - Amount input (up to current balance)
- * - Toggle: Debit Card (instant), PayPal, or Bank Account
+ * - Toggle: Debit Card (instant) or PayPal
  * - Debit: instant payout to saved or new card (1.5% fee)
  * - PayPal: email input (or saved email)
- * - Stripe: Connect account display (onboarding placeholder)
  * - Calls payout-to-card or wallet-withdraw edge functions
  */
 
@@ -48,7 +47,7 @@ function hapticError() {
 const MIN_WITHDRAWAL = 500; // $5 minimum withdrawal
 const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant debit card payouts
 
-type PayoutMethod = 'paypal' | 'stripe' | 'debit';
+type PayoutMethod = 'paypal' | 'debit';
 
 interface WithdrawModalProps {
   visible: boolean;
@@ -84,12 +83,10 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
       if (walletState.balanceCents > 0) {
         setAmountText((walletState.balanceCents / 100).toFixed(2));
       }
-      // Default to best available method (debit > paypal > stripe)
+      // Default to best available method (debit > paypal)
       if (walletState.payoutCard) {
         setMethod('debit');
         setUseSavedCard(true);
-      } else if (walletState.stripeConnectAccountId && !walletState.paypalPayoutEmail) {
-        setMethod('stripe');
       }
     }
   }, [visible, walletState]);
@@ -99,7 +96,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   const isValidAmount = amountCents >= MIN_WITHDRAWAL && amountCents <= maxAmount;
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail.trim());
-  const hasStripeConnect = Boolean(walletState.stripeConnectAccountId);
   const hasSavedCard = Boolean(walletState.payoutCard);
   
   // Validate card - either using saved card or CardField is complete
@@ -112,7 +108,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
   const canWithdraw =
     isValidAmount &&
     ((method === 'paypal' && isValidEmail) || 
-     (method === 'stripe' && hasStripeConnect) ||
      (method === 'debit' && isValidCard));
 
   const handleMethodSwitch = (m: PayoutMethod) => {
@@ -185,22 +180,17 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
         return;
       }
 
-      // If using PayPal and email is different from saved, save it first
-      if (method === 'paypal' && paypalEmail.trim() !== walletState.paypalPayoutEmail) {
+      // PayPal withdrawal - save email if different from saved
+      if (paypalEmail.trim() !== walletState.paypalPayoutEmail) {
         setSavingEmail(true);
         await savePayoutMethod('paypal', paypalEmail.trim());
         setSavingEmail(false);
       }
 
-      const destination =
-        method === 'paypal'
-          ? paypalEmail.trim()
-          : walletState.stripeConnectAccountId!;
-
       const result = await withdrawWallet({
         amountCents,
-        method,
-        destination,
+        method: 'paypal',
+        destination: paypalEmail.trim(),
       });
 
       if (result.success) {
@@ -234,7 +224,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
     refreshProfile,
     useSavedCard,
     walletState.paypalPayoutEmail,
-    walletState.stripeConnectAccountId,
   ]);
 
   const resetForm = () => {
@@ -281,9 +270,7 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                 <Text style={styles.successSubtext}>
                   {method === 'paypal'
                     ? `Sent to ${paypalEmail}`
-                    : method === 'debit'
-                    ? `Instant transfer to card •••• ${successCardLast4 ?? ''}`
-                    : 'Transferred to your bank'}
+                    : `Instant transfer to card •••• ${successCardLast4 ?? ''}`}
                 </Text>
               </Animated.View>
             ) : (
@@ -321,7 +308,7 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                     <Pressable
                       style={[
                         styles.methodBtn,
-                        styles.methodBtnThird,
+                        styles.methodBtnHalf,
                         method === 'debit' && styles.methodBtnActive,
                       ]}
                       onPress={() => handleMethodSwitch('debit')}
@@ -348,7 +335,7 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                     <Pressable
                       style={[
                         styles.methodBtn,
-                        styles.methodBtnThird,
+                        styles.methodBtnHalf,
                         method === 'paypal' && styles.methodBtnActive,
                       ]}
                       onPress={() => handleMethodSwitch('paypal')}
@@ -365,28 +352,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                         ]}
                       >
                         PayPal
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={[
-                        styles.methodBtn,
-                        styles.methodBtnThird,
-                        method === 'stripe' && styles.methodBtnActive,
-                      ]}
-                      onPress={() => handleMethodSwitch('stripe')}
-                    >
-                      <Ionicons
-                        name="business-outline"
-                        size={18}
-                        color={method === 'stripe' ? Colors.accent : Colors.textSecondary}
-                      />
-                      <Text
-                        style={[
-                          styles.methodText,
-                          method === 'stripe' && styles.methodTextActive,
-                        ]}
-                      >
-                        Bank
                       </Text>
                     </Pressable>
                   </View>
@@ -427,38 +392,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                   </Animated.View>
                 )}
 
-                {/* Stripe Connect Status */}
-                {method === 'stripe' && (
-                  <Animated.View entering={FadeIn.duration(200)} style={styles.destinationSection}>
-                    {hasStripeConnect ? (
-                      <View style={styles.stripeConnected}>
-                        <View style={styles.stripeRow}>
-                          <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                          <View style={styles.stripeInfo}>
-                            <Text style={styles.stripeLabel}>Bank Account Connected</Text>
-                            <Text style={styles.stripeHint}>
-                              Account: •••• {walletState.stripeConnectAccountId?.slice(-4)}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.stripeSetup}>
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={24}
-                          color={Colors.warning}
-                        />
-                        <View style={styles.stripeSetupInfo}>
-                          <Text style={styles.stripeSetupLabel}>Bank Transfers Not Available</Text>
-                          <Text style={styles.stripeSetupHint}>
-                            Direct bank payouts require additional verification. For instant withdrawals, use Debit Card – funds arrive in seconds!
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </Animated.View>
-                )}
 
                 {/* Debit Card Input */}
                 {method === 'debit' && (
@@ -627,8 +560,6 @@ export function WithdrawModal({ visible, onClose, onSuccess }: WithdrawModalProp
                             ? 'Enter valid amount'
                             : method === 'paypal' && !isValidEmail
                             ? 'Enter PayPal email'
-                            : method === 'stripe' && !hasStripeConnect
-                            ? 'Bank not connected'
                             : method === 'debit' && !isValidCard
                             ? 'Enter card details'
                             : method === 'debit'
@@ -767,10 +698,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentDim,
     borderColor: Colors.accent,
   },
-  methodBtnThird: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    gap: 4,
+  methodBtnHalf: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    gap: 6,
   },
   methodBtnContent: {
     flexDirection: 'row',
@@ -833,52 +764,6 @@ const styles = StyleSheet.create({
   savedText: {
     ...Typography.caption,
     color: Colors.success,
-  },
-
-  // Stripe Connect
-  stripeConnected: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-  },
-  stripeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  stripeInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  stripeLabel: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  stripeHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-  stripeSetup: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-    backgroundColor: Colors.warningDim,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-  },
-  stripeSetupInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  stripeSetupLabel: {
-    ...Typography.bodySemibold,
-    color: Colors.warning,
-  },
-  stripeSetupHint: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
   },
 
   // Debit Card

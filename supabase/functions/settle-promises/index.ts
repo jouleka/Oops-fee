@@ -232,7 +232,7 @@ async function sendClaimNotificationEmail(params: ClaimEmailParams): Promise<boo
     </p>
     
     <p style="font-size: 14px; color: #888888; text-align: center; margin: 0;">
-      Click the button above to connect your bank account and receive your payout.
+      Click the button above to claim your payout via debit card or PayPal.
     </p>
     
     <hr style="border: none; border-top: 1px solid #333; margin: 40px 0 24px 0;">
@@ -254,8 +254,6 @@ That means ${amountDisplay} is yours!
 Claim it here: ${claimUrl}
 
 ⏰ This offer expires ${expiryDate}.
-
-Click the link to connect your bank account and receive your payout.
 
 — OopsFee`;
 

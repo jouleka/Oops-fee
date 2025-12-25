@@ -52,8 +52,6 @@ export interface WalletState {
   hasBalance: boolean;
   /** PayPal email for withdrawals (if set) */
   paypalPayoutEmail: string | null;
-  /** Stripe Connect account ID for withdrawals (if set) */
-  stripeConnectAccountId: string | null;
   /** Saved payout card info for instant debit card withdrawals */
   payoutCard: { last4: string; brand: string } | null;
   /** Whether user has a payout method configured */
@@ -458,7 +456,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const walletState: WalletState = useMemo(() => {
     const balanceCents = profile?.balance_cents ?? 0;
     const paypalPayoutEmail = profile?.paypal_payout_email ?? null;
-    const stripeConnectAccountId = profile?.stripe_connect_account_id ?? null;
     // Cast to access payout card columns (added in migration 011)
     const extendedProfile = profile as typeof profile & {
       payout_card_last4?: string | null;
@@ -473,9 +470,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       balanceDollars: balanceCents / 100,
       hasBalance: balanceCents > 0,
       paypalPayoutEmail,
-      stripeConnectAccountId,
       payoutCard,
-      hasPayoutMethod: Boolean(paypalPayoutEmail || stripeConnectAccountId || payoutCard),
+      hasPayoutMethod: Boolean(paypalPayoutEmail || payoutCard),
     };
   }, [profile]);
 

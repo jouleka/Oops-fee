@@ -61,9 +61,8 @@ export type PartnerState = 'awaiting' | 'approved' | 'rejected' | 'expired';
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'requires_action' | 'abandoned';
 export type ShareLinkType = 'sponsor' | 'roast' | 'partner';
 export type ClaimStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'transferred';
-export type StripeAccountStatus = 'pending' | 'onboarding' | 'active' | 'restricted';
 export type WalletTransactionType = 'topup' | 'stake' | 'refund' | 'credit' | 'withdraw';
-export type PayoutMethod = 'stripe' | 'paypal' | 'wallet';
+export type PayoutMethod = 'paypal' | 'card' | 'wallet';
 
 // ============================================================================
 // Utility Types

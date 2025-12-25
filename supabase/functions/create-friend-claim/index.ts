@@ -6,8 +6,8 @@
  * Creates a friend claim record when a user creates a promise with money_destination='friend'.
  * Sends invite notification to the friend via email.
  *
- * The friend does NOT need to set up anything upfront - they only go through
- * Stripe Connect onboarding when there's actual money to claim (after user fails).
+ * The friend does NOT need to set up anything upfront - they only choose a
+ * payout method (debit card or PayPal) when there's actual money to claim.
  *
  * POST /create-friend-claim
  * Body: {

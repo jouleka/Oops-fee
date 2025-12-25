@@ -4,7 +4,7 @@
  * payout-to-card Edge Function
  *
  * Sends user's wallet balance instantly to their debit card via Stripe.
- * Uses Stripe Connect Custom accounts with minimal onboarding for card payouts.
+ * Uses Stripe Connect Custom accounts internally for instant card payouts.
  *
  * Flow:
  * 1. Check if user has a payout Connect account, create if not

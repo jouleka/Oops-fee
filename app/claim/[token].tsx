@@ -6,12 +6,11 @@
  *
  * Two states:
  * 1. Preview mode (promise still active): Shows promise details, stake, deadline
- * 2. Claim mode (user failed): Shows claimable amount and Stripe Connect onboarding
+ * 2. Claim mode (user failed): Shows claimable amount and payout options (debit/PayPal)
  */
 
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -28,7 +27,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { getClaimContext, startClaimOnboarding, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
+import { getClaimContext, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -167,10 +166,10 @@ function CompletedState({ context }: { context: ClaimContext }) {
 
 // ─────────────────────────────────────────────────────────────
 // CLAIM MODE (User Failed - Money Available)
-// Shows payout method picker: PayPal (fast) or Stripe (bank account)
+// Shows payout method picker: Debit Card (instant) or PayPal (fast)
 // ─────────────────────────────────────────────────────────────
 
-type PayoutView = 'picker' | 'paypal' | 'stripe' | 'debit';
+type PayoutView = 'picker' | 'paypal' | 'debit';
 
 const DEBIT_FEE_PERCENT = 1.5; // 1.5% fee for instant card payouts
 
@@ -294,33 +293,6 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     
     return () => clearTimeout(timeoutId);
   }, [stripeLoaded]);
-
-  const handleStripeOnboarding = useCallback(async () => {
-    if (loading) return;
-
-    setLoading(true);
-    setError(null);
-    hapticMedium();
-
-    try {
-      const { onboardingUrl } = await startClaimOnboarding(token);
-
-      // Open Stripe Connect onboarding in browser
-      if (Platform.OS === 'web') {
-        window.location.href = onboardingUrl;
-      } else {
-        await Linking.openURL(onboardingUrl);
-      }
-
-      hapticSuccess();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to start claim';
-      setError(message);
-      hapticError();
-    } finally {
-      setLoading(false);
-    }
-  }, [token, loading]);
 
   const handlePayPalSubmit = useCallback(async () => {
     if (loading || !isValidEmail(paypalEmail)) return;
@@ -471,60 +443,6 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
         <Text style={styles.disclaimer}>
           Funds usually arrive within minutes.{'\n'}
           Check your PayPal app or email for confirmation.
-        </Text>
-      </View>
-    );
-  }
-
-  // Stripe flow (direct to onboarding)
-  if (view === 'stripe') {
-    return (
-      <View style={styles.stateContainer}>
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-          <Text style={styles.emoji}>🏦</Text>
-          <Text style={styles.title}>Set up bank transfer</Text>
-          <Text style={styles.subtitle}>
-            Connect your bank account to receive {amount}.
-          </Text>
-        </Animated.View>
-
-        {error && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </Animated.View>
-        )}
-
-        <View style={styles.buttonRow}>
-          <Pressable
-            onPress={() => setView('picker')}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.backBtnText}>← Back</Text>
-          </Pressable>
-
-          <Pressable
-            disabled={loading}
-            onPress={handleStripeOnboarding}
-            style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, loading && styles.disabled]}
-          >
-            <LinearGradient
-              colors={['#635bff', '#4f46e5']}
-              style={styles.btnGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.text} />
-              ) : (
-                <Text style={styles.claimBtnText}>Continue to Stripe</Text>
-              )}
-            </LinearGradient>
-          </Pressable>
-        </View>
-
-        <Text style={styles.disclaimer}>
-          Stripe securely handles bank account verification.{'\n'}
-          Transfers typically arrive in 2-3 business days.
         </Text>
       </View>
     );
@@ -713,20 +631,6 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
             <Text style={styles.methodBadgeText}>Fast</Text>
           </View>
         </Pressable>
-
-        <Pressable
-          onPress={() => { hapticMedium(); setView('stripe'); }}
-          style={({ pressed }) => [styles.methodOption, styles.methodOptionStripe, pressed && styles.pressed]}
-        >
-          <View style={styles.methodOptionContent}>
-            <Text style={styles.methodIcon}>🏦</Text>
-            <View style={styles.methodTextContainer}>
-              <Text style={styles.methodTitle}>Bank Account</Text>
-              <Text style={styles.methodSubtitle}>Via Stripe – takes ~2 min setup</Text>
-            </View>
-          </View>
-          <Text style={styles.methodChevron}>→</Text>
-        </Pressable>
       </Animated.View>
     </View>
   );
@@ -808,79 +712,6 @@ function PayPalUnclaimedState({ context }: { context: ClaimContext }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ONBOARDING IN PROGRESS STATE
-// ─────────────────────────────────────────────────────────────
-
-function OnboardingState({ context, token }: { context: ClaimContext; token: string }) {
-  const [resuming, setResuming] = useState(false);
-  const amount = formatCurrency(context.amount || context.stake);
-
-  const handleResume = useCallback(async () => {
-    if (resuming) return;
-
-    setResuming(true);
-    hapticMedium();
-
-    try {
-      const { onboardingUrl } = await startClaimOnboarding(token);
-
-      if (Platform.OS === 'web') {
-        window.location.href = onboardingUrl;
-      } else {
-        await Linking.openURL(onboardingUrl);
-      }
-    } catch (e) {
-      console.error('Failed to resume onboarding:', e);
-      hapticError();
-    } finally {
-      setResuming(false);
-    }
-  }, [token, resuming]);
-
-  return (
-    <View style={styles.stateContainer}>
-      <View style={styles.header}>
-        <Text style={styles.emoji}>🔄</Text>
-        <Text style={styles.title}>Almost there!</Text>
-        <Text style={styles.subtitle}>
-          Finish setting up your account to receive {amount}.
-        </Text>
-      </View>
-
-      <View style={styles.statusCard}>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusIcon}>✅</Text>
-          <Text style={styles.statusText}>Account created</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <ActivityIndicator size="small" color={Colors.warning} />
-          <Text style={styles.statusText}>Verification in progress</Text>
-        </View>
-      </View>
-
-      <Pressable
-        disabled={resuming}
-        onPress={handleResume}
-        style={({ pressed }) => [styles.claimBtn, pressed && styles.pressed, resuming && styles.disabled]}
-      >
-        <LinearGradient
-          colors={[Colors.accent, '#0A84FF']}
-          style={styles.btnGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {resuming ? (
-            <ActivityIndicator color={Colors.text} />
-          ) : (
-            <Text style={styles.claimBtnText}>Continue Setup</Text>
-          )}
-        </LinearGradient>
-      </Pressable>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
 // TRANSFERRED STATE (Funds Sent)
 // ─────────────────────────────────────────────────────────────
 
@@ -901,7 +732,7 @@ function TransferredState({ context }: { context: ClaimContext }) {
         <Text style={styles.successIcon}>💰</Text>
         <Text style={styles.successAmount}>{amount}</Text>
         <Text style={styles.successNote}>
-          Funds typically arrive within 2-3 business days.
+          Check your PayPal for the funds!
         </Text>
       </View>
 
@@ -1021,54 +852,12 @@ function ErrorState({ message }: { message: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// SUCCESS REDIRECT (After Stripe Onboarding)
-// ─────────────────────────────────────────────────────────────
-
-function SuccessRedirect({ context }: { context: ClaimContext }) {
-  const amount = formatCurrency(context.amount || context.stake);
-
-  return (
-    <View style={styles.stateContainer}>
-      <View style={styles.header}>
-        <Text style={styles.emoji}>✨</Text>
-        <Text style={styles.title}>You're all set!</Text>
-        <Text style={styles.subtitle}>
-          Your account is being verified.{'\n'}
-          We'll transfer {amount} once approved.
-        </Text>
-      </View>
-
-      <View style={styles.statusCard}>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusIcon}>✅</Text>
-          <Text style={styles.statusText}>Account setup complete</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <ActivityIndicator size="small" color={Colors.accent} />
-          <Text style={styles.statusText}>Verification in progress</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <Text style={styles.statusIconPending}>⏳</Text>
-          <Text style={styles.statusTextPending}>Transfer pending</Text>
-        </View>
-      </View>
-
-      <Text style={styles.disclaimer}>
-        You'll receive an email when the transfer is complete.{'\n'}
-        Usually takes 1-2 business days.
-      </Text>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────
 
 export default function ClaimPage() {
-  const { token, success, refresh: _refresh } = useLocalSearchParams<{
+  const { token, refresh: _refresh } = useLocalSearchParams<{
     token: string;
-    success?: string;
     refresh?: string;
   }>();
   const insets = useSafeAreaInsets();
@@ -1099,11 +888,6 @@ export default function ClaimPage() {
       return <ErrorState message={error || 'Something went wrong'} />;
     }
 
-    // If returning from successful Stripe onboarding
-    if (success === 'true') {
-      return <SuccessRedirect context={context} />;
-    }
-
     // Based on claim status
     switch (context.claimStatus) {
       case 'pending':
@@ -1121,17 +905,8 @@ export default function ClaimPage() {
         return <ClaimState context={context} token={token!} />;
 
       case 'claimed':
-        // Friend started onboarding or payout process
-        if (context.payoutMethod === 'paypal') {
-          // PayPal payout was initiated - show pending state
-          return <PayPalPendingState context={context} />;
-        }
-        // Stripe flow
-        if (context.stripeAccountStatus === 'active') {
-          // Account is ready, transfer should happen automatically
-          return <SuccessRedirect context={context} />;
-        }
-        return <OnboardingState context={context} token={token!} />;
+        // PayPal payout was initiated - show pending state
+        return <PayPalPendingState context={context} />;
 
       case 'transferred':
         // Show card-specific transferred state if paid via card
@@ -1349,36 +1124,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Status card
-  statusCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  statusIcon: {
-    fontSize: 20,
-  },
-  statusIconPending: {
-    fontSize: 20,
-    opacity: 0.5,
-  },
-  statusText: {
-    ...Typography.body,
-    color: Colors.text,
-  },
-  statusTextPending: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-  },
-
   // Badges
   successBadge: {
     backgroundColor: Colors.successDim,
@@ -1501,9 +1246,6 @@ const styles = StyleSheet.create({
   methodOptionPayPal: {
     borderColor: '#0070ba',
   },
-  methodOptionStripe: {
-    borderColor: Colors.border,
-  },
   methodOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1546,10 +1288,6 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.success,
     fontWeight: '700',
-  },
-  methodChevron: {
-    ...Typography.h3,
-    color: Colors.textTertiary,
   },
 
   // Input card (for PayPal email)

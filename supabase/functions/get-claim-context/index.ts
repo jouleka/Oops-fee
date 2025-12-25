@@ -161,10 +161,8 @@ Deno.serve(async (req: Request) => {
       
       userName,
       
-      stripeAccountStatus: claim.stripe_account_status,
-      
       // PayPal payout info
-      payoutMethod: claim.payout_method, // 'stripe' | 'paypal' | 'card' | null
+      payoutMethod: claim.payout_method, // 'paypal' | 'card' | null
       paypalEmail: claim.paypal_email,
       paypalBatchId: claim.paypal_batch_id,
       

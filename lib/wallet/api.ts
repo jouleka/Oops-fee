@@ -5,7 +5,7 @@
  * - Balance queries
  * - Transaction history
  * - Top-up (add funds via card)
- * - Withdraw (PayPal or Stripe Connect)
+ * - Withdraw (PayPal)
  */
 
 import { getSession, supabase } from '@/lib/supabase';
@@ -46,8 +46,8 @@ export interface TopUpResponse {
 
 export interface WithdrawParams {
   amountCents: number;
-  method: 'paypal' | 'stripe';
-  destination: string;      // PayPal email or Stripe Connect account ID
+  method: 'paypal';
+  destination: string;      // PayPal email
 }
 
 export interface WithdrawResponse {
@@ -56,7 +56,6 @@ export interface WithdrawResponse {
   withdrawn?: number;       // Amount withdrawn in cents
   message: string;
   paypalBatchId?: string;
-  stripeTransferId?: string;
 }
 
 export interface PayoutToCardParams {
@@ -298,11 +297,11 @@ export async function confirmTopUp(paymentIntentId: string): Promise<TopUpRespon
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Withdraw funds from wallet to PayPal or bank account.
+ * Withdraw funds from wallet to PayPal.
  * 
  * @param params.amountCents Amount to withdraw in cents
- * @param params.method 'paypal' or 'stripe'
- * @param params.destination PayPal email or Stripe Connect account ID
+ * @param params.method 'paypal'
+ * @param params.destination PayPal email
  * @returns Response with new balance or error details
  */
 export async function withdrawWallet(params: WithdrawParams): Promise<WithdrawResponse> {
@@ -420,27 +419,23 @@ export async function payoutToCard(params: PayoutToCardParams): Promise<PayoutTo
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Save the user's preferred payout method for withdrawals.
+ * Save the user's PayPal email for withdrawals.
  * 
- * @param method 'paypal' or 'stripe'
- * @param destination PayPal email or Stripe Connect account ID
+ * @param method 'paypal' (only option)
+ * @param email PayPal email address
  */
 export async function savePayoutMethod(
-  method: 'paypal' | 'stripe',
-  destination: string
+  method: 'paypal',
+  email: string
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     throw new Error('Not authenticated');
   }
 
-  const update = method === 'paypal'
-    ? { paypal_payout_email: destination }
-    : { stripe_connect_account_id: destination };
-
   const { error } = await supabase
     .from('profiles')
-    .update(update)
+    .update({ paypal_payout_email: email })
     .eq('id', user.id);
 
   if (error) {
@@ -454,36 +449,33 @@ export async function savePayoutMethod(
  */
 export async function getPayoutMethods(): Promise<{
   paypalEmail: string | null;
-  stripeConnectAccountId: string | null;
   savedCard: { last4: string; brand: string } | null;
 }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { paypalEmail: null, stripeConnectAccountId: null, savedCard: null };
+    return { paypalEmail: null, savedCard: null };
   }
 
   // Note: payout_card_* columns added in migration 011 - cast to handle pre-migration types
   const { data, error } = await supabase
     .from('profiles')
-    .select('paypal_payout_email, stripe_connect_account_id, payout_card_last4, payout_card_brand')
+    .select('paypal_payout_email, payout_card_last4, payout_card_brand')
     .eq('id', user.id)
     .single();
 
   if (error || !data) {
-    return { paypalEmail: null, stripeConnectAccountId: null, savedCard: null };
+    return { paypalEmail: null, savedCard: null };
   }
 
   // Cast to handle columns not yet in generated types (migration 011)
   const profile = data as unknown as {
     paypal_payout_email: string | null;
-    stripe_connect_account_id: string | null;
     payout_card_last4?: string | null;
     payout_card_brand?: string | null;
   };
 
   return {
     paypalEmail: profile.paypal_payout_email,
-    stripeConnectAccountId: profile.stripe_connect_account_id,
     savedCard: profile.payout_card_last4
       ? { last4: profile.payout_card_last4, brand: profile.payout_card_brand ?? 'unknown' }
       : null,
