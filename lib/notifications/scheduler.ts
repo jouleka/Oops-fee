@@ -312,7 +312,7 @@ export async function scheduleWeeklyStakeSummary(totalAtStake: number): Promise<
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: 7, // Sunday (expo-notifications: 1=Monday...7=Sunday)
+        weekday: 1, // Sunday (expo-notifications: 1=Sunday...7=Saturday)
         hour: 20,
         minute: 0,
         channelId: getChannelId('reminders'),
@@ -376,7 +376,7 @@ export async function scheduleWeeklyMomentum(stats: WeeklyMomentumStats): Promis
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: 7, // Sunday (expo-notifications: 1=Monday...7=Sunday)
+        weekday: 1, // Sunday (expo-notifications: 1=Sunday...7=Saturday)
         hour: 19,
         minute: 0,
         channelId: getChannelId('reminders'),

@@ -17,6 +17,9 @@ export type Database = {
       friend_claims: {
         Row: {
           amount_cents: number | null
+          card_brand: string | null
+          card_last4: string | null
+          card_payout_transfer_id: string | null
           claim_expires_at: string | null
           claim_status: string
           claim_token: string
@@ -37,6 +40,9 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number | null
+          card_brand?: string | null
+          card_last4?: string | null
+          card_payout_transfer_id?: string | null
           claim_expires_at?: string | null
           claim_status?: string
           claim_token: string
@@ -57,6 +63,9 @@ export type Database = {
         }
         Update: {
           amount_cents?: number | null
+          card_brand?: string | null
+          card_last4?: string | null
+          card_payout_transfer_id?: string | null
           claim_expires_at?: string | null
           claim_status?: string
           claim_token?: string
@@ -81,6 +90,90 @@ export type Database = {
             columns: ["promise_id"]
             isOneToOne: false
             referencedRelation: "promises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friend_invites: {
+        Row: {
+          claimed_by: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          invite_token: string
+          inviter_id: string
+        }
+        Insert: {
+          claimed_by?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invite_token: string
+          inviter_id: string
+        }
+        Update: {
+          claimed_by?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invite_token?: string
+          inviter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_invites_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_invites_inviter_id_fkey"
+            columns: ["inviter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string | null
+          id: string
+          requester_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string | null
+          id?: string
+          requester_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string | null
+          id?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -143,16 +236,23 @@ export type Database = {
           failed_payment_count: number | null
           id: string
           last_active_at: string | null
+          last_insights_at: string | null
           last_reengagement_at: string | null
           notification_preferences: Json | null
           payment_blocked: boolean | null
           payment_method_brand: string | null
           payment_method_last4: string | null
           payment_method_type: string | null
+          payout_card_brand: string | null
+          payout_card_fingerprint: string | null
+          payout_card_last4: string | null
+          payout_connect_account_id: string | null
           paypal_payout_email: string | null
           stripe_connect_account_id: string | null
           stripe_customer_id: string | null
           updated_at: string | null
+          username: string | null
+          username_set_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -164,16 +264,23 @@ export type Database = {
           failed_payment_count?: number | null
           id: string
           last_active_at?: string | null
+          last_insights_at?: string | null
           last_reengagement_at?: string | null
           notification_preferences?: Json | null
           payment_blocked?: boolean | null
           payment_method_brand?: string | null
           payment_method_last4?: string | null
           payment_method_type?: string | null
+          payout_card_brand?: string | null
+          payout_card_fingerprint?: string | null
+          payout_card_last4?: string | null
+          payout_connect_account_id?: string | null
           paypal_payout_email?: string | null
           stripe_connect_account_id?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
+          username?: string | null
+          username_set_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -185,16 +292,23 @@ export type Database = {
           failed_payment_count?: number | null
           id?: string
           last_active_at?: string | null
+          last_insights_at?: string | null
           last_reengagement_at?: string | null
           notification_preferences?: Json | null
           payment_blocked?: boolean | null
           payment_method_brand?: string | null
           payment_method_last4?: string | null
           payment_method_type?: string | null
+          payout_card_brand?: string | null
+          payout_card_fingerprint?: string | null
+          payout_card_last4?: string | null
+          payout_connect_account_id?: string | null
           paypal_payout_email?: string | null
           stripe_connect_account_id?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
+          username?: string | null
+          username_set_at?: string | null
         }
         Relationships: []
       }
@@ -483,6 +597,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_friends: {
+        Args: { user_a: string; user_b: string }
+        Returns: boolean
+      }
       credit_wallet: {
         Args: { amount_cents: number; target_user_id: string }
         Returns: undefined
@@ -523,6 +641,7 @@ export type Database = {
         Returns: number
       }
       generate_claim_token: { Args: never; Returns: string }
+      get_friend_count: { Args: { user_uuid: string }; Returns: number }
       update_last_active: { Args: never; Returns: undefined }
     }
     Enums: {

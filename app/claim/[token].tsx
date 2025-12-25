@@ -27,7 +27,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
-import { getClaimContext, claimViaPayPal, claimViaDebitCard, type ClaimContext } from '@/lib/claims';
+import { claimViaDebitCard, claimViaPayPal, getClaimContext, type ClaimContext } from '@/lib/claims';
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -94,17 +94,17 @@ function PreviewState({ context }: { context: ClaimContext }) {
     <View style={styles.stateContainer}>
       <View style={styles.header}>
         <Text style={styles.emoji}>👀</Text>
-        <Text style={styles.title}>You're on the hook!</Text>
+        <Text style={styles.title}>You&apos;re on the hook!</Text>
         <Text style={styles.subtitle}>
-          {context.userName} bet {stake} they'll keep this promise.
+          {context.userName} bet {stake} they&apos;ll keep this promise.
           {'\n'}
-          If they fail, the money's yours.
+          If they fail, the money&apos;s yours.
         </Text>
       </View>
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>THE PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
 
         <View style={styles.promiseStats}>
           <View style={styles.stat}>
@@ -127,7 +127,7 @@ function PreviewState({ context }: { context: ClaimContext }) {
       <View style={styles.infoBox}>
         <Text style={styles.infoIcon}>📧</Text>
         <Text style={styles.infoText}>
-          We'll email you at if {context.userName} fails and there's money to claim.
+          We&apos;ll email you at if {context.userName} fails and there&apos;s money to claim.
         </Text>
       </View>
     </View>
@@ -154,7 +154,7 @@ function CompletedState({ context }: { context: ClaimContext }) {
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>COMPLETED PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
       </View>
 
       <View style={styles.successBadge}>
@@ -195,7 +195,8 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
   
   // Cardholder name (still needed for token)
   const [cardholderName, setCardholderName] = useState('');
-  const [successCardLast4, setSuccessCardLast4] = useState<string | null>(null);
+   
+  const [_successCardLast4, setSuccessCardLast4] = useState<string | null>(null);
   
   const amountCents = Math.round((context.amount || context.stake) * 100);
   const amount = formatCurrency(context.amount || context.stake);
@@ -380,7 +381,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
           <Text style={styles.emoji}>🅿️</Text>
           <Text style={styles.title}>Enter your PayPal email</Text>
           <Text style={styles.subtitle}>
-            We'll send {amount} to this email instantly.
+            We&apos;ll send {amount} to this email instantly.
           </Text>
         </Animated.View>
 
@@ -456,7 +457,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
           <Text style={styles.emoji}>💳</Text>
           <Text style={styles.title}>Enter your debit card</Text>
           <Text style={styles.subtitle}>
-            We'll send ${(debitNetAmount / 100).toFixed(2)} instantly to your card.
+            We&apos;ll send ${(debitNetAmount / 100).toFixed(2)} instantly to your card.
           </Text>
         </Animated.View>
 
@@ -473,11 +474,11 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
             <View style={styles.stripeCardContainer}>
               <View
                 ref={cardMountRef}
-                // @ts-ignore - web-only div styling
                 style={{
                   backgroundColor: '#1a1a1a',
                   borderRadius: 8,
                   padding: 16,
+                  // @ts-expect-error - web-only border CSS property
                   border: cardError ? '1px solid #ff4444' : '1px solid #333',
                   minHeight: 44,
                 }}
@@ -571,9 +572,9 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
     <View style={styles.stateContainer}>
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.emoji}>💸</Text>
-        <Text style={styles.title}>You've got {amount} waiting!</Text>
+        <Text style={styles.title}>You&apos;ve got {amount} waiting!</Text>
         <Text style={styles.subtitle}>
-          {context.userName} didn't follow through.{'\n'}
+          {context.userName} didn&apos;t follow through.{'\n'}
           How would you like to receive it?
         </Text>
       </Animated.View>
@@ -590,7 +591,7 @@ function ClaimState({ context, token }: { context: ClaimContext; token: string }
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>FAILED PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
         <View style={styles.failedBadge}>
           <Text style={styles.failedBadgeText}>❌ Not completed</Text>
         </View>
@@ -649,7 +650,7 @@ function PayPalPendingState({ context }: { context: ClaimContext }) {
         <Text style={styles.emoji}>📧</Text>
         <Text style={styles.title}>Check your PayPal!</Text>
         <Text style={styles.subtitle}>
-          We've sent {amount} to your PayPal account.
+          We&apos;ve sent {amount} to your PayPal account.
         </Text>
       </Animated.View>
 
@@ -668,15 +669,15 @@ function PayPalPendingState({ context }: { context: ClaimContext }) {
         <Text style={styles.infoIcon}>💡</Text>
         <Text style={styles.infoText}>
           If you have a PayPal account with this email, the money will be deposited automatically.{'\n\n'}
-          If not, you'll receive an email from PayPal to claim it.
+          If not, you&apos;ll receive an email from PayPal to claim it.
         </Text>
       </View>
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>THE BROKEN PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
         <Text style={styles.promiseNote}>
-          {context.userName} didn't follow through. Their loss, your gain!
+          {context.userName} didn&apos;t follow through. Their loss, your gain!
         </Text>
       </View>
     </View>
@@ -722,7 +723,7 @@ function TransferredState({ context }: { context: ClaimContext }) {
     <View style={styles.stateContainer}>
       <View style={styles.header}>
         <Text style={styles.emoji}>🎉</Text>
-        <Text style={styles.title}>Money's on the way!</Text>
+        <Text style={styles.title}>Money&apos;s on the way!</Text>
         <Text style={styles.subtitle}>
           {amount} has been transferred to your account.
         </Text>
@@ -738,9 +739,9 @@ function TransferredState({ context }: { context: ClaimContext }) {
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>THE BROKEN PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
         <Text style={styles.promiseNote}>
-          {context.userName} didn't follow through. Their loss, your gain!
+          {context.userName} didn&apos;t follow through. Their loss, your gain!
         </Text>
       </View>
     </View>
@@ -781,9 +782,9 @@ function CardTransferredState({ context }: { context: ClaimContext }) {
 
       <View style={styles.promiseCard}>
         <Text style={styles.promiseLabel}>THE BROKEN PROMISE</Text>
-        <Text style={styles.promiseText}>"{context.promiseText}"</Text>
+        <Text style={styles.promiseText}>&quot;{context.promiseText}&quot;</Text>
         <Text style={styles.promiseNote}>
-          {context.userName} didn't follow through. Their loss, your gain!
+          {context.userName} didn&apos;t follow through. Their loss, your gain!
         </Text>
       </View>
     </View>

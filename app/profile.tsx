@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { getLiveBettorCount } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { isStripeConfigured } from '@/lib/stripe';
+import { supabase } from '@/lib/supabase';
 import { formatCents } from '@/lib/wallet/api';
 
 function hapticMedium() {
@@ -48,11 +49,45 @@ function getPaymentName(brand: string | null): string {
   return map[brand || ''] || 'Card';
 }
 
+// Extended profile type to access username (from migration 014)
+type ExtendedProfile = {
+  username?: string | null;
+  username_set_at?: string | null;
+};
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { isAuthenticated, user, profile, signOut, isLoading, paymentState, walletState, refreshProfile } = useAuth();
   const [showTopUp, setShowTopUp] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [friendCount, setFriendCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Cast profile to access extended fields
+  const extendedProfile = profile as (typeof profile & ExtendedProfile) | null;
+  const hasUsername = Boolean(extendedProfile?.username);
+
+  // Fetch friend counts
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    const fetchFriendCount = async () => {
+      try {
+        const response = await supabase.functions.invoke('get-friends', {
+          body: {},
+        });
+
+        if (!response.error && response.data) {
+          setFriendCount(response.data.friends?.length ?? 0);
+          setPendingCount(response.data.pendingReceived?.length ?? 0);
+        }
+      } catch {
+        // Silently fail - friends feature may not be deployed yet
+      }
+    };
+
+    fetchFriendCount();
+  }, [isAuthenticated, user?.id]);
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -114,6 +149,19 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.profileInfo}>
                 <Text style={styles.displayName}>{displayName}</Text>
+                {hasUsername ? (
+                  <Text style={styles.username}>@{extendedProfile?.username}</Text>
+                ) : (
+                  <Pressable
+                    onPress={() => {
+                      hapticMedium();
+                      router.push('/setup-username');
+                    }}
+                    style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                  >
+                    <Text style={styles.usernamePrompt}>+ Set username</Text>
+                  </Pressable>
+                )}
                 <Text style={styles.email}>{email}</Text>
                 <View style={styles.statusBadge}>
                   <View style={styles.statusDot} />
@@ -140,6 +188,45 @@ export default function ProfileScreen() {
                   <Text style={styles.detailValueMono}>{user?.id?.slice(0, 8)}...</Text>
                 </View>
               </View>
+            </Animated.View>
+
+            {/* Friends */}
+            <Animated.View entering={FadeInDown.delay(105).duration(300)} style={styles.section}>
+              <Text style={styles.sectionTitle}>Friends</Text>
+              <Pressable
+                onPress={() => {
+                  hapticMedium();
+                  router.push('/friends' as never);
+                }}
+                style={({ pressed }) => [
+                  styles.friendsCard,
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <View style={styles.friendsContent}>
+                  <Text style={styles.friendsEmoji}>👥</Text>
+                  <View style={styles.friendsInfo}>
+                    <Text style={styles.friendsLabel}>
+                      {friendCount === 0
+                        ? 'No friends yet'
+                        : `${friendCount} friend${friendCount !== 1 ? 's' : ''}`}
+                    </Text>
+                    <Text style={styles.friendsHint}>
+                      {pendingCount > 0
+                        ? `${pendingCount} pending request${pendingCount !== 1 ? 's' : ''}`
+                        : 'Find and add accountability partners'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.friendsChevron}>
+                  {pendingCount > 0 && (
+                    <View style={styles.pendingBadge}>
+                      <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
+                    </View>
+                  )}
+                  <Text style={{ color: Colors.textMuted, fontSize: 16 }}>›</Text>
+                </View>
+              </Pressable>
             </Animated.View>
 
             {/* Wallet */}
@@ -478,6 +565,16 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontFamily: Fonts.rounded,
   },
+  username: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontFamily: Fonts.mono,
+  },
+  usernamePrompt: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontWeight: '600',
+  },
   email: {
     ...Typography.body,
     color: Colors.textSecondary,
@@ -799,6 +896,60 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,
+  },
+
+  // Friends Card
+  friendsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  friendsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  friendsEmoji: {
+    fontSize: 24,
+  },
+  friendsInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  friendsLabel: {
+    ...Typography.body,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  friendsHint: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  friendsChevron: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  pendingBadge: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.full,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
+  },
+  pendingBadgeText: {
+    ...Typography.caption,
+    color: Colors.text,
+    fontWeight: '700',
+    fontSize: 11,
   },
 });
 

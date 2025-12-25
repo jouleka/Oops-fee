@@ -56,6 +56,7 @@ export interface WithdrawResponse {
   withdrawn?: number;       // Amount withdrawn in cents
   message: string;
   paypalBatchId?: string;
+  stripeTransferId?: string;
 }
 
 export interface PayoutToCardParams {
@@ -425,7 +426,7 @@ export async function payoutToCard(params: PayoutToCardParams): Promise<PayoutTo
  * @param email PayPal email address
  */
 export async function savePayoutMethod(
-  method: 'paypal',
+  _method: 'paypal',
   email: string
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();

@@ -98,6 +98,8 @@ export default function RootLayout() {
               <Stack.Screen name="promise/success" options={{ animation: 'fade', gestureEnabled: false }} />
               <Stack.Screen name="s/[token]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="claim/[token]" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="invite/[token]" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="friends" options={{ headerShown: false }} />
               <Stack.Screen name="auth" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             </Stack>

@@ -12,8 +12,11 @@
  * ```
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
+import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -29,12 +32,11 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 
-import Constants from 'expo-constants';
-
 import type { Profile, ProfileInsert, UserPaymentState } from '@/lib/supabase';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
-import type { Session, User } from '@supabase/supabase-js';
+// Storage key for pending invite token (imported from invite page)
+const PENDING_INVITE_TOKEN_KEY = 'oopsfee_pending_invite_token';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -88,6 +90,8 @@ export interface AuthActions {
   signOut: () => Promise<void>;
   /** Refresh profile from server */
   refreshProfile: () => Promise<void>;
+  /** Set username via edge function */
+  setUsername: (username: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export type AuthContextType = AuthState & AuthActions;
@@ -101,6 +105,37 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // ─────────────────────────────────────────────────────────────
 // Push Token Registration
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * Check for and claim any pending friend invite token stored during signup.
+ * This runs after profile creation to auto-connect the user with their inviter.
+ */
+async function claimPendingInviteToken(): Promise<void> {
+  try {
+    const token = await AsyncStorage.getItem(PENDING_INVITE_TOKEN_KEY);
+    if (!token) return;
+
+    console.log('[Auth] Found pending invite token, attempting to claim...');
+
+    // Claim the invite
+    const response = await supabase.functions.invoke('claim-friend-invite', {
+      body: { invite_token: token },
+    });
+
+    if (response.error) {
+      console.error('[Auth] Failed to claim invite:', response.error);
+    } else if (response.data?.success) {
+      console.log('[Auth] Successfully claimed invite, now friends with:', response.data.inviter);
+    } else if (response.data?.error) {
+      console.log('[Auth] Invite claim failed:', response.data.error);
+    }
+
+    // Clear the token regardless of success/failure
+    await AsyncStorage.removeItem(PENDING_INVITE_TOKEN_KEY);
+  } catch (e) {
+    console.error('[Auth] Error claiming pending invite:', e);
+  }
+}
 
 /**
  * Get Expo push token and store it in the user's profile.
@@ -244,6 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(newData as Profile);
             // Register push token for new profile
             registerPushToken(userId);
+            // Claim any pending invite (for users who signed up via invite link)
+            claimPendingInviteToken();
           }
         } else {
           console.error('[Auth] Error fetching profile:', error);
@@ -290,6 +327,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(data);
     }
   }, [session?.user?.id]);
+
+  const setUsername = useCallback(async (username: string): Promise<{ success: boolean; error?: string }> => {
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+      const response = await supabase.functions.invoke('set-username', {
+        body: { username },
+      });
+
+      if (response.error) {
+        return { success: false, error: response.error.message || 'Failed to set username' };
+      }
+
+      const data = response.data;
+      if (data.error) {
+        return { success: false, error: data.error };
+      }
+
+      if (data.success) {
+        // Refresh profile to get updated username
+        await refreshProfile();
+        return { success: true };
+      }
+
+      return { success: false, error: 'Unknown error' };
+    } catch (e) {
+      const err = e as { message?: string };
+      return { success: false, error: err.message || 'Failed to set username' };
+    }
+  }, [session?.user?.id, refreshProfile]);
 
   // ─────────────────────────────────────────────────────────────
   // Apple Sign-In
@@ -490,6 +559,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyEmailOtp,
       signOut,
       refreshProfile,
+      setUsername,
     }),
     [
       session,
@@ -503,6 +573,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyEmailOtp,
       signOut,
       refreshProfile,
+      setUsername,
     ]
   );
 

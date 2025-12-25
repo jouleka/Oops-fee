@@ -423,6 +423,64 @@ export const PARTNER_ACTION_NOTIFICATIONS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
+// FRIEND NOTIFICATIONS (Push from backend)
+// Friend requests, acceptances, and activity
+// ─────────────────────────────────────────────────────────────
+
+export const FRIEND_NOTIFICATIONS = {
+  /** Someone sent you a friend request */
+  requestReceived: [
+    '👋 @{username} wants to be your accountability partner',
+    'New friend request from @{username}',
+    '@{username} sent you a friend request',
+    'Someone wants to keep you accountable: @{username}',
+    '@{username} wants to join forces. Accept?',
+  ],
+
+  /** Your friend request was accepted */
+  requestAccepted: [
+    '🎉 @{username} accepted your friend request!',
+    "You're now accountability partners with @{username}!",
+    '@{username} is now your friend. Time to keep each other honest.',
+    'Friend request accepted! @{username} is watching now.',
+    '@{username} joined your circle. No more hiding.',
+  ],
+
+  /** Friend hit a streak milestone */
+  friendStreak7: [
+    '🔥 Your friend @{username} just hit a 7-day streak!',
+    '@{username} is on fire! 7 days in a row.',
+    "Week warrior: @{username} hasn't missed a beat.",
+  ],
+
+  friendStreak30: [
+    '⚡ @{username} just hit a 30-day streak!',
+    'Monthly monster: @{username} is crushing it.',
+    "Your friend @{username} hasn't failed in a month.",
+  ],
+
+  friendStreak100: [
+    '👑 @{username} just hit a 100-day streak!',
+    'Legend status: @{username} hit 100 days.',
+    '@{username} joined the 100 club. Respect.',
+  ],
+
+  /** Friend completed a promise */
+  friendCompleted: [
+    '✅ @{username} just kept a promise',
+    '@{username} did the thing. Can you?',
+    "Your friend @{username} isn't slacking.",
+  ],
+
+  /** Friend failed a promise */
+  friendFailed: [
+    '💸 @{username} just lost ${amount}',
+    'Oops: @{username} broke a promise.',
+    '@{username} failed. At least it wasn\'t you.',
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
 
@@ -494,6 +552,17 @@ export function getCheckInReminder(
     messages = CHECKIN_REMINDERS.morning;
   }
 
+  return formatMessage(pickRandom(messages), vars);
+}
+
+/**
+ * Get a friend notification message.
+ */
+export function getFriendNotification(
+  type: keyof typeof FRIEND_NOTIFICATIONS,
+  vars: Record<string, string | number> = {}
+): string {
+  const messages = FRIEND_NOTIFICATIONS[type];
   return formatMessage(pickRandom(messages), vars);
 }
 
