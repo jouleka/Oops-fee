@@ -169,6 +169,139 @@ Claim it here: ${claimUrl}
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Friend payout notification copy
+// ─────────────────────────────────────────────────────────────
+const FRIEND_PAYOUT_NOTIFICATIONS = {
+  payout: [
+    '💸 ${userName} broke their promise! ${amount} is yours',
+    '🎉 Cha-ching! ${amount} added to your wallet',
+    '💰 ${userName} failed — ${amount} just hit your wallet',
+  ],
+};
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatAmount(cents: number): string {
+  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+}
+
+/**
+ * Send a push notification via Expo Push API
+ */
+async function sendPushNotification(
+  pushToken: string | null,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  if (!pushToken) {
+    console.log('[charge-promise] No push token, skipping notification');
+    return;
+  }
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        sound: 'default',
+        data,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('[charge-promise] Push notification sent:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[charge-promise] Failed to send push notification:', error);
+  }
+}
+
+/**
+ * Handle payout to in-app friend: credit their wallet directly.
+ * No claim page needed - instant wallet credit + push notification.
+ */
+async function handleInAppFriendPayout(
+  promise: { id: string; user_id: string; text: string; friend_user_id: string | null },
+  supabase: ReturnType<typeof createAdminClient>,
+  amountInCents: number,
+): Promise<void> {
+  console.log(`[charge-promise] Processing in-app friend payout for promise ${promise.id}, friend: ${promise.friend_user_id}`);
+
+  if (!promise.friend_user_id) {
+    console.error(`[charge-promise] No friend_user_id set for promise ${promise.id}`);
+    return;
+  }
+
+  // 1. Get promiser's display name/username for notification
+  const { data: promiserProfile } = await supabase
+    .from('profiles')
+    .select('display_name, username')
+    .eq('id', promise.user_id)
+    .single();
+
+  const userName = promiserProfile?.username 
+    ? `@${promiserProfile.username}` 
+    : promiserProfile?.display_name || 'Someone';
+
+  // 2. Get friend's push token for notification
+  const { data: friendProfile, error: friendProfileError } = await supabase
+    .from('profiles')
+    .select('id, expo_push_token')
+    .eq('id', promise.friend_user_id)
+    .single();
+
+  if (friendProfileError || !friendProfile) {
+    console.error(`[charge-promise] Friend profile not found for ${promise.friend_user_id}:`, friendProfileError);
+    // Friend may have deleted account - money goes to OopsFee (graceful degradation)
+    return;
+  }
+
+  // 3. Credit friend's wallet via RPC with transaction logging
+  const { data: creditResult, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
+    target_user_id: promise.friend_user_id,
+    amount_cents: amountInCents,
+    tx_type: 'credit',
+    promise_id: promise.id,
+    claim_id: null,
+    description_text: `Won from ${userName}'s failed promise`,
+  });
+
+  if (creditError) {
+    console.error(`[charge-promise] Error crediting wallet for ${promise.friend_user_id}:`, creditError);
+    return;
+  }
+
+  console.log(`[charge-promise] Wallet credited: ${amountInCents} cents to user ${promise.friend_user_id}, new balance: ${creditResult}c`);
+
+  // 4. Send push notification to friend
+  const amountDisplay = formatAmount(amountInCents);
+  const notificationBody = pickRandom(FRIEND_PAYOUT_NOTIFICATIONS.payout)
+    .replace('${userName}', userName)
+    .replace('${amount}', amountDisplay);
+
+  await sendPushNotification(
+    friendProfile.expo_push_token,
+    '💰 You got paid!',
+    notificationBody,
+    { 
+      type: 'friend_payout', 
+      amount: amountInCents, 
+      promiseId: promise.id,
+      fromUserId: promise.user_id,
+    },
+  );
+}
+
 /**
  * Update friend claim and notify friend that money is available to claim
  */
@@ -421,8 +554,12 @@ Deno.serve(async (req: Request) => {
           });
 
           // Notify friend if applicable
-          if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-            await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+          if (promise.money_destination === 'friend') {
+            if (promise.friend_user_id) {
+              await handleInAppFriendPayout(promise, supabase, totalAmountCents);
+            } else if (promise.friend_claim_id) {
+              await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+            }
           }
 
           return new Response(
@@ -515,8 +652,12 @@ Deno.serve(async (req: Request) => {
       });
 
       // Notify friend if applicable
-      if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-        await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+      if (promise.money_destination === 'friend') {
+        if (promise.friend_user_id) {
+          await handleInAppFriendPayout(promise, supabase, totalAmountCents);
+        } else if (promise.friend_claim_id) {
+          await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+        }
       }
 
       return new Response(
@@ -586,11 +727,17 @@ Deno.serve(async (req: Request) => {
         });
 
         // Notify friend if money_destination is 'friend'
-        console.log(`[charge-promise] Promise money_destination: ${promise.money_destination}, friend_claim_id: ${promise.friend_claim_id}`);
-        if (promise.money_destination === 'friend' && promise.friend_claim_id) {
-          await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+        console.log(`[charge-promise] Promise money_destination: ${promise.money_destination}, friend_user_id: ${promise.friend_user_id}, friend_claim_id: ${promise.friend_claim_id}`);
+        if (promise.money_destination === 'friend') {
+          if (promise.friend_user_id) {
+            await handleInAppFriendPayout(promise, supabase, totalAmountCents);
+          } else if (promise.friend_claim_id) {
+            await handleFriendClaimNotification(promise, supabase, totalAmountCents);
+          } else {
+            console.log(`[charge-promise] Skipping friend notification - no friend_user_id or friend_claim_id`);
+          }
         } else {
-          console.log(`[charge-promise] Skipping friend notification - conditions not met`);
+          console.log(`[charge-promise] Skipping friend notification - money_destination is not 'friend'`);
         }
 
         // Build response message
