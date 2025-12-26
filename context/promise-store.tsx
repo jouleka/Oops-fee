@@ -18,11 +18,11 @@ import {
   deletePromise as repoDeletePromise,
   setPromiseStatus as repoSetPromiseStatus,
   updatePromise as repoUpdatePromise,
-  syncLocalToRemote,
 } from '@/lib/promises/repo';
 import { performFullSync, subscribeToPromiseChanges } from '@/lib/promises/sync';
 import type { CreatePromiseInput, PromiseStatus, PromiseUpdate, UserPromise } from '@/lib/promises/types';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { clearCheckIns } from '@/lib/stats/store';
 import { clearWidgetData, syncToWidget } from '@/lib/widgets';
 
 import { useAuth } from './auth';
@@ -120,11 +120,29 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   
   const { user, isAuthenticated } = useAuth();
   const promisesRef = useRef<UserPromise[]>([]);
+  const wasAuthenticatedRef = useRef(false);
   
   // Keep ref in sync for realtime callback
   useEffect(() => {
     promisesRef.current = promises;
   }, [promises]);
+  
+  // Clear all local data when user signs out to prevent data leaking to next user
+  useEffect(() => {
+    if (wasAuthenticatedRef.current && !isAuthenticated) {
+      // User just signed out - clear everything synchronously
+      console.log('[PromiseStore] User signed out, clearing local data');
+      Promise.all([
+        clearAllPromises(),
+        clearCheckIns(),
+        clearWidgetData(),
+        cancelAllNotifications(),
+      ]).catch(console.error);
+      setPromises([]);
+      // Keep isHydrated true but with empty data - we're "hydrated" with nothing
+    }
+    wasAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const refresh = useCallback(async () => {
     setIsWorking(true);
@@ -142,10 +160,8 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
     
     setIsSyncing(true);
     try {
-      // First, sync any local-only promises to remote
-      await syncLocalToRemote();
-      
-      // Then perform full sync to get latest from server
+      // Skip syncing local-only promises - they may belong to a previous user
+      // Just fetch from server and replace local state entirely
       const merged = await performFullSync(user.id);
       setPromises(merged);
     } catch (error) {
@@ -155,10 +171,10 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id]);
 
-  // Initial hydration
+  // Initial hydration - run on mount and when user changes
   useEffect(() => {
     refresh().catch(() => {});
-  }, [refresh]);
+  }, [refresh, user?.id]);
   
   // Sync when user signs in
   useEffect(() => {

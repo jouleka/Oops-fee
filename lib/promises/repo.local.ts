@@ -53,6 +53,8 @@ function coercePromise(raw: unknown): UserPromise | null {
       ? moneyDestinationRaw
       : 'oopsfee';
 
+  const friendUserId =
+    typeof raw.friendUserId === 'string' && raw.friendUserId.length > 0 ? raw.friendUserId : undefined;
   const friendName =
     typeof raw.friendName === 'string' && raw.friendName.trim().length > 0 ? raw.friendName.trim() : undefined;
   const friendEmail =
@@ -124,6 +126,7 @@ function coercePromise(raw: unknown): UserPromise | null {
     updatedAt,
     status,
     moneyDestination,
+    friendUserId: moneyDestination === 'friend' ? friendUserId : undefined,
     friendName: moneyDestination === 'friend' ? friendName : undefined,
     friendEmail: moneyDestination === 'friend' ? friendEmail : undefined,
     voiceNoteUri,
@@ -218,6 +221,7 @@ export async function createPromise(input: CreatePromiseInput): Promise<UserProm
     updatedAt: now,
     status: 'active',
     moneyDestination: input.moneyDestination,
+    friendUserId: input.moneyDestination === 'friend' ? input.friendUserId || undefined : undefined,
     friendName: input.moneyDestination === 'friend' ? input.friendName?.trim() || undefined : undefined,
     friendEmail: input.moneyDestination === 'friend' ? input.friendEmail?.trim() || undefined : undefined,
     voiceNoteUri: input.voiceNoteUri?.trim() || undefined,
@@ -249,9 +253,14 @@ export async function updatePromise(id: string, patch: PromiseUpdate): Promise<U
 
     // Keep destination fields coherent.
     if (next.moneyDestination !== 'friend') {
+      next.friendUserId = undefined;
       next.friendName = undefined;
       next.friendEmail = undefined;
     } else {
+      // friendUserId is a UUID, don't trim
+      if (typeof next.friendUserId === 'string' && next.friendUserId.length === 0) {
+        next.friendUserId = undefined;
+      }
       if (typeof next.friendName === 'string') {
         const trimmed = next.friendName.trim();
         next.friendName = trimmed.length > 0 ? trimmed : undefined;

@@ -88,31 +88,23 @@ export async function performFullSync(userId: string): Promise<UserPromise[]> {
       remoteMap.set(p.id, p);
     }
     
-    // Merge: start with local, merge in remote
+    // Merge: remote is source of truth, only merge local data for matching IDs
     const mergedMap = new Map<string, UserPromise>();
     
-    // Process local promises
-    for (const localP of localPromises) {
-      const remoteP = remoteMap.get(localP.id);
-      if (remoteP) {
-        // Both exist: merge
-        mergedMap.set(localP.id, mergePromise(localP, remoteP));
-      } else if (localP.remoteId) {
-        // Local claims to be synced but remote doesn't have it
-        // Could be deleted on server - keep for now but mark as needing sync
-        mergedMap.set(localP.id, { ...localP, remoteId: undefined, syncedAt: undefined });
-      } else {
-        // Local only - not yet synced
-        mergedMap.set(localP.id, localP);
-      }
-    }
-    
-    // Add remote-only promises
+    // Start with remote promises (these are authoritative for this user)
     for (const remoteP of remotePromises) {
-      if (!mergedMap.has(remoteP.id)) {
+      const localP = localMap.get(remoteP.id);
+      if (localP) {
+        // Both exist: merge local data into remote
+        mergedMap.set(remoteP.id, mergePromise(localP, remoteP));
+      } else {
+        // Remote only - add as-is
         mergedMap.set(remoteP.id, remoteP);
       }
     }
+    
+    // IMPORTANT: Do NOT include local-only promises (those without matching remote)
+    // They could belong to a different user from a previous session
     
     // Enrich promises with roast messages where needed
     const enrichPromises = Array.from(mergedMap.values()).map(async (p) => {
@@ -136,8 +128,12 @@ export async function performFullSync(userId: string): Promise<UserPromise[]> {
     // Sort by creation date (newest first)
     const merged = enriched.sort((a, b) => b.createdAt - a.createdAt);
     
-    // Persist merged state locally
-    await local.bulkUpsertPromises(merged);
+    // Replace local storage completely with the merged result
+    // This ensures stale data from previous users is removed
+    await local.clearAllPromises();
+    if (merged.length > 0) {
+      await local.bulkUpsertPromises(merged);
+    }
     
     return merged;
   } catch (error) {
