@@ -62,6 +62,7 @@ export function toRemoteInsert(local: UserPromise, userId: string): PromiseInser
     sponsor_total: Math.round((local.sponsorAmount ?? 0) * 100), // Store in cents
     sponsor_count: local.sponsorCount ?? 0,
     has_roast: (local.iToldYouSoMessages?.length ?? 0) > 0,
+    uses_free_pass: local.usesFreePass ?? null,
   };
 }
 
@@ -114,6 +115,7 @@ export function toRemoteUpdate(patch: Partial<UserPromise>): RemotePromiseUpdate
   if (patch.sponsorAmount !== undefined) update.sponsor_total = Math.round(patch.sponsorAmount * 100); // Store in cents
   if (patch.sponsorCount !== undefined) update.sponsor_count = patch.sponsorCount;
   if (patch.iToldYouSoMessages !== undefined) update.has_roast = patch.iToldYouSoMessages.length > 0;
+  if (patch.usesFreePass !== undefined) update.uses_free_pass = patch.usesFreePass;
   
   // Always update updated_at
   update.updated_at = new Date().toISOString();
@@ -174,6 +176,7 @@ export function toLocalPromise(remote: PromiseRow): UserPromise {
       : undefined,
     paymentStatus: paymentStatus ?? undefined,
     paymentClientSecret: remote.payment_client_secret ?? undefined,
+    usesFreePass: remote.uses_free_pass ?? undefined,
     syncedAt: Date.now(),
     remoteId: remote.id,
   };
@@ -360,6 +363,7 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     verificationType: input.verificationType ?? 'photo',
     sponsorAmount: input.sponsorAmount,
     sponsorCount: input.sponsorCount,
+    usesFreePass: input.usesFreePass ?? undefined,
   };
   
   const insert = toRemoteInsert(localPromise, userId);

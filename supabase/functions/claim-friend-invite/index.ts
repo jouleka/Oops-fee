@@ -222,6 +222,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 8b. Grant free passes to both users as invite reward
+    const { error: rewardError } = await supabase.rpc('grant_invite_rewards', {
+      inviter_uuid: invite.inviter_id,
+      invitee_uuid: user.id,
+    });
+
+    if (rewardError) {
+      // Log but don't fail - friendship was already created
+      console.error('[claim-friend-invite] Failed to grant invite rewards:', rewardError);
+    } else {
+      console.log(
+        `[claim-friend-invite] Granted free passes to inviter ${invite.inviter_id} and invitee ${user.id}`,
+      );
+    }
+
     // 9. Mark invite as claimed
     const { error: claimError } = await supabase
       .from('friend_invites')
@@ -249,12 +264,12 @@ Deno.serve(async (req: Request) => {
 
     const claimerName = claimerProfile?.username || claimerProfile?.display_name || 'Someone';
 
-    // 12. Notify the inviter
+    // 12. Notify the inviter (include free pass reward info)
     await sendPushNotification(
       inviterProfile?.expo_push_token ?? null,
-      'Your invite was accepted! 🎉',
-      `@${claimerName} joined and is now your accountability partner!`,
-      { type: 'friend_invite_claimed', new_friend_id: user.id },
+      '🎟️ Invite accepted + free pass earned!',
+      `@${claimerName} joined! You both got a free pass.`,
+      { type: 'friend_invite_claimed', new_friend_id: user.id, free_pass_earned: true },
     );
 
     console.log(
@@ -269,6 +284,7 @@ Deno.serve(async (req: Request) => {
           username: inviterProfile?.username,
           display_name: inviterProfile?.display_name,
         },
+        free_pass_earned: !rewardError, // Both users got a free pass
       }),
       {
         status: 200,

@@ -77,6 +77,10 @@ export interface UserPromise {
   /** Stripe client secret for SCA resolution in-app */
   paymentClientSecret?: string;
 
+  // ─── Free Pass ───
+  /** Whether a free pass is applied to waive failure charge */
+  usesFreePass?: boolean;
+
   // ─── Remote Sync ───
   /** Timestamp of last sync with Supabase */
   syncedAt?: number;
@@ -141,6 +145,8 @@ export type CreatePromiseInput = {
   sponsorCount?: number;
   // Verification
   verificationType?: VerificationType; // Defaults to 'photo' in repo
+  // Free pass
+  usesFreePass?: boolean;
 };
 
 export type PromiseUpdate = Partial<
@@ -171,6 +177,8 @@ export type PromiseUpdate = Partial<
     // Payment tracking
     | 'paymentStatus'
     | 'paymentClientSecret'
+    // Free pass
+    | 'usesFreePass'
     // Sync
     | 'syncedAt'
     | 'remoteId'

@@ -432,6 +432,27 @@ export const PARTNER_ACTION_NOTIFICATIONS = {
 // When a friend wins money from a broken promise
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// INVITE REWARD NOTIFICATIONS
+// When invite is claimed and both users get a free pass
+// ─────────────────────────────────────────────────────────────
+
+export const INVITE_REWARD_NOTIFICATIONS = {
+  /** Notification to inviter when their invite is claimed */
+  inviterReward: [
+    '🎟️ Your invite was accepted! Free pass earned.',
+    '🎉 @{name} joined! You got a free pass.',
+    'Invite claimed! One free "oops" is yours.',
+    '🎟️ @{name} is here! Free pass added to your account.',
+  ],
+  /** Welcome notification to new user who claimed invite */
+  inviteeWelcome: [
+    '🎟️ Welcome! You start with 1 free pass.',
+    'First one is on us — your first failure is free!',
+    '🎟️ Free pass unlocked! One promise failure, on the house.',
+  ],
+} as const;
+
 export const FRIEND_PAYOUT_NOTIFICATIONS = {
   /** Notification when named as beneficiary */
   named: [

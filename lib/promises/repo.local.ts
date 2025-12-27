@@ -115,6 +115,9 @@ function coercePromise(raw: unknown): UserPromise | null {
   const syncedAt = typeof raw.syncedAt === 'number' ? raw.syncedAt : undefined;
   const remoteId = typeof raw.remoteId === 'string' && raw.remoteId.length > 0 ? raw.remoteId : undefined;
 
+  // Free pass
+  const usesFreePass = typeof raw.usesFreePass === 'boolean' ? raw.usesFreePass : undefined;
+
   if (!['active', 'completed', 'failed', 'expired'].includes(status)) return null;
 
   return {
@@ -144,6 +147,7 @@ function coercePromise(raw: unknown): UserPromise | null {
     partnerDeadlineAt,
     paymentStatus,
     paymentClientSecret,
+    usesFreePass,
     syncedAt,
     remoteId,
   };
@@ -228,6 +232,7 @@ export async function createPromise(input: CreatePromiseInput): Promise<UserProm
     verificationType: input.verificationType ?? 'photo', // Default to photo for new promises
     sponsorAmount: input.sponsorAmount,
     sponsorCount: input.sponsorCount,
+    usesFreePass: input.usesFreePass ?? undefined,
   };
 
   const state = await readState();
@@ -307,6 +312,15 @@ export async function deletePromise(id: string): Promise<boolean> {
 
 export async function clearAllPromises(): Promise<void> {
   await writeState({ version: STORAGE_VERSION, promises: [] });
+}
+
+/**
+ * Atomically replace all promises in storage.
+ * Unlike clear + bulkUpsert, this is a single write operation.
+ */
+export async function replaceAllPromises(promises: UserPromise[]): Promise<void> {
+  const sorted = [...promises].sort((a, b) => b.createdAt - a.createdAt);
+  await writeState({ version: STORAGE_VERSION, promises: sorted });
 }
 
 /**

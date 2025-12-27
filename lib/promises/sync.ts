@@ -46,6 +46,9 @@ export function mergePromise(local: UserPromise, remote: UserPromise): UserPromi
     paymentStatus: remote.paymentStatus ?? local.paymentStatus,
     paymentClientSecret: remote.paymentClientSecret ?? local.paymentClientSecret,
     
+    // Free pass: remote wins if set (server tracks consumption)
+    usesFreePass: remote.usesFreePass ?? local.usesFreePass,
+    
     // Status: remote wins if resolved
     status: statusFromRemote ? remote.status : local.status,
     completedAt: statusFromRemote && remote.completedAt ? remote.completedAt : local.completedAt,
@@ -128,12 +131,10 @@ export async function performFullSync(userId: string): Promise<UserPromise[]> {
     // Sort by creation date (newest first)
     const merged = enriched.sort((a, b) => b.createdAt - a.createdAt);
     
-    // Replace local storage completely with the merged result
-    // This ensures stale data from previous users is removed
-    await local.clearAllPromises();
-    if (merged.length > 0) {
-      await local.bulkUpsertPromises(merged);
-    }
+    // Atomically replace local storage with the merged result
+    // Using replaceAllPromises ensures we don't lose data if write fails
+    // (unlike clear + bulkUpsert which can leave storage empty on failure)
+    await local.replaceAllPromises(merged);
     
     return merged;
   } catch (error) {
@@ -350,4 +351,3 @@ export function clearAllSyncOperations(): void {
 export function hasPendingSync(promiseId: string): boolean {
   return syncQueue.some(item => item.promiseId === promiseId);
 }
-

@@ -259,6 +259,7 @@ export type Database = {
           display_name: string | null
           expo_push_token: string | null
           failed_payment_count: number | null
+          free_passes: number
           id: string
           last_active_at: string | null
           last_insights_at: string | null
@@ -287,6 +288,7 @@ export type Database = {
           display_name?: string | null
           expo_push_token?: string | null
           failed_payment_count?: number | null
+          free_passes?: number
           id: string
           last_active_at?: string | null
           last_insights_at?: string | null
@@ -315,6 +317,7 @@ export type Database = {
           display_name?: string | null
           expo_push_token?: string | null
           failed_payment_count?: number | null
+          free_passes?: number
           id?: string
           last_active_at?: string | null
           last_insights_at?: string | null
@@ -364,6 +367,7 @@ export type Database = {
           text: string
           updated_at: string | null
           user_id: string
+          uses_free_pass: boolean | null
           verification_proof_ref: string | null
           verification_timestamp: string | null
           verification_type: string
@@ -395,6 +399,7 @@ export type Database = {
           text: string
           updated_at?: string | null
           user_id: string
+          uses_free_pass?: boolean | null
           verification_proof_ref?: string | null
           verification_timestamp?: string | null
           verification_type?: string
@@ -426,6 +431,7 @@ export type Database = {
           text?: string
           updated_at?: string | null
           user_id?: string
+          uses_free_pass?: boolean | null
           verification_proof_ref?: string | null
           verification_timestamp?: string | null
           verification_type?: string
@@ -636,6 +642,7 @@ export type Database = {
         Args: { user_a: string; user_b: string }
         Returns: boolean
       }
+      consume_free_pass: { Args: { user_uuid: string }; Returns: boolean }
       credit_wallet: {
         Args: { amount_cents: number; target_user_id: string }
         Returns: undefined
@@ -677,6 +684,14 @@ export type Database = {
       }
       generate_claim_token: { Args: never; Returns: string }
       get_friend_count: { Args: { user_uuid: string }; Returns: number }
+      grant_invite_rewards: {
+        Args: { invitee_uuid: string; inviter_uuid: string }
+        Returns: undefined
+      }
+      increment_free_passes: {
+        Args: { amount?: number; user_uuid: string }
+        Returns: number
+      }
       update_last_active: { Args: never; Returns: undefined }
     }
     Enums: {

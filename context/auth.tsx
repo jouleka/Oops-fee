@@ -71,6 +71,8 @@ export interface AuthState {
   paymentState: UserPaymentState;
   /** Wallet state (balance and payout methods) */
   walletState: WalletState;
+  /** Number of free passes available (earned via invite rewards) */
+  freePasses: number;
   /** Whether auth state is still loading */
   isLoading: boolean;
   /** Whether user is authenticated */
@@ -544,6 +546,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [profile]);
 
+  // Free passes from invite rewards
+  const freePasses = profile?.free_passes ?? 0;
+
   const value = useMemo<AuthContextType>(
     () => ({
       session,
@@ -551,6 +556,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       paymentState,
       walletState,
+      freePasses,
       isLoading,
       isAuthenticated: Boolean(session?.user),
       signInWithApple,
@@ -566,6 +572,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       paymentState,
       walletState,
+      freePasses,
       isLoading,
       signInWithApple,
       signInWithGoogle,

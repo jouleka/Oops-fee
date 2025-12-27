@@ -55,6 +55,7 @@ interface Promise {
   money_destination: string | null; // 'oopsfee' | 'charity' | 'friend'
   friend_claim_id: string | null;
   friend_user_id: string | null; // In-app friend beneficiary (direct wallet credit)
+  uses_free_pass: boolean | null; // If true, skip charge on failure
 }
 
 interface FriendClaim {
@@ -117,6 +118,18 @@ const FRIEND_PAYOUT_NOTIFICATIONS = {
     '💸 ${userName} broke their promise! ${amount} is yours',
     '🎉 Cha-ching! ${amount} added to your wallet',
     '💰 ${userName} failed — ${amount} just hit your wallet',
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Free pass notification copy
+// ─────────────────────────────────────────────────────────────
+const FREE_PASS_NOTIFICATIONS = {
+  saved: [
+    '🎟️ Free pass saved you! No charge this time.',
+    '🎟️ Promise failed, but your free pass covered it.',
+    '🎟️ Oops forgiven! Free pass consumed.',
+    '🎟️ You got lucky — free pass absorbed the loss.',
   ],
 };
 
@@ -557,6 +570,50 @@ async function markPromiseFailed(
 }
 
 /**
+ * Handle settlement for a promise that used a free pass.
+ * Skip all charges and mark as settled successfully.
+ */
+async function handleFreePassSettlement(
+  promise: Promise,
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<SettlementResult> {
+  // Get user's push token for notification
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('expo_push_token')
+    .eq('id', promise.user_id)
+    .single();
+
+  const pushToken = profile?.expo_push_token ?? null;
+
+  // Mark payment as succeeded (no charge applied)
+  await supabase
+    .from('promises')
+    .update({
+      payment_status: 'succeeded',
+      payment_client_secret: null,
+    })
+    .eq('id', promise.id);
+
+  console.log(`[settle-promises] Free pass applied for promise ${promise.id}, no charge`);
+
+  // Send push notification
+  const body = pickRandom(FREE_PASS_NOTIFICATIONS.saved);
+  await sendPushNotification(
+    pushToken,
+    'Free Pass Used',
+    body,
+    { promiseId: promise.id, type: 'free_pass_used' },
+  );
+
+  return {
+    promiseId: promise.id,
+    action: 'charged',
+    message: 'Free pass applied - no charge',
+  };
+}
+
+/**
  * Charge user for a failed promise using off-session payment
  * 
  * WALLET-FIRST LOGIC:
@@ -570,6 +627,14 @@ async function chargeForFailedPromise(
   stripe: ReturnType<typeof createStripeClient>,
   attemptNumber: number,
 ): Promise<SettlementResult> {
+  // ─────────────────────────────────────────────────────────────
+  // FREE PASS: Skip all charges if promise uses a free pass
+  // ─────────────────────────────────────────────────────────────
+  if (promise.uses_free_pass) {
+    console.log(`[settle-promises] Promise ${promise.id} uses free pass, skipping charge`);
+    return await handleFreePassSettlement(promise, supabase);
+  }
+
   // Get user's payment info, push token, and wallet balance
   const { data: profile, error: profileError } = await supabase
     .from('profiles')

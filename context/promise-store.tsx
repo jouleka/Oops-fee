@@ -21,8 +21,8 @@ import {
 } from '@/lib/promises/repo';
 import { performFullSync, subscribeToPromiseChanges } from '@/lib/promises/sync';
 import type { CreatePromiseInput, PromiseStatus, PromiseUpdate, UserPromise } from '@/lib/promises/types';
-import { isSupabaseConfigured } from '@/lib/supabase';
 import { clearCheckIns } from '@/lib/stats/store';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { clearWidgetData, syncToWidget } from '@/lib/widgets';
 
 import { useAuth } from './auth';
@@ -121,6 +121,10 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const promisesRef = useRef<UserPromise[]>([]);
   const wasAuthenticatedRef = useRef(false);
+  // Version counter to detect sign-out during sync
+  const sessionVersionRef = useRef(0);
+  // Promise that resolves when cleanup is complete
+  const cleanupPromiseRef = useRef<Promise<void> | null>(null);
   
   // Keep ref in sync for realtime callback
   useEffect(() => {
@@ -130,16 +134,26 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   // Clear all local data when user signs out to prevent data leaking to next user
   useEffect(() => {
     if (wasAuthenticatedRef.current && !isAuthenticated) {
-      // User just signed out - clear everything synchronously
+      // User just signed out - increment session version and clear everything
       console.log('[PromiseStore] User signed out, clearing local data');
-      Promise.all([
-        clearAllPromises(),
-        clearCheckIns(),
-        clearWidgetData(),
-        cancelAllNotifications(),
-      ]).catch(console.error);
+      sessionVersionRef.current += 1;
       setPromises([]);
-      // Keep isHydrated true but with empty data - we're "hydrated" with nothing
+      
+      // Store cleanup promise so sync can wait for it
+      cleanupPromiseRef.current = (async () => {
+        try {
+          await Promise.all([
+            clearAllPromises(),
+            clearCheckIns(),
+            clearWidgetData(),
+            cancelAllNotifications(),
+          ]);
+        } catch (error) {
+          console.error('[PromiseStore] Cleanup error:', error);
+        } finally {
+          cleanupPromiseRef.current = null;
+        }
+      })();
     }
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
@@ -158,11 +172,27 @@ export function PromiseStoreProvider({ children }: { children: ReactNode }) {
   const syncWithRemote = useCallback(async () => {
     if (!isSupabaseConfigured() || !user?.id) return;
     
+    // Wait for any pending cleanup to complete before syncing
+    if (cleanupPromiseRef.current) {
+      console.log('[PromiseStore] Waiting for cleanup to complete before sync');
+      await cleanupPromiseRef.current;
+    }
+    
+    // Capture session version before sync to detect sign-out during sync
+    const versionBeforeSync = sessionVersionRef.current;
+    
     setIsSyncing(true);
     try {
       // Skip syncing local-only promises - they may belong to a previous user
       // Just fetch from server and replace local state entirely
       const merged = await performFullSync(user.id);
+      
+      // Check if user signed out during sync - if so, discard results
+      if (sessionVersionRef.current !== versionBeforeSync) {
+        console.log('[PromiseStore] Sync aborted - session changed during sync');
+        return;
+      }
+      
       setPromises(merged);
     } catch (error) {
       console.error('[PromiseStore] Sync failed:', error);

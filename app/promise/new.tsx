@@ -11,6 +11,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -697,7 +698,7 @@ export default function NewPromiseScreen() {
   const params = useLocalSearchParams<{ templateId?: string }>();
   const { createPromise, isWorking, promises } = usePromiseStore();
   const { requireAuth } = useRequireAuth();
-  const { paymentState, walletState, isAuthenticated } = useAuth();
+  const { paymentState, walletState, freePasses, isAuthenticated } = useAuth();
 
   const templateId = useMemo(() => {
     const raw = params.templateId;
@@ -731,6 +732,7 @@ export default function NewPromiseScreen() {
   const [verificationType, setVerificationType] = useState<VerificationType>(
     () => initialTemplate?.defaultVerification ?? 'photo'
   );
+  const [useFreePass, setUseFreePass] = useState(false);
   const [deadlineAt, setDeadlineAt] = useState<number>(() => {
     if (initialTemplate) return defaultDeadlineForTemplate(initialTemplate, nowMs);
     const d = new Date(nowMs);
@@ -764,6 +766,13 @@ export default function NewPromiseScreen() {
       setVerificationType('photo');
     }
   }, [effectiveStake, verificationType]);
+
+  // Reset free pass toggle if conditions change (no passes left or stake becomes 0)
+  useEffect(() => {
+    if (useFreePass && (freePasses <= 0 || effectiveStake <= 0)) {
+      setUseFreePass(false);
+    }
+  }, [useFreePass, freePasses, effectiveStake]);
 
   // Friend validation: either in-app friend selected OR external with name + email
   const friendOk = moneyDestination !== 'friend' || 
@@ -842,6 +851,7 @@ export default function NewPromiseScreen() {
         friendEmail: finalFriendEmail,
         voiceNoteUri,
         verificationType,
+        usesFreePass: useFreePass && freePasses > 0,
       });
       hapticMedium();
       setConfirmOpen(false);
@@ -849,7 +859,7 @@ export default function NewPromiseScreen() {
     } finally {
       setConfirming(false);
     }
-  }, [canLock, createPromise, deadlineAt, effectiveStake, friendEmail, friendName, moneyDestination, selectedFriend, text, useExternalFriend, verificationType, voiceNoteUri]);
+  }, [canLock, createPromise, deadlineAt, effectiveStake, freePasses, friendEmail, friendName, moneyDestination, selectedFriend, text, useExternalFriend, useFreePass, verificationType, voiceNoteUri]);
 
   return (
     <View style={styles.screen}>
@@ -1077,6 +1087,33 @@ export default function NewPromiseScreen() {
                       ${walletState.balanceDollars.toFixed(2)}
                     </Text>
                   </View>
+                </Animated.View>
+              )}
+
+              {/* Free Pass Toggle */}
+              {freePasses > 0 && effectiveStake > 0 && (
+                <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.freePassRow}>
+                  <View style={styles.freePassIcon}>
+                    <Text style={styles.freePassIconText}>🎟️</Text>
+                  </View>
+                  <View style={styles.freePassBody}>
+                    <Text style={styles.freePassTitle}>
+                      Use free pass ({freePasses} left)
+                    </Text>
+                    <Text style={styles.freePassSubtitle}>
+                      If you fail, no charge. Pass consumed either way.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={useFreePass}
+                    onValueChange={(val) => {
+                      hapticLight();
+                      setUseFreePass(val);
+                    }}
+                    trackColor={{ false: Colors.systemGray4, true: Colors.accent + '66' }}
+                    thumbColor={useFreePass ? Colors.accent : Colors.systemGray2}
+                    ios_backgroundColor={Colors.systemGray4}
+                  />
                 </Animated.View>
               )}
             </View>
@@ -1658,6 +1695,42 @@ const styles = StyleSheet.create({
     ...Typography.captionMono,
     color: Colors.success,
     fontWeight: '600',
+  },
+
+  // Free pass toggle
+  freePassRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.accentDim,
+    borderWidth: 1,
+    borderColor: Colors.accent + '44',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+  },
+  freePassIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.accent + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  freePassIconText: {
+    fontSize: 14,
+  },
+  freePassBody: {
+    flex: 1,
+    gap: 2,
+  },
+  freePassTitle: {
+    ...Typography.caption,
+    color: Colors.accent,
+    fontWeight: '600',
+  },
+  freePassSubtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
   },
 
   destinationList: {
