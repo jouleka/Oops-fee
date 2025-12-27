@@ -405,6 +405,26 @@ export default function StatsScreen() {
           ))}
         </View>
 
+        {/* Leaderboard CTA */}
+        <Animated.View entering={FadeInDown.delay(550).duration(280)}>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.push('/(mobile)/leaderboard');
+            }}
+            style={({ pressed }) => [styles.leaderboardCard, pressed && styles.leaderboardCardPressed]}
+          >
+            <View style={styles.leaderboardContent}>
+              <Text style={styles.leaderboardEmoji}>🏆</Text>
+              <View style={styles.leaderboardInfo}>
+                <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+                <Text style={styles.leaderboardSubtitle}>See how you stack up against friends</Text>
+              </View>
+            </View>
+            <Text style={styles.leaderboardChevron}>›</Text>
+          </Pressable>
+        </Animated.View>
+
         {/* Footer */}
         <Animated.View entering={FadeIn.delay(600).duration(400)} style={styles.footer}>
           <Text style={styles.footerText}>
@@ -828,6 +848,49 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textTertiary,
     textAlign: 'center',
+  },
+
+  // Leaderboard CTA
+  leaderboardCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent + '44',
+    padding: Spacing.lg,
+  },
+  leaderboardCardPressed: {
+    backgroundColor: Colors.bgCardHover,
+    borderColor: Colors.accent,
+  },
+  leaderboardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  leaderboardEmoji: {
+    fontSize: 28,
+  },
+  leaderboardInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  leaderboardTitle: {
+    ...Typography.bodySemibold,
+    color: Colors.text,
+    fontFamily: Fonts.rounded,
+  },
+  leaderboardSubtitle: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  leaderboardChevron: {
+    fontSize: 22,
+    color: Colors.accent,
+    fontWeight: '300',
   },
 
   // Footer

@@ -11,6 +11,7 @@ import { TopUpModal, WithdrawModal } from '@/components/wallet';
 import { getLiveBettorCount } from '@/constants/content';
 import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
+import { fetchFriendsLeaderboard } from '@/lib/leaderboard/api';
 import { isStripeConfigured } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { formatCents } from '@/lib/wallet/api';
@@ -62,16 +63,18 @@ export default function ProfileScreen() {
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [friendCount, setFriendCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [friendsRank, setFriendsRank] = useState<number | null>(null);
+  const [totalInLeaderboard, setTotalInLeaderboard] = useState<number | null>(null);
 
   // Cast profile to access extended fields
   const extendedProfile = profile as (typeof profile & ExtendedProfile) | null;
   const hasUsername = Boolean(extendedProfile?.username);
 
-  // Fetch friend counts
+  // Fetch friend counts and leaderboard rank
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
 
-    const fetchFriendCount = async () => {
+    const fetchFriendData = async () => {
       try {
         const response = await supabase.functions.invoke('get-friends', {
           body: {},
@@ -86,7 +89,21 @@ export default function ProfileScreen() {
       }
     };
 
-    fetchFriendCount();
+    const fetchRank = async () => {
+      try {
+        const data = await fetchFriendsLeaderboard({
+          metric: 'success_rate',
+          period: 'all_time',
+        });
+        setFriendsRank(data.current_user_rank);
+        setTotalInLeaderboard(data.total_friends + 1); // +1 for self
+      } catch {
+        // Silently fail - leaderboard may not be deployed yet
+      }
+    };
+
+    fetchFriendData();
+    fetchRank();
   }, [isAuthenticated, user?.id]);
 
   const handleSignOut = async () => {
@@ -226,6 +243,40 @@ export default function ProfileScreen() {
                   )}
                   <Text style={{ color: Colors.textMuted, fontSize: 16 }}>›</Text>
                 </View>
+              </Pressable>
+            </Animated.View>
+
+            {/* Leaderboard */}
+            <Animated.View entering={FadeInDown.delay(108).duration(300)} style={styles.section}>
+              <Text style={styles.sectionTitle}>Leaderboard</Text>
+              <Pressable
+                onPress={() => {
+                  hapticMedium();
+                  router.push('/(mobile)/leaderboard' as never);
+                }}
+                style={({ pressed }) => [
+                  styles.leaderboardCard,
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <View style={styles.leaderboardContent}>
+                  <Text style={styles.leaderboardEmoji}>🏆</Text>
+                  <View style={styles.leaderboardInfo}>
+                    <Text style={styles.leaderboardLabel}>
+                      {friendsRank !== null && totalInLeaderboard !== null
+                        ? `Rank #${friendsRank} of ${totalInLeaderboard}`
+                        : friendCount > 0
+                          ? 'View your ranking'
+                          : 'Add friends to compete'}
+                    </Text>
+                    <Text style={styles.leaderboardHint}>
+                      {friendsRank !== null
+                        ? 'See how you compare with friends'
+                        : 'Compete with friends on success rate & more'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ color: Colors.textMuted, fontSize: 16 }}>›</Text>
               </Pressable>
             </Animated.View>
 
@@ -950,6 +1001,40 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontWeight: '700',
     fontSize: 11,
+  },
+
+  // Leaderboard Card
+  leaderboardCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  leaderboardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  leaderboardEmoji: {
+    fontSize: 24,
+  },
+  leaderboardInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  leaderboardLabel: {
+    ...Typography.body,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  leaderboardHint: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
   },
 });
 

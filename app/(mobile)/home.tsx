@@ -309,13 +309,18 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Quick Actions - Just Stats & Graveyard */}
+        {/* Quick Actions - Stats, Leaderboard, Graveyard */}
         {hasPromises && (
           <Animated.View entering={FadeIn.delay(400).duration(300)} style={styles.quickActions}>
             <QuickAction
               icon="📊"
               label="Stats"
               onPress={() => router.push('/(mobile)/stats')}
+            />
+            <QuickAction
+              icon="🏆"
+              label="Leaderboard"
+              onPress={() => router.push('/(mobile)/leaderboard')}
             />
             <QuickAction
               icon="⚰️"

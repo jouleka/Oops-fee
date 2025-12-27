@@ -522,6 +522,73 @@ export const FRIEND_NOTIFICATIONS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────
+// LEADERBOARD NOTIFICATIONS
+// Position changes and weekly digest notifications
+// ─────────────────────────────────────────────────────────────
+
+export const LEADERBOARD_NOTIFICATIONS = {
+  /** User dropped in rank */
+  dropped: [
+    "You dropped from #{old} to #{new} on the leaderboard 📉",
+    "{friend} just passed you! You're now #{new} 😤",
+    "Uh oh, you slipped to #{new}. Time to bounce back?",
+    "#{old} → #{new}. Someone's been busy (and it wasn't you).",
+  ],
+
+  /** User gained rank */
+  gained: [
+    "You're now #{new}! 🔥 Keep it up!",
+    "You just passed {friend}! #{new} and climbing 📈",
+    "Moving up! #{new} on the leaderboard 💪",
+    "#{old} → #{new}. The grind is paying off.",
+  ],
+
+  /** User hit top 3 */
+  topThree: [
+    "You hit top 3! 🏆 #{rank} among your friends",
+    "Podium finish! You're #{rank} 🥇🥈🥉",
+    "Top 3! #{rank} among friends. The pressure is on.",
+  ],
+
+  /** User hit first place */
+  firstPlace: [
+    "👑 You're #1 among friends! Don't let them catch you.",
+    "Top of the leaderboard! 🏆 The pressure is on.",
+    "👑 First place! You're the promise champion.",
+    "#1 status unlocked. Now defend your throne.",
+  ],
+
+  /** Weekly digest summary */
+  weekly: [
+    "Weekly leaderboard: You're #{rank} among friends. {kept} kept, {lost} lost.",
+    "This week: #{rank} | {successRate}% success rate",
+    "Week in review: #{rank} with ${saved} saved 💰",
+    "Weekly recap: {kept}/{total} kept. #{rank} among friends.",
+  ],
+
+  /** Weekly digest with comparison */
+  weeklyComparison: [
+    "You were #{rank} this week! {leader} beat you by {diff} promises.",
+    "This week: #{rank}. {leader} took the crown with {leaderKept} kept.",
+    "Weekly standings: #{rank}. {leader} is still ahead by {diff}.",
+  ],
+
+  /** Perfect week */
+  weeklyPerfect: [
+    "🏆 Perfect week! #1 with 100% success rate.",
+    "👑 Flawless victory! You dominated the leaderboard this week.",
+    "Week winner: You kept every promise and took #1!",
+  ],
+
+  /** Shame leaderboard updates */
+  shameUpdate: [
+    "💸 Wall of Shame update: You're #{rank} in money lost.",
+    "Shame alert: #{rank} in broken promises this week.",
+    "The numbers don't lie: #{rank} on the Wall of Shame.",
+  ],
+} as const;
+
+// ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
 
@@ -605,5 +672,21 @@ export function getFriendNotification(
 ): string {
   const messages = FRIEND_NOTIFICATIONS[type];
   return formatMessage(pickRandom(messages), vars);
+}
+
+/**
+ * Get a leaderboard notification message.
+ */
+export function getLeaderboardNotification(
+  type: keyof typeof LEADERBOARD_NOTIFICATIONS,
+  vars: Record<string, string | number> = {}
+): string {
+  const messages = LEADERBOARD_NOTIFICATIONS[type];
+  let result: string = pickRandom(messages);
+  // Handle #{rank} pattern specifically for leaderboard
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`#\\{${key}\\}`, 'g'), `#${value}`);
+  }
+  return formatMessage(result, vars);
 }
 

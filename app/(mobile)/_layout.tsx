@@ -19,6 +19,7 @@ export default function MobileLayout() {
       <Stack.Screen name="check-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="graveyard" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="leaderboard" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="setup-username" options={{ animation: 'fade' }} />
       <Stack.Screen name="promise/new" options={{ animation: 'fade_from_bottom' }} />
       <Stack.Screen name="promise/[id]" options={{ animation: 'slide_from_right' }} />
