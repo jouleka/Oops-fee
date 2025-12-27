@@ -54,6 +54,16 @@
               "scheme": "https",
               "host": "oopsfee.app",
               "pathPrefix": "/s/"
+            },
+            {
+              "scheme": "https",
+              "host": "oopsfee.app",
+              "pathPrefix": "/invite/"
+            },
+            {
+              "scheme": "https",
+              "host": "oopsfee.app",
+              "pathPrefix": "/claim/"
             }
           ],
           "category": [

@@ -3,9 +3,16 @@
     "apps": [],
     "details": [
       {
-        "appID": "VNF5P4YVBN.com.oopsfee.app",
-        "paths": ["/s/*"]
+        "appIDs": ["VNF5P4YVBN.com.oopsfee.app"],
+        "components": [
+          { "/": "/s/*" },
+          { "/": "/invite/*" },
+          { "/": "/claim/*" }
+        ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["VNF5P4YVBN.com.oopsfee.app"]
   }
 }

@@ -9,9 +9,6 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
-// Storage key for pending invite token (must match invite/[token].tsx)
-const PENDING_INVITE_TOKEN_KEY = 'oopsfee_pending_invite_token';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -33,6 +30,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
+
+// Storage key for pending invite token (must match invite/[token].tsx)
+const PENDING_INVITE_TOKEN_KEY = 'oopsfee_pending_invite_token';
 
 // Username validation regex: 3-20 chars, alphanumeric + underscores, must start with letter
 const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
@@ -196,7 +196,7 @@ export default function SetupUsernameScreen() {
   const extendedProfile = profile as typeof profile & { username?: string | null };
   useEffect(() => {
     if (extendedProfile?.username) {
-      router.replace('/home');
+      router.replace('/(mobile)/home');
     }
   }, [extendedProfile?.username]);
 
@@ -316,7 +316,7 @@ export default function SetupUsernameScreen() {
       if (data.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await refreshProfile();
-        router.replace('/home');
+        router.replace('/(mobile)/home');
       }
     } catch (e) {
       const err = e as { message?: string };
@@ -329,7 +329,7 @@ export default function SetupUsernameScreen() {
 
   const handleSkip = useCallback(() => {
     hapticLight();
-    router.replace('/home');
+    router.replace('/(mobile)/home');
   }, []);
 
   const handleSuggestionPress = useCallback((suggestion: string) => {

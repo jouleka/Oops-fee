@@ -1,12 +1,15 @@
 /**
- * Entry point - routes to landing (first time) or home (returning user)
+ * Entry point
+ * - Web: Show marketing landing page (app store download funnel)
+ * - Native: Route to onboarding (first time) or home (returning user)
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
+import { WebMarketingLanding } from '@/components/landing';
 import { Colors } from '@/constants/theme';
 
 const ONBOARDING_KEY = '@oopsfee:has_completed_onboarding';
@@ -16,6 +19,11 @@ export default function Index() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   useEffect(() => {
+    // Skip AsyncStorage check on web - we always show marketing page
+    if (Platform.OS === 'web') {
+      setIsLoading(false);
+      return;
+    }
     checkOnboardingStatus();
   }, []);
 
@@ -39,13 +47,18 @@ export default function Index() {
     );
   }
 
-  // First time user → show landing/onboarding
+  // Web → show marketing landing page with app store buttons
+  if (Platform.OS === 'web') {
+    return <WebMarketingLanding />;
+  }
+
+  // Native: First time user → show landing/onboarding
   if (!hasCompletedOnboarding) {
     return <Redirect href="/landing" />;
   }
 
-  // Returning user → go straight to home
-  return <Redirect href="/home" />;
+  // Native: Returning user → go straight to home
+  return <Redirect href="/(mobile)/home" />;
 }
 
 const styles = StyleSheet.create({

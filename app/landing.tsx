@@ -1,7 +1,13 @@
+/**
+ * Native Onboarding Screen
+ * Chat-based onboarding flow for first-time mobile users.
+ * Web users are redirected to the marketing page.
+ */
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInRight, FadeOut, Layout } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,7 +22,19 @@ import { useConversationPlayback } from '@/hooks/use-conversation-playback';
 
 const ONBOARDING_KEY = '@oopsfee:has_completed_onboarding';
 
+// Web guard at module level
+const isWeb = Platform.OS === 'web';
+
 export default function LandingScreen() {
+  // Web users should see marketing page, not onboarding
+  if (isWeb) {
+    return <Redirect href="/" />;
+  }
+
+  return <NativeOnboarding />;
+}
+
+function NativeOnboarding() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [ctaHeight, setCtaHeight] = useState<number>(CTA_HEIGHT);
@@ -76,7 +94,7 @@ export default function LandingScreen() {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 100);
-    router.replace('/home');
+    router.replace('/(mobile)/home');
   }
 
   async function onShare() {

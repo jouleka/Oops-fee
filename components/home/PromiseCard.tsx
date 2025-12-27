@@ -77,7 +77,7 @@ export function PromiseCard({ promise, index, now }: PromiseCardProps) {
       <Pressable
         onPress={() => {
           hapticLight();
-          router.push({ pathname: '/promise/[id]', params: { id: promise.id } });
+          router.push({ pathname: '/(mobile)/promise/[id]', params: { id: promise.id } });
         }}
         style={({ pressed }) => [
           styles.card,

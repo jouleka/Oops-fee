@@ -135,12 +135,12 @@ export function InlineFriendPicker({
 
   const handleInviteFriends = useCallback(() => {
     hapticMedium();
-    router.push('/friends/invite' as never);
+    router.push('/(mobile)/friends/invite' as never);
   }, []);
 
   const handleFindFriends = useCallback(() => {
     hapticMedium();
-    router.push('/friends/search' as never);
+    router.push('/(mobile)/friends/search' as never);
   }, []);
 
   // If friend is selected, show compact selected state

@@ -153,19 +153,19 @@ export default function FriendsListScreen() {
   // Navigate to search
   const handleSearch = () => {
     hapticLight();
-    router.push('/friends/search' as never);
+    router.push('/(mobile)/friends/search' as never);
   };
 
   // Navigate to invite
   const handleInvite = () => {
     hapticLight();
-    router.push('/friends/invite' as never);
+    router.push('/(mobile)/friends/invite' as never);
   };
 
   // Navigate to friend profile
   const handleFriendPress = (friend: FriendProfile) => {
     hapticLight();
-    router.push({ pathname: '/friends/[id]' as never, params: { id: friend.id } });
+    router.push({ pathname: '/(mobile)/friends/[id]' as never, params: { id: friend.id } });
   };
 
   // Not authenticated

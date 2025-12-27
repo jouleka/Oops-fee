@@ -65,7 +65,7 @@ export default function HomeScreen() {
 
     // Redirect to username setup - the screen will determine if skip is allowed
     // based on presence of pending invite token
-    router.replace('/setup-username');
+    router.replace('/(mobile)/setup-username');
   }, [isAuthenticated, profile, extendedProfile?.username]);
 
   // Load stats and check-in status on mount
@@ -132,8 +132,8 @@ export default function HomeScreen() {
   const handleAddPromise = useCallback((template?: PromiseTemplate) => {
     router.push(
       template
-        ? { pathname: '/promise/new', params: { templateId: template.id } }
-        : { pathname: '/promise/new' }
+        ? { pathname: '/(mobile)/promise/new', params: { templateId: template.id } }
+        : { pathname: '/(mobile)/promise/new' }
     );
   }, []);
 
@@ -167,7 +167,7 @@ export default function HomeScreen() {
 
   const handleProfilePress = useCallback(() => {
     hapticLight();
-    router.push('/profile' as never);
+    router.push('/(mobile)/profile' as never);
   }, []);
 
   // Handle SCA payment completion - refresh promises to get updated status
@@ -205,7 +205,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => {
               hapticLight();
-              router.push('/check-in');
+              router.push('/(mobile)/check-in');
             }}
             style={({ pressed }) => [pressed && styles.pressed]}
           >
@@ -315,12 +315,12 @@ export default function HomeScreen() {
             <QuickAction
               icon="📊"
               label="Stats"
-              onPress={() => router.push('/stats')}
+              onPress={() => router.push('/(mobile)/stats')}
             />
             <QuickAction
               icon="⚰️"
               label="Graveyard"
-              onPress={() => router.push('/graveyard')}
+              onPress={() => router.push('/(mobile)/graveyard')}
             />
           </Animated.View>
         )}

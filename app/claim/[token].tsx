@@ -837,7 +837,7 @@ function LoadingState() {
 
 function ErrorState({ message }: { message: string }) {
   const handleGoHome = () => {
-    router.replace('/home');
+    router.replace('/(mobile)/home');
   };
 
   return (

@@ -855,7 +855,7 @@ export default function NewPromiseScreen() {
       });
       hapticMedium();
       setConfirmOpen(false);
-      router.replace({ pathname: '/promise/[id]', params: { id: created.id } });
+      router.replace({ pathname: '/(mobile)/promise/[id]', params: { id: created.id } });
     } finally {
       setConfirming(false);
     }

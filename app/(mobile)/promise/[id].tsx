@@ -411,7 +411,7 @@ function NotFound() {
         <Pressable
           onPress={() => {
             hapticLight();
-            router.replace('/home');
+            router.replace('/(mobile)/home');
           }}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
@@ -551,7 +551,7 @@ export default function PromiseDetailScreen() {
     
     setShowPhotoCapture(false);
     // Navigate to success celebration screen
-    router.replace({ pathname: '/promise/success', params: { promiseId: promise.id } });
+    router.replace({ pathname: '/(mobile)/promise/success', params: { promiseId: promise.id } });
   }, [promise, updatePromise]);
 
   // Handler for completing without photo (honor system)
@@ -561,7 +561,7 @@ export default function PromiseDetailScreen() {
     await setPromiseStatus(promise.id, 'completed');
     setConfirmComplete(false);
     // Navigate to success celebration screen
-    router.replace({ pathname: '/promise/success', params: { promiseId: promise.id } });
+    router.replace({ pathname: '/(mobile)/promise/success', params: { promiseId: promise.id } });
   }, [promise, setPromiseStatus]);
 
   // Handler for initiating partner verification - sets awaiting state and opens share modal
@@ -632,7 +632,7 @@ export default function PromiseDetailScreen() {
     hapticMedium();
     await deletePromise(promise.id);
     setConfirmDelete(false);
-    router.replace('/home');
+    router.replace('/(mobile)/home');
   }, [deletePromise, promise]);
 
   if (!isHydrated) {

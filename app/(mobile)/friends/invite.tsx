@@ -116,7 +116,7 @@ export default function FriendInviteScreen() {
     hapticMedium();
 
     const displayName = profile?.display_name || profile?.username || 'I';
-    const message = `${displayName === 'I' ? 'I want' : `${displayName} wants`} you as an accountability partner on OopsFee! Sign up through this link and we BOTH get a free pass (skip one failure charge). 🎟️\n\n${invite.invite_url}`;
+    const message = `${displayName === 'I' ? 'I want' : `${displayName} wants`} you as an accountability partner on OopsFee! When you sign up, we'll automatically be connected.\n\n${invite.invite_url}`;
 
     try {
       const result = await Share.share({
@@ -140,7 +140,7 @@ export default function FriendInviteScreen() {
 
   const handleSetupUsername = () => {
     hapticMedium();
-    router.push('/setup-username');
+    router.push('/(mobile)/setup-username');
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -250,26 +250,12 @@ export default function FriendInviteScreen() {
       >
         {/* Hero */}
         <Animated.View entering={FadeInDown.duration(300)} style={styles.heroSection}>
-          <Text style={styles.heroEmoji}>🎟️</Text>
-          <Text style={styles.heroTitle}>Invite & earn a free pass</Text>
+          <Text style={styles.heroEmoji}>🎉</Text>
+          <Text style={styles.heroTitle}>Invite a friend</Text>
           <Text style={styles.heroSubtitle}>
-            When your friend signs up, you BOTH get a free pass—skip one failure charge, no questions asked.
+            Share this link with anyone you want as an accountability partner.
+            When they sign up, you&apos;ll automatically be connected!
           </Text>
-        </Animated.View>
-
-        {/* Reward Banner */}
-        <Animated.View entering={FadeInUp.delay(50).duration(300)} style={styles.rewardBanner}>
-          <View style={styles.rewardItem}>
-            <Text style={styles.rewardEmoji}>🎁</Text>
-            <Text style={styles.rewardLabel}>You get</Text>
-            <Text style={styles.rewardValue}>1 free pass</Text>
-          </View>
-          <View style={styles.rewardDivider} />
-          <View style={styles.rewardItem}>
-            <Text style={styles.rewardEmoji}>🎁</Text>
-            <Text style={styles.rewardLabel}>They get</Text>
-            <Text style={styles.rewardValue}>1 free pass</Text>
-          </View>
         </Animated.View>
 
         {/* Link Card */}
@@ -326,7 +312,7 @@ export default function FriendInviteScreen() {
         {shared && (
           <Animated.View entering={FadeIn.duration(200)} style={styles.successBanner}>
             <Text style={styles.successBannerEmoji}>🚀</Text>
-            <Text style={styles.successBannerText}>Invite shared! You&apos;ll both get a free pass when they join.</Text>
+            <Text style={styles.successBannerText}>Invite shared! They&apos;ll be your friend when they join.</Text>
           </Animated.View>
         )}
 
@@ -368,9 +354,9 @@ export default function FriendInviteScreen() {
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Both get rewarded</Text>
+                <Text style={styles.stepTitle}>Instant connection</Text>
                 <Text style={styles.stepDescription}>
-                  You become friends + both earn a free pass 🎟️
+                  You become friends automatically—no extra steps
                 </Text>
               </View>
             </View>
@@ -533,39 +519,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 300,
     lineHeight: 24,
-  },
-
-  // Reward Banner
-  rewardBanner: {
-    flexDirection: 'row',
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.success + '44',
-    padding: Spacing.lg,
-    alignItems: 'center',
-  },
-  rewardItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  rewardEmoji: {
-    fontSize: 28,
-  },
-  rewardLabel: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  rewardValue: {
-    ...Typography.bodySemibold,
-    color: Colors.success,
-    fontFamily: Fonts.rounded,
-  },
-  rewardDivider: {
-    width: 1,
-    height: 48,
-    backgroundColor: Colors.success + '44',
   },
 
   // Link Card

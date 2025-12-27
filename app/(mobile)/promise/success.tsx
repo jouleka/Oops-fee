@@ -176,7 +176,7 @@ export default function SuccessScreen() {
 
   const handleContinue = useCallback(() => {
     hapticLight();
-    router.replace('/home');
+    router.replace('/(mobile)/home');
   }, []);
 
   const handleShare = useCallback(async () => {

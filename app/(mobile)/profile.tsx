@@ -101,7 +101,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             hapticMedium();
             await signOut();
-            router.replace('/home');
+            router.replace('/(mobile)/home');
           },
         },
       ]
@@ -155,7 +155,7 @@ export default function ProfileScreen() {
                   <Pressable
                     onPress={() => {
                       hapticMedium();
-                      router.push('/setup-username');
+                      router.push('/(mobile)/setup-username');
                     }}
                     style={({ pressed }) => [pressed && { opacity: 0.7 }]}
                   >
@@ -196,7 +196,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={() => {
                   hapticMedium();
-                  router.push('/friends' as never);
+                  router.push('/(mobile)/friends' as never);
                 }}
                 style={({ pressed }) => [
                   styles.friendsCard,

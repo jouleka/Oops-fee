@@ -35,7 +35,7 @@ export default function AuthCallback() {
       // Navigate back to where the user came from
       // Using setTimeout to ensure navigation happens after auth state updates
       setTimeout(() => {
-        router.replace('/home');
+        router.replace('/(mobile)/home');
       }, 100);
     }
 

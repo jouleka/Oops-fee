@@ -3,8 +3,8 @@
  * Handles permissions and channel configuration for expo-notifications.
  */
 
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 // ─────────────────────────────────────────────────────────────
@@ -132,6 +132,8 @@ let isInitialized = false;
  * Call this once during app startup.
  */
 export async function initializeNotifications(): Promise<boolean> {
+  // Notifications not supported on web
+  if (Platform.OS === 'web') return false;
   if (isInitialized) return true;
 
   try {
@@ -210,6 +212,8 @@ export function addNotificationResponseListener(
  * Get the last notification response (if app was opened from notification).
  */
 export async function getLastNotificationResponse(): Promise<Notifications.NotificationResponse | null> {
+  // Not available on web
+  if (Platform.OS === 'web') return null;
   return Notifications.getLastNotificationResponseAsync();
 }
 

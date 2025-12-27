@@ -1,0 +1,2 @@
+export { WebMarketingLanding } from './WebMarketingLanding';
+

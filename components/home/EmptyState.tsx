@@ -136,7 +136,7 @@ function GraveyardPreview() {
 
   const handleGraveyardPress = useCallback(() => {
     hapticLight();
-    router.push('/graveyard');
+    router.push('/(mobile)/graveyard');
   }, []);
 
   return (

@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
@@ -14,6 +15,9 @@ import {
 } from '@/lib/notifications/setup';
 import { StripeProvider } from '@/lib/stripe';
 import type { NotificationResponse } from 'expo-notifications';
+
+// Skip notification setup on web
+const isWeb = Platform.OS === 'web';
 
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATION TAP HANDLER
@@ -32,7 +36,7 @@ function getNotificationRoute(response: NotificationResponse): Href {
   switch (type) {
     case 'settlement_charged':
     case 'settlement_abandoned':
-      return '/graveyard';
+      return '/(mobile)/graveyard';
     case 'settlement_failed':
     case 'settlement_requires_action':
       return '/(auth)/payment-method';
@@ -40,8 +44,8 @@ function getNotificationRoute(response: NotificationResponse): Href {
     case 'roast':
     case 'partner_approved':
     case 'partner_rejected':
-      if (promiseId) return { pathname: '/promise/[id]', params: { id: promiseId } };
-      return '/home';
+      if (promiseId) return { pathname: '/(mobile)/promise/[id]', params: { id: promiseId } };
+      return '/(mobile)/home';
     case 'reminder':
     case 'checkin':
     case 'streak_milestone':
@@ -50,9 +54,9 @@ function getNotificationRoute(response: NotificationResponse): Href {
     case 'comeback':
     case 'reengagement':
     case 'social_proof':
-      return '/home';
+      return '/(mobile)/home';
     default:
-      return '/home';
+      return '/(mobile)/home';
   }
 }
 
@@ -60,13 +64,16 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
 
-  // Initialize notifications on app start
+  // Initialize notifications on app start (skip on web)
   useEffect(() => {
+    if (isWeb) return;
     initializeNotifications().catch(console.error);
   }, []);
 
-  // Handle notification taps (deep linking)
+  // Handle notification taps (deep linking) - skip on web
   useEffect(() => {
+    if (isWeb) return;
+
     // Handle notification tap when app is already running
     const subscription = addNotificationResponseListener((response) => {
       router.push(getNotificationRoute(response));
@@ -90,16 +97,10 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" options={{ animation: 'fade' }} />
               <Stack.Screen name="landing" options={{ animation: 'fade' }} />
-              <Stack.Screen name="home" options={{ animation: 'fade_from_bottom' }} />
-              <Stack.Screen name="stats" options={{ animation: 'slide_from_right' }} />
-              <Stack.Screen name="check-in" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="promise/new" options={{ animation: 'fade_from_bottom' }} />
-              <Stack.Screen name="promise/[id]" options={{ animation: 'slide_from_right' }} />
-              <Stack.Screen name="promise/success" options={{ animation: 'fade', gestureEnabled: false }} />
+              <Stack.Screen name="(mobile)" options={{ headerShown: false }} />
               <Stack.Screen name="s/[token]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="claim/[token]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="invite/[token]" options={{ animation: 'slide_from_right' }} />
-              <Stack.Screen name="friends" options={{ headerShown: false }} />
               <Stack.Screen name="auth" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             </Stack>
