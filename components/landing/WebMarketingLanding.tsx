@@ -1,15 +1,24 @@
 /**
  * Web Marketing Landing Page
  * Showcasing actual app features with clean, engaging design
+ * Playful and edgy design with electric lime accents
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/constants/app-stores';
+import { CTASection } from './CTASection';
+import { FeaturesGrid } from './FeaturesGrid';
+import { Footer } from './Footer';
+import { GraveyardPreviewSection } from './GraveyardPreviewSection';
+import { HowItWorksSection } from './HowItWorksSection';
+import { PhoneMockup } from './PhoneMockup';
+import { ProblemSolutionSection } from './ProblemSolutionSection';
+import { SocialProofTicker } from './SocialProofTicker';
 
 // ─────────────────────────────────────────────────────────────
-// FEATURE DATA
+// FEATURE DATA (for native fallback)
 // ─────────────────────────────────────────────────────────────
 
 const FEATURES = [
@@ -28,7 +37,7 @@ const FEATURES = [
   {
     title: 'Friend Verification',
     description:
-      'Assign a friend as your witness. They confirm you did it — or they don&apos;t. Their call.',
+      "Assign a friend as your witness. They confirm you did it — or they don't. Their call.",
     visual: '👥',
   },
   {
@@ -38,6 +47,10 @@ const FEATURES = [
     visual: '🪦',
   },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// MECHANICS DATA
+// ─────────────────────────────────────────────────────────────
 
 const MECHANICS = [
   {
@@ -63,6 +76,185 @@ const MECHANICS = [
 ];
 
 // ─────────────────────────────────────────────────────────────
+// WEB HERO SECTION - Animated, playful, and edgy
+// ─────────────────────────────────────────────────────────────
+
+function WebHeroSection({ onDownload }: { onDownload: (store: 'ios' | 'android') => void }) {
+  const [showCursor, setShowCursor] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    // Trigger load animation
+    const loadTimer = setTimeout(() => setIsLoaded(true), 50);
+    // Blinking cursor
+    const cursorInterval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 530);
+    return () => {
+      clearTimeout(loadTimer);
+      clearInterval(cursorInterval);
+    };
+  }, []);
+
+  return (
+    <section className="relative min-h-screen overflow-hidden">
+      {/* Animated gradient mesh background */}
+      <div className="absolute inset-0 bg-gradient-mesh" />
+      
+      {/* Noise texture overlay */}
+      <div className="bg-noise absolute inset-0" />
+      
+      {/* Floating gradient orbs */}
+      <div 
+        className="gradient-orb gradient-orb-lime absolute w-96 h-96 -top-20 -left-20"
+        style={{ animationDelay: '0s' }}
+      />
+      <div 
+        className="gradient-orb gradient-orb-blue absolute w-80 h-80 top-1/3 -right-20"
+        style={{ animationDelay: '2s' }}
+      />
+      <div 
+        className="gradient-orb gradient-orb-red absolute w-64 h-64 bottom-20 left-1/4"
+        style={{ animationDelay: '4s' }}
+      />
+
+      {/* Navigation */}
+      <nav className="relative z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto">
+        <div 
+          className={`font-display text-2xl tracking-tight text-white transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}
+        >
+          OopsFee
+        </div>
+        <button
+          onClick={() => onDownload('ios')}
+          className={`px-4 py-2 text-sm font-medium rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-black transition-all duration-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}
+          style={{ animationDelay: '100ms' }}
+        >
+          Get the App
+        </button>
+      </nav>
+
+      {/* Hero content */}
+      <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20 px-6 md:px-12 pt-12 pb-24 max-w-7xl mx-auto min-h-[calc(100vh-80px)]">
+        {/* Text content */}
+        <div className="flex-1 max-w-2xl text-center lg:text-left">
+          {/* Tagline with blinking cursor */}
+          <div 
+            className={`inline-flex items-center gap-2 mb-6 transition-all duration-700 delay-100 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <span className="text-lime-400 text-xs font-mono uppercase tracking-[0.3em]">
+              Accountability App
+            </span>
+            <span 
+              className={`inline-block w-0.5 h-4 bg-lime-400 transition-opacity ${showCursor ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
+
+          {/* Main headline - massive, animated reveal */}
+          <h1 
+            className={`font-display text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.95] tracking-tighter mb-8 transition-all duration-700 delay-200 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <span className="text-white">Put money</span>
+            <br />
+            <span className="text-gradient-lime">where your</span>
+            <br />
+            <span className="text-white">mouth is</span>
+          </h1>
+
+          {/* Description */}
+          <p 
+            className={`text-neutral-400 text-lg md:text-xl leading-relaxed mb-10 max-w-lg mx-auto lg:mx-0 transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            Make a promise. Stake real money. Complete it with proof — or{' '}
+            <span className="text-danger-500 font-medium">lose it forever</span>. 
+            Built on loss aversion: losing{' '}
+            <span className="font-mono text-lime-400">$25</span>{' '}
+            hurts more than gaining it feels good.
+          </p>
+
+          {/* CTA Buttons - DaisyUI glass variant */}
+          <div 
+            className={`flex flex-col sm:flex-row gap-4 justify-center lg:justify-start transition-all duration-700 delay-400 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <button
+              onClick={() => onDownload('ios')}
+              className="px-8 py-4 text-base font-semibold rounded-xl bg-lime-400 hover:bg-lime-300 text-black transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(191,255,0,0.3)] group relative overflow-hidden flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              Download for iOS
+            </button>
+            
+            <button
+              onClick={() => onDownload('android')}
+              className="px-8 py-4 text-base font-medium rounded-xl bg-transparent border border-neutral-600 text-white hover:border-lime-400/60 hover:bg-lime-400/5 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.523 15.34l1.612-2.791a.337.337 0 00-.124-.459.334.334 0 00-.458.124l-1.632 2.827a10.077 10.077 0 00-4.089-.861c-1.479 0-2.862.313-4.089.861l-1.632-2.827a.334.334 0 00-.458-.124.337.337 0 00-.124.459l1.612 2.791A9.652 9.652 0 003 22h18a9.652 9.652 0 00-3.477-6.66zM7 20a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2zM6.343 6.343A5.977 5.977 0 0112 4c2.21 0 4.21.895 5.657 2.343l1.414-1.414A7.972 7.972 0 0012 2a7.972 7.972 0 00-7.071 2.929l1.414 1.414z"/>
+              </svg>
+              Get for Android
+            </button>
+          </div>
+
+          {/* Social proof mini */}
+          <div 
+            className={`mt-10 flex items-center gap-4 justify-center lg:justify-start text-sm transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <div className="flex -space-x-2">
+              {['🔥', '💪', '✨'].map((emoji, i) => (
+                <div 
+                  key={i}
+                  className="w-8 h-8 rounded-full bg-neutral-800 border-2 border-abyss-900 flex items-center justify-center text-sm"
+                >
+                  {emoji}
+                </div>
+              ))}
+            </div>
+            <span className="text-neutral-500">
+              <span className="text-lime-400 font-mono font-semibold">2,847</span> promises kept this week
+            </span>
+          </div>
+        </div>
+
+        {/* Phone mockup - positioned off-center with glow */}
+        <div 
+          className={`flex-shrink-0 transition-all duration-1000 delay-300 ${isLoaded ? 'opacity-100 translate-x-0 translate-y-0' : 'opacity-0 translate-x-12 translate-y-8'}`}
+          style={{
+            transform: isLoaded ? 'perspective(1000px) rotateY(-8deg) rotateX(2deg)' : undefined,
+          }}
+        >
+          <div className="relative">
+            {/* Extra glow behind phone */}
+            <div 
+              className="absolute inset-0 -z-10"
+              style={{
+                background: 'radial-gradient(ellipse at center, rgba(191, 255, 0, 0.2) 0%, transparent 60%)',
+                transform: 'scale(1.8)',
+                filter: 'blur(50px)',
+              }}
+            />
+            <PhoneMockup />
+          </div>
+        </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <div 
+        className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-all duration-700 delay-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      >
+        <span className="text-neutral-600 text-xs uppercase tracking-widest">Scroll</span>
+        <div className="animate-scroll-indicator">
+          <svg className="w-5 h-5 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────
 
@@ -78,6 +270,69 @@ export function WebMarketingLanding() {
     window.open(store === 'ios' ? APP_STORE_URL : PLAY_STORE_URL, '_blank');
   };
 
+  // Use web-specific hero on web platform
+  if (Platform.OS === 'web') {
+    return (
+      <div className="bg-abyss-900 text-white font-sans min-h-screen overflow-x-hidden" data-theme="oopsfee">
+        {/* Web-specific Hero */}
+        <WebHeroSection onDownload={handleDownload} />
+
+        {/* Social Proof Ticker */}
+        <SocialProofTicker />
+
+        {/* Problem/Solution Section - Animated Timeline & Wallet */}
+        <ProblemSolutionSection />
+
+        {/* How It Works - Animated stacking cards */}
+        <HowItWorksSection />
+
+        {/* Verification Features - 3D tilt cards with micro-animations */}
+        <FeaturesGrid />
+
+        {/* Graveyard Preview - Animated tombstones with failed promises */}
+        <GraveyardPreviewSection />
+
+        {/* Psychology/Mechanics Section */}
+        <section className="relative py-24 px-6 bg-neutral-900/50">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-danger-500 text-xs font-mono uppercase tracking-[0.3em] mb-4 block">
+                Psychology
+              </span>
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-white tracking-tight">
+                Designed to make you{' '}
+                <span className="text-gradient-danger">uncomfortable</span>
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {MECHANICS.map((mechanic, i) => (
+                <div
+                  key={mechanic.title}
+                  className={`p-6 rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${
+                    i % 2 === 1 
+                      ? 'bg-transparent border-neutral-800 hover:border-neutral-700' 
+                      : 'bg-neutral-800/50 border-neutral-700 hover:border-neutral-600'
+                  }`}
+                >
+                  <h3 className="text-white text-lg font-semibold mb-3">{mechanic.title}</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed">{mechanic.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section with glitch text and floating money */}
+        <CTASection />
+
+        {/* Footer */}
+        <Footer />
+      </div>
+    );
+  }
+
+  // Native fallback (original layout)
   return (
     <View style={styles.container}>
       {/* Navigation */}
@@ -123,7 +378,7 @@ export function WebMarketingLanding() {
           </View>
         </View>
 
-        {/* Phone mockup placeholder */}
+        {/* Animated phone mockup */}
         <View style={styles.heroVisual}>
           <View style={styles.phoneMock}>
             <Text style={styles.phoneMockText}>📱</Text>

@@ -409,7 +409,8 @@ export default function LeaderboardScreen() {
 
   const currentUserRank = useMemo(() => {
     if (activeTab === 'friends' && friendsData) {
-      return { rank: friendsData.current_user_rank, total: friendsData.total_friends };
+      // +1 because total_friends excludes the current user
+      return { rank: friendsData.current_user_rank, total: friendsData.total_friends + 1 };
     }
     if (activeTab === 'global' && globalData) {
       return { rank: globalData.current_user_rank, total: globalData.total_users };
