@@ -15,7 +15,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -27,7 +26,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -340,12 +338,12 @@ export default function SetupUsernameScreen() {
   const getValidationIcon = () => {
     switch (validationState) {
       case 'validating':
-        return <ActivityIndicator size="small" color={Colors.textMuted} />;
+        return <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.30)" />;
       case 'valid':
-        return <Text style={styles.validIcon}>✓</Text>;
+        return <Text className="text-lg text-success font-bold">✓</Text>;
       case 'invalid':
       case 'taken':
-        return <Text style={styles.invalidIcon}>✕</Text>;
+        return <Text className="text-lg text-danger font-bold">✕</Text>;
       default:
         return null;
     }
@@ -354,37 +352,39 @@ export default function SetupUsernameScreen() {
   const getInputBorderColor = () => {
     switch (validationState) {
       case 'valid':
-        return Colors.success + '60';
+        return 'border-success/60';
       case 'invalid':
       case 'taken':
-        return Colors.danger + '60';
+        return 'border-danger/60';
       default:
-        return Colors.border;
+        return 'border-border';
     }
   };
 
   const canSubmit = validationState === 'valid' && !isSubmitting;
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-black">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.screen}
+        className="flex-1"
       >
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
-          ]}
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 24,
+            gap: 24,
+            paddingTop: insets.top + 24,
+            paddingBottom: insets.bottom + 24,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.titleSection}>
-            <Text style={styles.emoji}>👋</Text>
-            <Text style={styles.title}>Pick a username</Text>
-            <Text style={styles.subtitle}>
+          <Animated.View entering={FadeInDown.duration(300)} className="items-center gap-sm pt-xl">
+            <Text className="text-5xl mb-sm">👋</Text>
+            <Text className="text-display-sm text-white font-rounded text-center">Pick a username</Text>
+            <Text className="text-body text-text-secondary text-center leading-[22px]">
               This is how friends will find you. Choose wisely—or don&apos;t. You can always change it later.
             </Text>
           </Animated.View>
@@ -394,49 +394,49 @@ export default function SetupUsernameScreen() {
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(150)}
-              style={styles.errorCard}
+              className="flex-row items-start gap-sm bg-danger-dim border border-danger/[0.27] rounded-lg p-md"
             >
-              <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text className="text-sm mt-px">⚠️</Text>
+              <Text className="text-body text-danger flex-1">{error}</Text>
             </Animated.View>
           )}
 
           {/* Input Section */}
           <Animated.View
             entering={FadeInDown.delay(100).duration(300)}
-            style={styles.section}
+            className="gap-md"
           >
-            <Text style={styles.sectionLabel}>USERNAME</Text>
+            <Text className="text-label text-text-muted ml-xs">USERNAME</Text>
             
-            <View style={[styles.inputCard, { borderColor: getInputBorderColor() }]}>
-              <View style={styles.inputRow}>
-                <Text style={styles.atSymbol}>@</Text>
+            <View className={`bg-card rounded-xl border p-lg ${getInputBorderColor()}`}>
+              <View className="flex-row items-center">
+                <Text className="text-h2 text-text-muted mr-xs">@</Text>
                 <TextInput
-                  style={styles.usernameInput}
+                  className="flex-1 text-h2 text-white py-sm"
                   value={username}
                   onChangeText={(text) => setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                   placeholder="yourname"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor="rgba(255, 255, 255, 0.30)"
                   autoFocus
                   autoCapitalize="none"
                   autoCorrect={false}
                   maxLength={20}
                   onBlur={checkAvailability}
                 />
-                <View style={styles.validationIcon}>
+                <View className="w-6 h-6 items-center justify-center">
                   {getValidationIcon()}
                 </View>
               </View>
             </View>
 
             {/* Validation hint */}
-            <View style={styles.hintRow}>
+            <View className="-mt-sm ml-xs">
               {validationError ? (
-                <Text style={styles.hintError}>{validationError}</Text>
+                <Text className="text-caption text-danger">{validationError}</Text>
               ) : validationState === 'valid' ? (
-                <Text style={styles.hintSuccess}>Available!</Text>
+                <Text className="text-caption text-success">Available!</Text>
               ) : (
-                <Text style={styles.hint}>3-20 characters, letters, numbers, underscores</Text>
+                <Text className="text-caption text-text-tertiary">3-20 characters, letters, numbers, underscores</Text>
               )}
             </View>
           </Animated.View>
@@ -445,20 +445,17 @@ export default function SetupUsernameScreen() {
           {suggestions.length > 0 && !username && (
             <Animated.View
               entering={FadeInDown.delay(150).duration(300)}
-              style={styles.section}
+              className="gap-md"
             >
-              <Text style={styles.sectionLabel}>SUGGESTIONS</Text>
-              <View style={styles.suggestionsRow}>
+              <Text className="text-label text-text-muted ml-xs">SUGGESTIONS</Text>
+              <View className="flex-row flex-wrap gap-sm">
                 {suggestions.map((suggestion) => (
                   <Pressable
                     key={suggestion}
                     onPress={() => handleSuggestionPress(suggestion)}
-                    style={({ pressed }) => [
-                      styles.suggestionChip,
-                      pressed && styles.suggestionChipPressed,
-                    ]}
+                    className="bg-card rounded-full border border-border px-md py-sm active:bg-card-hover active:border-imessage/60"
                   >
-                    <Text style={styles.suggestionText}>@{suggestion}</Text>
+                    <Text className="text-caption text-text-secondary font-mono">@{suggestion}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -468,27 +465,25 @@ export default function SetupUsernameScreen() {
           {/* Submit Button */}
           <Animated.View
             entering={FadeInDown.delay(200).duration(300)}
-            style={styles.section}
+            className="gap-md"
           >
             <Pressable
               onPress={handleSubmit}
               disabled={!canSubmit}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-                !canSubmit && styles.buttonDisabled,
-              ]}
+              className={`h-14 rounded-full overflow-hidden shadow-lg active:scale-[0.99] ${
+                !canSubmit ? 'opacity-60' : ''
+              }`}
             >
               <LinearGradient
-                colors={canSubmit ? [Colors.accent, '#0A7FD4'] : [Colors.systemGray4, Colors.systemGray5]}
-                style={styles.primaryButtonGradient}
+                colors={canSubmit ? ['#0B93F6', '#0A7FD4'] : ['#3A3A3C', '#2C2C2E']}
+                className="flex-1 items-center justify-center"
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color={Colors.text} />
+                  <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Claim @{username || 'username'}</Text>
+                  <Text className="text-body-semibold text-white font-rounded">Claim @{username || 'username'}</Text>
                 )}
               </LinearGradient>
             </Pressable>
@@ -498,15 +493,15 @@ export default function SetupUsernameScreen() {
           {!isCheckingInvite && !hasPendingInvite && (
             <Animated.View
               entering={FadeIn.delay(300).duration(300)}
-              style={styles.skipSection}
+              className="items-center gap-xs"
             >
               <Pressable
                 onPress={handleSkip}
-                style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
+                className="py-md px-lg active:opacity-80"
               >
-                <Text style={styles.skipText}>Skip for now</Text>
+                <Text className="text-body text-text-tertiary">Skip for now</Text>
               </Pressable>
-              <Text style={styles.skipHint}>
+              <Text className="text-caption text-text-muted">
                 You can set this later in your profile
               </Text>
             </Animated.View>
@@ -516,17 +511,17 @@ export default function SetupUsernameScreen() {
           {!isCheckingInvite && hasPendingInvite && (
             <Animated.View
               entering={FadeIn.delay(300).duration(300)}
-              style={styles.inviteNotice}
+              className="items-center py-md px-lg bg-imessage/15 rounded-lg border border-imessage/30"
             >
-              <Text style={styles.inviteNoticeText}>
+              <Text className="text-caption text-imessage text-center leading-[18px]">
                 Your friend is waiting to connect! Pick a username so they can find you.
               </Text>
             </Animated.View>
           )}
 
           {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
+          <View className="mt-auto pt-xl">
+            <Text className="text-caption text-text-muted text-center leading-[18px]">
               Your username is public. Friends can find you by searching @{username || 'yourname'}.
             </Text>
           </View>
@@ -535,228 +530,3 @@ export default function SetupUsernameScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.xl,
-  },
-
-  // Title section
-  titleSection: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingTop: Spacing.xl,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: Spacing.sm,
-  },
-  title: {
-    ...Typography.displaySmall,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  // Sections
-  section: {
-    gap: Spacing.md,
-  },
-  sectionLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-
-  // Error
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    backgroundColor: Colors.dangerDim,
-    borderWidth: 1,
-    borderColor: Colors.danger + '44',
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-  },
-  errorIcon: {
-    fontSize: 14,
-    marginTop: 1,
-  },
-  errorText: {
-    ...Typography.body,
-    color: Colors.danger,
-    flex: 1,
-  },
-
-  // Input card
-  inputCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    padding: Spacing.lg,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  atSymbol: {
-    ...Typography.h2,
-    color: Colors.textMuted,
-    marginRight: Spacing.xs,
-  },
-  usernameInput: {
-    flex: 1,
-    ...Typography.h2,
-    color: Colors.text,
-    paddingVertical: Spacing.sm,
-  },
-  validationIcon: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  validIcon: {
-    fontSize: 18,
-    color: Colors.success,
-    fontWeight: '700',
-  },
-  invalidIcon: {
-    fontSize: 18,
-    color: Colors.danger,
-    fontWeight: '700',
-  },
-
-  // Hints
-  hintRow: {
-    marginTop: -Spacing.sm,
-    marginLeft: Spacing.xs,
-  },
-  hint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  hintError: {
-    ...Typography.caption,
-    color: Colors.danger,
-  },
-  hintSuccess: {
-    ...Typography.caption,
-    color: Colors.success,
-  },
-
-  // Suggestions
-  suggestionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  suggestionChip: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  suggestionChipPressed: {
-    backgroundColor: Colors.bgCardHover,
-    borderColor: Colors.accent + '60',
-  },
-  suggestionText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-
-  // Primary button
-  primaryButton: {
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  primaryButtonPressed: {
-    transform: [{ scale: 0.99 }],
-  },
-  primaryButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-
-  // Skip
-  skipSection: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  skipButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  skipText: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-  },
-  skipHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-
-  // Invite notice (when skip is disabled)
-  inviteNotice: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    backgroundColor: Colors.accent + '15',
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.accent + '30',
-  },
-  inviteNoticeText: {
-    ...Typography.caption,
-    color: Colors.accent,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-
-  // Footer
-  footer: {
-    marginTop: 'auto',
-    paddingTop: Spacing.xl,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-
-  pressed: {
-    opacity: 0.8,
-  },
-});
-

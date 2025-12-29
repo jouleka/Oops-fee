@@ -42,19 +42,32 @@ function TypingAnimation() {
   
   useEffect(() => {
     let index = 0;
-    const interval = setInterval(() => {
-      if (index < fullText.length) {
-        setText(fullText.slice(0, index + 1));
-        index++;
-      } else {
-        // Reset after a pause
-        setTimeout(() => {
-          setText('');
-          index = 0;
-        }, 2000);
-      }
-    }, 80);
-    return () => clearInterval(interval);
+    let intervalId: ReturnType<typeof setInterval>;
+    let resetTimeoutId: ReturnType<typeof setTimeout>;
+
+    const startTyping = () => {
+      intervalId = setInterval(() => {
+        if (index < fullText.length) {
+          setText(fullText.slice(0, index + 1));
+          index++;
+        } else {
+          clearInterval(intervalId);
+          // Reset after a pause
+          resetTimeoutId = setTimeout(() => {
+            setText('');
+            index = 0;
+            startTyping();
+          }, 2000);
+        }
+      }, 80);
+    };
+
+    startTyping();
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(resetTimeoutId);
+    };
   }, []);
 
   return (
@@ -75,19 +88,33 @@ function MoneyAnimation() {
     const steps = 30;
     const increment = targetAmount / steps;
     let current = 0;
-    
-    const interval = setInterval(() => {
-      current += increment;
-      if (current >= targetAmount) {
-        setAmount(targetAmount);
-        // Reset after pause
-        setTimeout(() => setAmount(0), 3000);
-      } else {
-        setAmount(Math.floor(current));
-      }
-    }, duration / steps);
-    
-    return () => clearInterval(interval);
+    let intervalId: ReturnType<typeof setInterval>;
+    let resetTimeoutId: ReturnType<typeof setTimeout>;
+
+    const startCounting = () => {
+      current = 0;
+      intervalId = setInterval(() => {
+        current += increment;
+        if (current >= targetAmount) {
+          setAmount(targetAmount);
+          clearInterval(intervalId);
+          // Reset after pause
+          resetTimeoutId = setTimeout(() => {
+            setAmount(0);
+            startCounting();
+          }, 3000);
+        } else {
+          setAmount(Math.floor(current));
+        }
+      }, duration / steps);
+    };
+
+    startCounting();
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(resetTimeoutId);
+    };
   }, []);
 
   return (

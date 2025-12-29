@@ -13,7 +13,6 @@ import {
   Alert,
   Keyboard,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -21,7 +20,6 @@ import {
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import {
   getInitials,
@@ -96,25 +94,27 @@ export default function FriendSearchScreen() {
 
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Header />
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Sign in to search for friends</Text>
+        <View className="items-center py-xxxl gap-sm">
+          <Text className="text-body text-text-secondary text-center">
+            Sign in to search for friends
+          </Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header />
 
       {/* Search Input */}
-      <Animated.View entering={FadeInDown.delay(50).duration(200)} style={styles.searchContainer}>
+      <Animated.View entering={FadeInDown.delay(50).duration(200)} className="flex-row gap-sm px-lg mb-lg">
         <TextInput
-          style={styles.searchInput}
+          className="flex-1 h-12 bg-card rounded-lg border border-border px-lg text-body text-white"
           placeholder="Search by username..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={handleSearch}
@@ -125,32 +125,32 @@ export default function FriendSearchScreen() {
         <Pressable
           onPress={handleSearch}
           disabled={query.trim().length < 2 || isSearching}
-          style={({ pressed }) => [
-            styles.searchButton,
-            (query.trim().length < 2 || isSearching) && styles.searchButtonDisabled,
-            pressed && { opacity: 0.8 },
-          ]}
+          className={`h-12 px-lg rounded-lg items-center justify-center ${
+            query.trim().length < 2 || isSearching ? 'bg-system-gray-4' : 'bg-imessage'
+          } active:opacity-80`}
         >
           {isSearching ? (
-            <ActivityIndicator size="small" color={Colors.text} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.searchButtonText}>Search</Text>
+            <Text className="text-body-semibold text-white">Search</Text>
           )}
         </Pressable>
       </Animated.View>
 
       {/* Results */}
       <Animated.ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.xxl }]}
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: insets.bottom + 32 }}
         layout={LinearTransition.springify()}
         keyboardShouldPersistTaps="handled"
       >
         {hasSearched && results.length === 0 && !isSearching && (
-          <Animated.View entering={FadeInDown.duration(200)} style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyText}>No users found for &quot;{query}&quot;</Text>
-            <Text style={styles.emptyHint}>Try a different username</Text>
+          <Animated.View entering={FadeInDown.duration(200)} className="items-center py-xxxl gap-sm">
+            <Text className="text-[40px]">🔍</Text>
+            <Text className="text-body text-text-secondary text-center">
+              No users found for &quot;{query}&quot;
+            </Text>
+            <Text className="text-caption text-text-muted">Try a different username</Text>
           </Animated.View>
         )}
 
@@ -175,19 +175,19 @@ export default function FriendSearchScreen() {
 
 function Header() {
   return (
-    <View style={styles.header}>
+    <View className="flex-row items-center justify-between px-lg py-md">
       <Pressable
         onPress={() => {
           hapticLight();
           router.back();
         }}
-        style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
+        className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center active:opacity-70"
       >
-        <Text style={styles.backIcon}>←</Text>
+        <Text className="text-[20px] text-white">←</Text>
       </Pressable>
 
-      <Text style={styles.headerTitle}>Find Friends</Text>
-      <View style={styles.headerSpacer} />
+      <Text className="text-h2 text-white font-rounded">Find Friends</Text>
+      <View className="w-10" />
     </View>
   );
 }
@@ -206,196 +206,42 @@ function UserResultCard({
   const initial = getInitials(user);
 
   return (
-    <View style={styles.userCard}>
+    <View className="flex-row items-center bg-card rounded-lg border border-border p-md gap-md">
       <LinearGradient
-        colors={[Colors.accent, '#0A7FD4']}
-        style={styles.avatar}
+        colors={['#0B93F6', '#0A7FD4']}
+        className="w-11 h-11 rounded-full items-center justify-center"
       >
-        <Text style={styles.avatarText}>{initial}</Text>
+        <Text className="text-[18px] font-bold text-white">{initial}</Text>
       </LinearGradient>
 
-      <View style={styles.userInfo}>
-        <Text style={styles.username}>@{user.username}</Text>
+      <View className="flex-1 gap-0.5">
+        <Text className="text-body-semibold text-imessage font-mono">@{user.username}</Text>
         {user.display_name && (
-          <Text style={styles.displayName} numberOfLines={1}>
+          <Text className="text-caption text-text-secondary" numberOfLines={1}>
             {user.display_name}
           </Text>
         )}
       </View>
 
       {isSent ? (
-        <View style={styles.sentBadge}>
-          <Text style={styles.sentBadgeText}>Sent ✓</Text>
+        <View className="px-md py-sm bg-success-dim rounded-md">
+          <Text className="text-caption text-success font-semibold">Sent ✓</Text>
         </View>
       ) : (
         <Pressable
           onPress={onSend}
           disabled={isSending}
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && { opacity: 0.8 },
-            isSending && { opacity: 0.6 },
-          ]}
+          className={`px-lg py-sm bg-imessage rounded-md min-w-[64px] items-center ${
+            isSending ? 'opacity-60' : ''
+          } active:opacity-80`}
         >
           {isSending ? (
-            <ActivityIndicator size="small" color={Colors.text} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text className="text-caption text-white font-bold">Add</Text>
           )}
         </Pressable>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Colors.text,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  searchInput: {
-    flex: 1,
-    height: 48,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    ...Typography.body,
-    color: Colors.text,
-  },
-  searchButton: {
-    height: 48,
-    paddingHorizontal: Spacing.lg,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchButtonDisabled: {
-    backgroundColor: Colors.systemGray4,
-  },
-  searchButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
-    gap: Spacing.sm,
-  },
-  emptyEmoji: {
-    fontSize: 40,
-  },
-  emptyText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  emptyHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  userInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  username: {
-    ...Typography.bodySemibold,
-    color: Colors.accent,
-    fontFamily: Fonts.mono,
-  },
-  displayName: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  addButton: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    ...Typography.caption,
-    color: Colors.text,
-    fontWeight: '700',
-  },
-  sentBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.md,
-  },
-  sentBadgeText: {
-    ...Typography.caption,
-    color: Colors.success,
-    fontWeight: '600',
-  },
-});
-

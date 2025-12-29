@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Keyboard, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Keyboard, Modal, PanResponder, Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -13,7 +13,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { VERIFICATION_COPY } from '@/constants/content';
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -152,49 +151,64 @@ export function PhotoCaptureModal({ visible, promiseText, onCapture, onCancel }:
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={dismiss} />
+      <View className="flex-1 bg-black/75 items-center justify-end p-lg">
+        <Pressable className="absolute inset-0" onPress={dismiss} />
 
-        <Animated.View style={[styles.sheet, sheetAnimStyle]}>
+        <Animated.View
+          style={sheetAnimStyle}
+          className="w-full max-h-[90%] bg-abyss-700 rounded-xxl border border-border p-xl gap-lg"
+        >
           {/* Drag handle */}
-          <View style={styles.handleHit} {...panResponder.panHandlers}>
-            <View style={styles.handle} />
+          <View className="w-full items-center pt-0.5 pb-sm -mt-1.5" {...panResponder.panHandlers}>
+            <View className="w-11 h-[5px] rounded-sm bg-system-gray-4" />
           </View>
 
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerEmoji}>📷</Text>
-            <Text style={styles.title}>{VERIFICATION_COPY.photoCaptureTitle}</Text>
-            <Text style={styles.subtitle}>{VERIFICATION_COPY.photoCaptureSubtitle}</Text>
+          <View className="items-center gap-xs">
+            <Text className="text-[40px] mb-xs">📷</Text>
+            <Text className="text-h2 text-white font-rounded text-center">
+              {VERIFICATION_COPY.photoCaptureTitle}
+            </Text>
+            <Text className="text-body text-text-tertiary text-center">
+              {VERIFICATION_COPY.photoCaptureSubtitle}
+            </Text>
           </View>
 
           {/* Promise reminder */}
-          <View style={styles.promiseCard}>
-            <Text style={styles.promiseLabel}>PROVING</Text>
-            <Text style={styles.promiseText} numberOfLines={2}>
+          <View className="bg-card rounded-lg border border-border p-lg gap-xs">
+            <Text className="text-label text-text-muted">PROVING</Text>
+            <Text className="text-body-semibold text-white font-rounded italic" numberOfLines={2}>
               &quot;{promiseText}&quot;
             </Text>
           </View>
 
           {/* Photo area */}
-          <View style={styles.photoArea}>
+          <View className="h-[200px] rounded-xl overflow-hidden">
             {photoUri ? (
-              <Animated.View entering={FadeIn.duration(200)} style={styles.photoPreview}>
-                <Image source={{ uri: photoUri }} style={styles.previewImage} resizeMode="cover" />
-                <View style={styles.photoOverlay}>
-                  <View style={styles.timestampBadge}>
-                    <Text style={styles.timestampText}>📍 {timestamp}</Text>
+              <Animated.View entering={FadeIn.duration(200)} className="flex-1 rounded-xl overflow-hidden relative">
+                <Image source={{ uri: photoUri }} className="w-full h-full" resizeMode="cover" />
+                <View className="absolute inset-0 p-md justify-end">
+                  <View className="self-start bg-black/65 px-md py-xs rounded-md">
+                    <Text className="text-caption text-white font-mono">📍 {timestamp}</Text>
                   </View>
                 </View>
               </Animated.View>
             ) : (
-              <Animated.View entering={FadeInDown.duration(200)} style={styles.cameraPlaceholder}>
-                <Text style={styles.cameraIcon}>📸</Text>
-                <Text style={styles.cameraHint}>{VERIFICATION_COPY.photoCaptureHint}</Text>
+              <Animated.View
+                entering={FadeInDown.duration(200)}
+                className="flex-1 bg-card rounded-xl border-2 border-dashed border-border items-center justify-center gap-md p-lg"
+              >
+                <Text className="text-[48px] opacity-60">📸</Text>
+                <Text className="text-caption text-text-tertiary text-center italic">
+                  {VERIFICATION_COPY.photoCaptureHint}
+                </Text>
 
                 {error && (
-                  <Animated.View entering={FadeIn.duration(150)} style={styles.errorBanner}>
-                    <Text style={styles.errorText}>{error}</Text>
+                  <Animated.View
+                    entering={FadeIn.duration(150)}
+                    className="bg-danger-dim border border-danger/[0.27] rounded-md p-md mt-sm"
+                  >
+                    <Text className="text-caption text-danger text-center">{error}</Text>
                   </Animated.View>
                 )}
               </Animated.View>
@@ -202,27 +216,31 @@ export function PhotoCaptureModal({ visible, promiseText, onCapture, onCancel }:
           </View>
 
           {/* Actions */}
-          <View style={styles.actions}>
+          <View className="flex-row gap-md">
             {photoUri ? (
               <>
                 <Pressable
                   onPress={handleRetake}
-                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                  className="flex-1 h-[52px] rounded-[26px] bg-card border border-border items-center justify-center active:opacity-90 active:scale-[0.98]"
                 >
-                  <Text style={styles.secondaryButtonText}>{VERIFICATION_COPY.photoRetakeButton}</Text>
+                  <Text className="text-body-semibold text-text-secondary">
+                    {VERIFICATION_COPY.photoRetakeButton}
+                  </Text>
                 </Pressable>
 
                 <Pressable
                   onPress={handleConfirm}
-                  style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+                  className="flex-1 h-[52px] rounded-[26px] overflow-hidden shadow-md active:opacity-90 active:scale-[0.98]"
                 >
                   <LinearGradient
-                    colors={[Colors.success, '#2EC44F']}
-                    style={styles.primaryButtonGradient}
+                    colors={['#34C759', '#2EC44F']}
+                    className="flex-1 items-center justify-center"
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.primaryButtonText}>{VERIFICATION_COPY.photoConfirmButton}</Text>
+                    <Text className="text-body-semibold text-white font-rounded">
+                      {VERIFICATION_COPY.photoConfirmButton}
+                    </Text>
                   </LinearGradient>
                 </Pressable>
               </>
@@ -230,27 +248,25 @@ export function PhotoCaptureModal({ visible, promiseText, onCapture, onCancel }:
               <>
                 <Pressable
                   onPress={dismiss}
-                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                  className="flex-1 h-[52px] rounded-[26px] bg-card border border-border items-center justify-center active:opacity-90 active:scale-[0.98]"
                 >
-                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                  <Text className="text-body-semibold text-text-secondary">Cancel</Text>
                 </Pressable>
 
                 <Pressable
                   disabled={loading}
                   onPress={launchCamera}
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    pressed && styles.pressed,
-                    loading && styles.buttonDisabled,
-                  ]}
+                  className={`flex-1 h-[52px] rounded-[26px] overflow-hidden shadow-md active:opacity-90 active:scale-[0.98] ${
+                    loading ? 'opacity-60' : ''
+                  }`}
                 >
                   <LinearGradient
-                    colors={[Colors.accent, '#0A7FD4']}
-                    style={styles.primaryButtonGradient}
+                    colors={['#0B93F6', '#0A7FD4']}
+                    className="flex-1 items-center justify-center"
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.primaryButtonText}>
+                    <Text className="text-body-semibold text-white font-rounded">
                       {loading ? 'Opening camera…' : VERIFICATION_COPY.photoCaptureButton}
                     </Text>
                   </LinearGradient>
@@ -263,199 +279,3 @@ export function PhotoCaptureModal({ visible, promiseText, onCapture, onCancel }:
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    padding: Spacing.lg,
-  },
-  sheet: {
-    width: '100%',
-    maxHeight: '90%',
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.xxl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-
-  // Handle
-  handleHit: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 2,
-    paddingBottom: Spacing.sm,
-    marginTop: -6,
-  },
-  handle: {
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: Colors.systemGray4,
-  },
-
-  // Header
-  header: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  headerEmoji: {
-    fontSize: 40,
-    marginBottom: Spacing.xs,
-  },
-  title: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-
-  // Promise card
-  promiseCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.xs,
-  },
-  promiseLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  promiseText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    fontStyle: 'italic',
-  },
-
-  // Photo area
-  photoArea: {
-    height: 200,
-    borderRadius: Radius.xl,
-    overflow: 'hidden',
-  },
-
-  // Camera placeholder
-  cameraPlaceholder: {
-    flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.md,
-    padding: Spacing.lg,
-  },
-  cameraIcon: {
-    fontSize: 48,
-    opacity: 0.6,
-  },
-  cameraHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
-  // Photo preview
-  photoPreview: {
-    flex: 1,
-    borderRadius: Radius.xl,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  photoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    padding: Spacing.md,
-    justifyContent: 'flex-end',
-  },
-  timestampBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.md,
-  },
-  timestampText: {
-    ...Typography.caption,
-    color: Colors.text,
-    fontFamily: Fonts.mono,
-  },
-
-  // Error
-  errorBanner: {
-    backgroundColor: Colors.dangerDim,
-    borderWidth: 1,
-    borderColor: Colors.danger + '44',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-  },
-  errorText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    textAlign: 'center',
-  },
-
-  // Actions
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  secondaryButton: {
-    flex: 1,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-  primaryButton: {
-    flex: 1,
-    height: 52,
-    borderRadius: 26,
-    overflow: 'hidden',
-    ...Shadows.md,
-  },
-  primaryButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-});
-

@@ -6,10 +6,10 @@
  */
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { type GloryMetric, type ShameMetric, type GlobalMetric, formatMetricValue, formatRankChange } from '@/lib/leaderboard/api';
 
 // ─────────────────────────────────────────────────────────────
@@ -122,19 +122,24 @@ export function LeaderboardEntry({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={!onPress}
-        style={({ pressed }) => [
-          styles.container,
-          isPodium && styles.containerPodium,
-          entry.is_current_user && styles.containerCurrentUser,
-          pressed && styles.containerPressed,
-        ]}
+        className={`flex-row items-center gap-3 py-3 px-4 rounded-lg border ${
+          entry.is_current_user
+            ? 'bg-imessage-dim border-imessage/40'
+            : isPodium
+              ? 'bg-card border-border-focus'
+              : 'bg-card border-border active:bg-card-hover'
+        }`}
       >
         {/* Rank */}
-        <View style={[styles.rankContainer, isPodium && styles.rankContainerPodium]}>
+        <View className={`items-center justify-center ${isPodium ? 'w-9' : 'w-10'}`}>
           {isPodium ? (
-            <Text style={styles.rankMedal}>{medals[entry.rank]}</Text>
+            <Text className="text-[22px] text-center">{medals[entry.rank]}</Text>
           ) : (
-            <Text style={[styles.rankNumber, entry.is_current_user && styles.rankNumberCurrentUser]}>
+            <Text
+              className={`text-body-semibold font-mono ${
+                entry.is_current_user ? 'text-imessage' : 'text-text-tertiary'
+              }`}
+            >
               #{entry.rank}
             </Text>
           )}
@@ -142,53 +147,68 @@ export function LeaderboardEntry({
 
         {/* Avatar */}
         {isPodium ? (
-          <LinearGradient colors={gradients[entry.rank]} style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(entry.display_name, entry.username)}</Text>
+          <LinearGradient colors={gradients[entry.rank]} className="w-10 h-10 rounded-full items-center justify-center">
+            <Text className="text-sm font-bold text-white tracking-wide">
+              {getInitials(entry.display_name, entry.username)}
+            </Text>
           </LinearGradient>
         ) : (
-          <View style={[styles.avatar, styles.avatarDefault, entry.is_current_user && styles.avatarCurrentUser]}>
-            <Text style={styles.avatarText}>{getInitials(entry.display_name, entry.username)}</Text>
+          <View
+            className={`w-10 h-10 rounded-full items-center justify-center ${
+              entry.is_current_user ? 'bg-imessage' : 'bg-system-gray-4'
+            }`}
+          >
+            <Text className="text-sm font-bold text-white tracking-wide">
+              {getInitials(entry.display_name, entry.username)}
+            </Text>
           </View>
         )}
 
         {/* User Info */}
-        <View style={styles.userInfo}>
-          <View style={styles.nameRow}>
+        <View className="flex-1 gap-0.5 min-w-0">
+          <View className="flex-row items-center gap-2">
             <Text
-              style={[
-                styles.username,
-                entry.is_current_user && styles.usernameCurrentUser,
-              ]}
+              className={`text-body-semibold shrink ${
+                entry.is_current_user ? 'text-imessage' : 'text-white'
+              }`}
               numberOfLines={1}
             >
               @{entry.username}
             </Text>
-            {entry.is_current_user && <Text style={styles.youBadge}>You</Text>}
+            {entry.is_current_user && (
+              <Text className="text-[10px] font-bold text-imessage bg-imessage-dim px-1.5 py-0.5 rounded-sm uppercase tracking-wide overflow-hidden">
+                You
+              </Text>
+            )}
           </View>
           {entry.display_name && entry.display_name !== entry.username && (
-            <Text style={styles.displayName} numberOfLines={1}>
+            <Text className="text-caption text-text-tertiary" numberOfLines={1}>
               {entry.display_name}
             </Text>
           )}
         </View>
 
         {/* Value */}
-        <View style={styles.valueContainer}>
+        <View className="items-end gap-0.5">
           <Text
-            style={[
-              styles.value,
-              isShameMode && styles.valueShame,
-              entry.is_current_user && !isShameMode && styles.valueCurrentUser,
-            ]}
+            className={`text-body-semibold font-mono ${
+              isShameMode
+                ? 'text-danger'
+                : entry.is_current_user
+                  ? 'text-imessage'
+                  : 'text-success'
+            }`}
           >
             {formattedValue}
           </Text>
           <Text
-            style={[
-              styles.change,
-              changeInfo.color === 'green' && styles.changeGreen,
-              changeInfo.color === 'red' && styles.changeRed,
-            ]}
+            className={`text-[11px] ${
+              changeInfo.color === 'green'
+                ? 'text-success'
+                : changeInfo.color === 'red'
+                  ? 'text-danger'
+                  : 'text-text-muted'
+            }`}
           >
             {changeInfo.text}
           </Text>
@@ -197,139 +217,3 @@ export function LeaderboardEntry({
     </Animated.View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  containerPodium: {
-    borderColor: Colors.borderFocus,
-  },
-  containerCurrentUser: {
-    backgroundColor: Colors.accentDim,
-    borderColor: Colors.accent + '66',
-  },
-  containerPressed: {
-    backgroundColor: Colors.bgCardHover,
-  },
-
-  // Rank
-  rankContainer: {
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankContainerPodium: {
-    width: 36,
-  },
-  rankNumber: {
-    ...Typography.bodySemibold,
-    color: Colors.textTertiary,
-    fontFamily: Fonts.mono,
-  },
-  rankNumberCurrentUser: {
-    color: Colors.accent,
-  },
-  rankMedal: {
-    fontSize: 22,
-    textAlign: 'center',
-  },
-
-  // Avatar
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarDefault: {
-    backgroundColor: Colors.systemGray4,
-  },
-  avatarCurrentUser: {
-    backgroundColor: Colors.accent,
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    letterSpacing: 0.5,
-  },
-
-  // User Info
-  userInfo: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  username: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    flexShrink: 1,
-  },
-  usernameCurrentUser: {
-    color: Colors.accent,
-  },
-  youBadge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.accent,
-    backgroundColor: Colors.accentDim,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
-    overflow: 'hidden',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  displayName: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-
-  // Value
-  valueContainer: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  value: {
-    ...Typography.bodySemibold,
-    color: Colors.success,
-    fontFamily: Fonts.mono,
-  },
-  valueShame: {
-    color: Colors.danger,
-  },
-  valueCurrentUser: {
-    color: Colors.accent,
-  },
-  change: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontSize: 11,
-  },
-  changeGreen: {
-    color: Colors.success,
-  },
-  changeRed: {
-    color: Colors.danger,
-  },
-});
-

@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -15,7 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 
 type BadgeSize = 'small' | 'normal' | 'large';
 
@@ -34,6 +34,24 @@ const FLAME_COLORS = {
   hot: '#FF6B35', // 3-6 days  
   fire: '#FF453A', // 7+ days - on fire!
   legendary: '#FFD700', // 30+ days - golden
+};
+
+const SIZE_CONFIG = {
+  small: {
+    container: 'px-2 py-1 gap-1 rounded-md min-w-[44px]',
+    icon: 14,
+    text: 'text-sm font-bold',
+  },
+  normal: {
+    container: 'px-3 py-2 gap-1.5 rounded-full min-w-[56px]',
+    icon: 18,
+    text: 'text-[17px] font-bold',
+  },
+  large: {
+    container: 'px-5 py-3 gap-2 rounded-full min-w-[80px]',
+    icon: 26,
+    text: 'text-2xl font-extrabold',
+  },
 };
 
 export function StreakBadge({
@@ -122,7 +140,7 @@ export function StreakBadge({
     transform: [{ scale: innerFlameScale.value }],
   }));
 
-  const sizeConfig = SIZE_CONFIGS[size];
+  const config = SIZE_CONFIG[size];
 
   if (isEmpty && !alwaysShow) return null;
 
@@ -132,39 +150,30 @@ export function StreakBadge({
   return (
     <Animated.View
       entering={FadeIn.springify().damping(14).stiffness(120)}
-      style={styles.wrapper}
+      className="items-center justify-center"
     >
       <View
-        style={[
-          styles.container,
-          sizeConfig.containerStyle,
-          isEmpty && styles.emptyContainer,
-          {
-            borderColor: isEmpty ? Colors.border : displayColor + '40',
-            backgroundColor: isEmpty ? Colors.bgCard : displayColor + '15',
-          },
-        ]}
+        className={`flex-row items-center justify-center border-[1.5px] overflow-hidden relative ${config.container} ${isEmpty ? 'opacity-60' : ''}`}
+        style={{
+          borderColor: isEmpty ? Colors.border : displayColor + '40',
+          backgroundColor: isEmpty ? Colors.bgCard : displayColor + '15',
+        }}
       >
         {/* Inner glow - static for Expo Go compatibility */}
         {isActive && (
           <View
-            style={[
-              styles.innerGlow,
-              { backgroundColor: displayColor, opacity: 0.15 },
-            ]}
+            className="absolute inset-0"
+            style={{ backgroundColor: displayColor, opacity: 0.15 }}
           />
         )}
 
         {/* Flame container with animations */}
-        <Animated.View style={[styles.flameWrapper, flameContainerStyle]}>
+        <Animated.View className="items-center justify-center" style={flameContainerStyle}>
           {/* Inner animated flame */}
           <Animated.View style={innerFlameStyle}>
             <Text
-              style={[
-                styles.flameIcon,
-                { fontSize: sizeConfig.iconSize },
-                isEmpty && styles.emptyIcon,
-              ]}
+              className={`text-center ${isEmpty ? 'opacity-40' : ''}`}
+              style={{ fontSize: config.icon }}
             >
               {icon}
             </Text>
@@ -173,13 +182,16 @@ export function StreakBadge({
 
         {/* Streak number */}
         <Text
-          style={[
-            styles.streakNumber,
-            sizeConfig.textStyle,
-            { color: isEmpty ? Colors.textMuted : displayColor },
-            isEmpty && styles.emptyText,
-            isLegendary && styles.legendaryText,
-          ]}
+          className={`text-center ${config.text} ${isEmpty ? 'opacity-60' : ''}`}
+          style={{
+            fontFamily: Fonts.rounded,
+            color: isEmpty ? Colors.textMuted : displayColor,
+            ...(isLegendary && {
+              textShadowColor: '#FFD700',
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 8,
+            }),
+          }}
         >
           {streak}
         </Text>
@@ -204,106 +216,3 @@ function getColor(streak: number, isBroken: boolean): string {
   if (streak >= 3) return FLAME_COLORS.hot;
   return FLAME_COLORS.warm;
 }
-
-const SIZE_CONFIGS: Record<
-  BadgeSize,
-  {
-    containerStyle: object;
-    textStyle: object;
-    iconSize: number;
-    containerSize: number;
-  }
-> = {
-  small: {
-    containerStyle: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      gap: 4,
-      borderRadius: Radius.md,
-      minWidth: 44,
-    },
-    textStyle: {
-      fontSize: 14,
-      fontWeight: '700' as const,
-    },
-    iconSize: 14,
-    containerSize: 28,
-  },
-  normal: {
-    containerStyle: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 6,
-      borderRadius: Radius.full,
-      minWidth: 56,
-    },
-    textStyle: {
-      fontSize: 17,
-      fontWeight: '700' as const,
-    },
-    iconSize: 18,
-    containerSize: 40,
-  },
-  large: {
-    containerStyle: {
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      gap: 8,
-      borderRadius: Radius.full,
-      minWidth: 80,
-    },
-    textStyle: {
-      fontSize: 24,
-      fontWeight: '800' as const,
-    },
-    iconSize: 26,
-    containerSize: 56,
-  },
-};
-
-const styles = StyleSheet.create({
-  wrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  emptyContainer: {
-    opacity: 0.6,
-  },
-  innerGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  flameWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flameIcon: {
-    textAlign: 'center',
-  },
-  emptyIcon: {
-    opacity: 0.4,
-  },
-  streakNumber: {
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  emptyText: {
-    opacity: 0.6,
-  },
-  legendaryText: {
-    textShadowColor: '#FFD700',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-});

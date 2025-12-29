@@ -1,6 +1,28 @@
 /**
  * OopsFee Global Theme
  * Dark mode, iOS-inspired, premium feel with a snarky edge
+ *
+ * ⚠️  DEPRECATION NOTICE ⚠️
+ * This file is being migrated to NativeWind/Tailwind CSS.
+ * Use Tailwind classes instead of importing from this file.
+ *
+ * Migration mapping (see tailwind.config.js):
+ * - Colors.bg → bg-black / bg-base-100
+ * - Colors.bgCard → bg-base-300/50 / bg-white/5
+ * - Colors.border → border-white/10
+ * - Colors.text → text-white
+ * - Colors.textSecondary → text-white/70
+ * - Colors.textTertiary → text-white/45
+ * - Colors.accent → text-imessage-500
+ * - Colors.danger → text-danger-500
+ * - Colors.success → text-success
+ * - Spacing.md (12) → p-3 / gap-3
+ * - Spacing.lg (16) → p-4 / gap-4
+ * - Radius.xl (20) → rounded-2xl
+ *
+ * STILL ACTIVE (not deprecated):
+ * - Fonts: Platform-specific font families
+ * - Animation: Reanimated spring/timing presets
  */
 
 import { Platform } from 'react-native';
@@ -8,7 +30,9 @@ import { Platform } from 'react-native';
 // ─────────────────────────────────────────────────────────────
 // COLORS
 // ─────────────────────────────────────────────────────────────
-
+/**
+ * @deprecated Use Tailwind classes instead. See file header for mapping.
+ */
 export const Colors = {
   // Core backgrounds
   bg: '#000000',
@@ -64,6 +88,10 @@ export const Colors = {
 // TYPOGRAPHY
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Platform-specific font families.
+ * NOT DEPRECATED - still needed for native font references.
+ */
 export const Fonts = Platform.select({
   ios: {
     sans: 'system-ui',
@@ -85,6 +113,13 @@ export const Fonts = Platform.select({
   },
 })!;
 
+/**
+ * @deprecated Use Tailwind typography classes instead:
+ * - displayLarge → text-6xl font-extrabold
+ * - h1 → text-3xl font-bold
+ * - body → text-base
+ * - caption → text-sm font-medium
+ */
 export const Typography = {
   // Display (for big numbers, hero text)
   displayLarge: {
@@ -170,6 +205,15 @@ export const Typography = {
 // SPACING & LAYOUT
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Use Tailwind spacing utilities instead:
+ * - xs (4) → p-1 / gap-1
+ * - sm (8) → p-2 / gap-2
+ * - md (12) → p-3 / gap-3
+ * - lg (16) → p-4 / gap-4
+ * - xl (24) → p-6 / gap-6
+ * - xxl (32) → p-8 / gap-8
+ */
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -180,6 +224,14 @@ export const Spacing = {
   xxxl: 48,
 } as const;
 
+/**
+ * @deprecated Use Tailwind border-radius utilities instead:
+ * - sm (8) → rounded-lg
+ * - md (12) → rounded-xl
+ * - lg (16) → rounded-2xl
+ * - xl (20) → rounded-2xl
+ * - full (9999) → rounded-full
+ */
 export const Radius = {
   sm: 8,
   md: 12,
@@ -193,6 +245,13 @@ export const Radius = {
 // SHADOWS (iOS-style subtle depth)
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Use Tailwind shadow utilities instead:
+ * - sm → shadow-sm
+ * - md → shadow-md
+ * - lg → shadow-lg
+ * Note: Glow effects should use custom shadow-[color] utilities
+ */
 export const Shadows = {
   sm: {
     shadowColor: '#000',
@@ -228,6 +287,10 @@ export const Shadows = {
 // ANIMATION PRESETS
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Reanimated spring and timing presets.
+ * NOT DEPRECATED - still needed for Reanimated animations.
+ */
 export const Animation = {
   spring: {
     damping: 18,

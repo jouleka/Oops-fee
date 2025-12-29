@@ -18,7 +18,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -26,7 +25,6 @@ import {
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { isStripeConfigured, presentTopUpSheet } from '@/lib/stripe';
 import { confirmTopUp, createTopUpIntent, formatCents, topUpWallet } from '@/lib/wallet/api';
@@ -200,20 +198,20 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.container}>
-        <Pressable style={styles.backdrop} onPress={handleClose} />
+      <View className="flex-1 bg-black/60 justify-end">
+        <Pressable className="flex-1" onPress={handleClose} />
 
-        <Animated.View style={styles.sheet}>
+        <Animated.View className="bg-abyss-800 rounded-t-xxl">
           {/* Handle */}
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
+          <View className="items-center pt-md pb-sm">
+            <View className="w-10 h-1 rounded-sm bg-system-gray-4" />
           </View>
 
-          <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View className="px-xl gap-lg" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Add Funds</Text>
-              <Text style={styles.subtitle}>
+            <View className="items-center gap-1">
+              <Text className="text-h3 text-white font-rounded">Add Funds</Text>
+              <Text className="text-caption text-text-tertiary text-center">
                 {paymentState.hasPaymentMethod
                   ? 'Charges your saved payment method.'
                   : 'Add a card to top up your wallet.'}
@@ -221,54 +219,53 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
             </View>
 
             {success ? (
-              <Animated.View entering={FadeIn.duration(300)} style={styles.successBox}>
-                <Text style={styles.successEmoji}>✓</Text>
-                <Text style={styles.successText}>
+              <Animated.View entering={FadeIn.duration(300)} className="items-center gap-md py-xxl">
+                <Text className="text-5xl text-success">✓</Text>
+                <Text className="text-h3 text-success font-rounded">
                   Added {formatCents(amountCents)} to wallet!
                 </Text>
               </Animated.View>
             ) : (
               <>
                 {/* Amount Input */}
-                <Animated.View entering={FadeInDown.delay(50).duration(300)} style={styles.amountSection}>
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.dollarSign}>$</Text>
+                <Animated.View entering={FadeInDown.delay(50).duration(300)} className="items-center gap-sm">
+                  <View className="flex-row items-center justify-center">
+                    <Text className="text-display-md text-text-muted mr-xs">$</Text>
                     <TextInput
-                      style={styles.input}
+                      className="text-display-md text-white min-w-[100px] text-center p-0"
                       value={amountText}
                       onChangeText={(t) => {
                         setAmountText(t);
                         setError(null);
                       }}
                       placeholder="0"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor="rgba(255, 255, 255, 0.30)"
                       keyboardType="decimal-pad"
                       maxLength={6}
                       autoFocus
                     />
                   </View>
-                  <Text style={styles.hint}>
+                  <Text className="text-caption text-text-muted">
                     Min {formatCents(MIN_AMOUNT)} • Max {formatCents(MAX_AMOUNT)}
                   </Text>
                 </Animated.View>
 
                 {/* Presets */}
-                <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.presets}>
+                <Animated.View entering={FadeInDown.delay(100).duration(300)} className="flex-row gap-sm">
                   {PRESETS.map((cents) => (
                     <Pressable
                       key={cents}
-                      style={({ pressed }) => [
-                        styles.presetBtn,
-                        amountCents === cents && styles.presetBtnActive,
-                        pressed && styles.pressed,
-                      ]}
+                      className={`flex-1 items-center justify-center py-md rounded-lg border ${
+                        amountCents === cents
+                          ? 'bg-success-dim border-success'
+                          : 'bg-card border-border'
+                      } active:opacity-90 active:scale-[0.98]`}
                       onPress={() => handlePreset(cents)}
                     >
                       <Text
-                        style={[
-                          styles.presetText,
-                          amountCents === cents && styles.presetTextActive,
-                        ]}
+                        className={`text-body-semibold ${
+                          amountCents === cents ? 'text-success' : 'text-text-secondary'
+                        }`}
                       >
                         {formatCents(cents)}
                       </Text>
@@ -277,15 +274,18 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
                 </Animated.View>
 
                 {/* Payment Method */}
-                <Animated.View entering={FadeInDown.delay(150).duration(300)} style={styles.paymentInfo}>
-                  <Text style={styles.paymentLabel}>Charging</Text>
-                  <Text style={styles.paymentValue}>{getPaymentLabel()}</Text>
+                <Animated.View
+                  entering={FadeInDown.delay(150).duration(300)}
+                  className="flex-row justify-between items-center bg-card rounded-lg border border-border px-lg py-md"
+                >
+                  <Text className="text-body text-text-secondary">Charging</Text>
+                  <Text className="text-body text-white">{getPaymentLabel()}</Text>
                 </Animated.View>
 
                 {/* Error */}
                 {error && (
-                  <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
-                    <Text style={styles.errorText}>{error}</Text>
+                  <Animated.View entering={FadeIn.duration(200)} className="bg-danger-dim rounded-md p-md">
+                    <Text className="text-caption text-danger text-center">{error}</Text>
                   </Animated.View>
                 )}
 
@@ -294,22 +294,20 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
                   <Pressable
                     disabled={!isValidAmount || loading}
                     onPress={handleTopUp}
-                    style={({ pressed }) => [
-                      styles.addBtn,
-                      pressed && styles.pressed,
-                      !isValidAmount && styles.disabled,
-                    ]}
+                    className={`h-14 rounded-full overflow-hidden shadow-lg active:opacity-90 active:scale-[0.98] ${
+                      !isValidAmount ? 'opacity-50' : ''
+                    }`}
                   >
                     <LinearGradient
-                      colors={[Colors.success, '#28A745']}
-                      style={styles.btnGradient}
+                      colors={['#34C759', '#28A745']}
+                      className="flex-1 items-center justify-center"
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     >
                       {loading ? (
-                        <ActivityIndicator color={Colors.text} />
+                        <ActivityIndicator color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.btnText}>
+                        <Text className="text-body-semibold text-white font-rounded">
                           Add {isValidAmount ? formatCents(amountCents) : 'Funds'}
                         </Text>
                       )}
@@ -324,179 +322,3 @@ export function TopUpModal({ visible, onClose, onSuccess }: TopUpModalProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: Colors.bgElevated,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-  },
-  handleRow: {
-    alignItems: 'center',
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.systemGray4,
-  },
-  content: {
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.lg,
-  },
-
-  // Header
-  header: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  title: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  subtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-
-  // Amount
-  amountSection: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dollarSign: {
-    ...Typography.displayMedium,
-    color: Colors.textMuted,
-    marginRight: Spacing.xs,
-  },
-  input: {
-    ...Typography.displayMedium,
-    color: Colors.text,
-    minWidth: 100,
-    textAlign: 'center',
-    padding: 0,
-  },
-  hint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-
-  // Presets
-  presets: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  presetBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  presetBtnActive: {
-    backgroundColor: Colors.successDim,
-    borderColor: Colors.success,
-  },
-  presetText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-  presetTextActive: {
-    color: Colors.success,
-  },
-
-  // Payment info
-  paymentInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  paymentLabel: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-  paymentValue: {
-    ...Typography.body,
-    color: Colors.text,
-  },
-
-  // Error
-  errorBox: {
-    backgroundColor: Colors.dangerDim,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-  },
-  errorText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    textAlign: 'center',
-  },
-
-  // Success
-  successBox: {
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.xxl,
-  },
-  successEmoji: {
-    fontSize: 48,
-    color: Colors.success,
-  },
-  successText: {
-    ...Typography.h3,
-    color: Colors.success,
-    fontFamily: Fonts.rounded,
-  },
-
-  // Button
-  addBtn: {
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  btnGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-});
-

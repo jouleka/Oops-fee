@@ -8,7 +8,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -25,7 +25,7 @@ import {
   type LeaderboardEntryData,
 } from '@/components/leaderboard';
 import { LoadingState } from '@/components/ui/loading-state';
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 import {
@@ -98,23 +98,28 @@ function TabSelector({ activeTab, onTabChange }: TabSelectorProps) {
   };
 
   return (
-    <View style={styles.tabContainer}>
+    <View className="relative flex-row bg-card rounded-lg border border-border p-1">
       <Animated.View
-        style={[
-          styles.tabIndicator,
-          activeTab === 'shame' && styles.tabIndicatorShame,
-          animatedIndicatorStyle,
-        ]}
+        className={`absolute top-1 bottom-1 rounded-md shadow-md ${
+          activeTab === 'shame' ? 'bg-danger-dim' : 'bg-abyss-800'
+        }`}
+        style={animatedIndicatorStyle}
       />
       {TABS.map((tab) => (
-        <Pressable key={tab.id} onPress={() => handleSelect(tab.id)} style={styles.tabButton}>
+        <Pressable
+          key={tab.id}
+          onPress={() => handleSelect(tab.id)}
+          className="flex-1 items-center justify-center py-2.5 z-[1]"
+        >
           <Text
             numberOfLines={1}
-            style={[
-              styles.tabText,
-              activeTab === tab.id && styles.tabTextActive,
-              activeTab === tab.id && tab.id === 'shame' && styles.tabTextShame,
-            ]}
+            className={`text-caption font-semibold ${
+              activeTab === tab.id
+                ? tab.id === 'shame'
+                  ? 'text-danger'
+                  : 'text-white'
+                : 'text-text-tertiary'
+            }`}
           >
             {tab.emoji} {tab.label}
           </Text>
@@ -157,10 +162,10 @@ function EmptyState({ tabId }: EmptyStateProps) {
   }, [tabId]);
 
   return (
-    <Animated.View entering={FadeInDown.duration(300)} style={styles.emptyState}>
-      <Text style={styles.emptyEmoji}>{content.emoji}</Text>
-      <Text style={styles.emptyTitle}>{content.title}</Text>
-      <Text style={styles.emptySubtitle}>{content.subtitle}</Text>
+    <Animated.View entering={FadeInDown.duration(300)} className="items-center py-12 gap-3">
+      <Text className="text-5xl">{content.emoji}</Text>
+      <Text className="text-h3 text-white font-rounded">{content.title}</Text>
+      <Text className="text-body text-text-tertiary text-center px-6">{content.subtitle}</Text>
     </Animated.View>
   );
 }
@@ -182,7 +187,7 @@ function RankingsList({ rankings, metric, isShameMode, onUserPress }: RankingsLi
   }
 
   return (
-    <View style={styles.rankingsList}>
+    <View className="gap-3">
       {rankings.map((entry, index) => (
         <LeaderboardEntry
           key={entry.user_id}
@@ -230,21 +235,33 @@ function YourRankCard({ rank, total, isShameMode }: YourRankCardProps) {
   return (
     <Animated.View
       entering={SlideInRight.delay(200).duration(300)}
-      style={[styles.yourRankCard, isShameMode && styles.yourRankCardShame]}
+      className={`flex-row items-center justify-between rounded-lg border p-4 ${
+        isShameMode
+          ? 'bg-danger-dim border-danger/40'
+          : 'bg-imessage-dim border-imessage/40'
+      }`}
     >
-      <View style={styles.yourRankLeft}>
-        <Text style={[styles.yourRankLabel, isShameMode && styles.yourRankLabelShame]}>
+      <View className="gap-1">
+        <Text className={`text-label ${isShameMode ? 'text-danger' : 'text-imessage'}`}>
           YOUR RANK
         </Text>
-        <Text style={[styles.yourRankMessage, isShameMode && styles.yourRankMessageShame]}>
+        <Text
+          className={`text-caption italic ${
+            isShameMode ? 'text-danger/80' : 'text-text-secondary'
+          }`}
+        >
           {message}
         </Text>
       </View>
-      <View style={styles.yourRankRight}>
-        <Text style={[styles.yourRankNumber, isShameMode && styles.yourRankNumberShame]}>
+      <View className="items-end">
+        <Text
+          className={`text-display-sm font-rounded ${
+            isShameMode ? 'text-danger' : 'text-imessage'
+          }`}
+        >
           #{rank}
         </Text>
-        <Text style={styles.yourRankTotal}>of {total}</Text>
+        <Text className="text-caption text-text-muted">of {total}</Text>
       </View>
     </Animated.View>
   );
@@ -437,31 +454,31 @@ export default function LeaderboardScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View style={styles.header}>
+      <View className="flex-row items-center gap-3 px-6 pt-4 pb-4 border-b border-border-subtle">
         <Pressable
           onPress={handleBack}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          className="w-9 h-9 rounded-full bg-card border border-border items-center justify-center active:opacity-90 active:scale-[0.98]"
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Text className="text-[28px] leading-7 text-text-secondary -mt-0.5">‹</Text>
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Leaderboard</Text>
-          <Text style={styles.headerSubtitle}>See how you stack up</Text>
+        <View className="flex-1 gap-0.5">
+          <Text className="text-h2 text-white font-rounded">Leaderboard</Text>
+          <Text className="text-caption text-text-tertiary">See how you stack up</Text>
         </View>
-        <View style={{ width: 36 }} />
+        <View className="w-9" />
       </View>
 
       {/* Tab Selector */}
-      <View style={styles.tabSection}>
+      <View className="px-6 py-4 border-b border-border-subtle">
         <TabSelector activeTab={activeTab} onTabChange={handleTabChange} />
       </View>
 
       {/* Content */}
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -473,13 +490,15 @@ export default function LeaderboardScreen() {
       >
         {/* Shame Header */}
         {activeTab === 'shame' && (
-          <Animated.View entering={FadeIn.duration(400)} style={styles.shameHeader}>
+          <Animated.View entering={FadeIn.duration(400)} className="items-center">
             <LinearGradient
               colors={['rgba(255, 69, 58, 0.15)', 'rgba(255, 69, 58, 0)']}
-              style={styles.shameHeaderGradient}
+              className="w-full items-center py-4 rounded-xl"
             >
-              <Text style={styles.shameTitle}>WALL OF SHAME</Text>
-              <Text style={styles.shameTagline}>
+              <Text className="text-display-sm text-danger font-extrabold tracking-widest uppercase">
+                WALL OF SHAME
+              </Text>
+              <Text className="text-caption text-text-tertiary italic mt-1">
                 &ldquo;{SHAME_TAGLINES[Math.floor(Date.now() / 60000) % SHAME_TAGLINES.length]}&rdquo;
               </Text>
             </LinearGradient>
@@ -487,7 +506,7 @@ export default function LeaderboardScreen() {
         )}
 
         {/* Filters Section */}
-        <Animated.View entering={FadeIn.duration(200)} style={styles.filtersSection}>
+        <Animated.View entering={FadeIn.duration(200)} className="gap-3">
           <PeriodSelector value={period} onChange={setPeriod} isShameMode={isShameMode} />
           {activeTab === 'friends' && (
             <MetricPicker
@@ -506,37 +525,37 @@ export default function LeaderboardScreen() {
             />
           )}
           {activeTab === 'shame' && (
-            <View style={styles.shameMetricPicker}>
+            <View className="flex-row gap-3">
               <Pressable
                 onPress={() => handleShameMetricChange('money_lost')}
-                style={[
-                  styles.shameMetricButton,
-                  shameMetric === 'money_lost' && styles.shameMetricButtonActive,
-                ]}
+                className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg border py-3 px-4 ${
+                  shameMetric === 'money_lost'
+                    ? 'bg-danger-dim border-danger/60'
+                    : 'bg-card border-border'
+                }`}
               >
-                <Text style={styles.shameMetricEmoji}>💸</Text>
+                <Text className="text-base">💸</Text>
                 <Text
-                  style={[
-                    styles.shameMetricText,
-                    shameMetric === 'money_lost' && styles.shameMetricTextActive,
-                  ]}
+                  className={`text-body-semibold ${
+                    shameMetric === 'money_lost' ? 'text-danger' : 'text-text-secondary'
+                  }`}
                 >
                   Money Lost
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => handleShameMetricChange('failed')}
-                style={[
-                  styles.shameMetricButton,
-                  shameMetric === 'failed' && styles.shameMetricButtonActive,
-                ]}
+                className={`flex-1 flex-row items-center justify-center gap-2 rounded-lg border py-3 px-4 ${
+                  shameMetric === 'failed'
+                    ? 'bg-danger-dim border-danger/60'
+                    : 'bg-card border-border'
+                }`}
               >
-                <Text style={styles.shameMetricEmoji}>🤡</Text>
+                <Text className="text-base">🤡</Text>
                 <Text
-                  style={[
-                    styles.shameMetricText,
-                    shameMetric === 'failed' && styles.shameMetricTextActive,
-                  ]}
+                  className={`text-body-semibold ${
+                    shameMetric === 'failed' ? 'text-danger' : 'text-text-secondary'
+                  }`}
                 >
                   Broken
                 </Text>
@@ -547,22 +566,22 @@ export default function LeaderboardScreen() {
 
         {/* Loading State */}
         {loading && !refreshing && (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading rankings...</Text>
+          <View className="items-center py-12">
+            <Text className="text-body text-text-tertiary">Loading rankings...</Text>
           </View>
         )}
 
         {/* Error State */}
         {error && !loading && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorEmoji}>😵</Text>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorMessage}>{error}</Text>
+          <View className="items-center py-12 gap-3">
+            <Text className="text-5xl">😵</Text>
+            <Text className="text-h3 text-white">Something went wrong</Text>
+            <Text className="text-body text-text-tertiary text-center">{error}</Text>
             <Pressable
               onPress={handleRefresh}
-              style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+              className="bg-imessage px-6 py-3 rounded-lg mt-3 active:opacity-90 active:scale-[0.98]"
             >
-              <Text style={styles.retryButtonText}>Try Again</Text>
+              <Text className="text-body-semibold text-white">Try Again</Text>
             </Pressable>
           </View>
         )}
@@ -591,8 +610,8 @@ export default function LeaderboardScreen() {
         )}
 
         {/* Footer */}
-        <Animated.View entering={FadeIn.delay(400).duration(300)} style={styles.footer}>
-          <Text style={styles.footerText}>
+        <Animated.View entering={FadeIn.delay(400).duration(300)} className="items-center pt-6 pb-3">
+          <Text className="text-caption text-text-muted italic text-center">
             {isShameMode
               ? "Accountability is brutal. That's the point."
               : 'Rankings update every 15 minutes'}
@@ -602,295 +621,3 @@ export default function LeaderboardScreen() {
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-
-  // Header
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  headerCenter: { flex: 1, gap: 2 },
-  headerTitle: { ...Typography.h2, color: Colors.text, fontFamily: Fonts.rounded },
-  headerSubtitle: { ...Typography.caption, color: Colors.textTertiary },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: 28,
-    lineHeight: 28,
-    color: Colors.textSecondary,
-    marginTop: -2,
-  },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
-
-  // Tab Section
-  tabSection: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 4,
-    position: 'relative',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    top: 4,
-    bottom: 4,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabIndicatorShame: {
-    backgroundColor: Colors.dangerDim,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm + 2,
-    zIndex: 1,
-  },
-  tabText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: Colors.text,
-  },
-  tabTextShame: {
-    color: Colors.danger,
-  },
-
-  // Scroll
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    gap: Spacing.lg,
-  },
-
-  // Filters
-  filtersSection: {
-    gap: Spacing.md,
-  },
-
-  // Loading
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
-  },
-  loadingText: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-  },
-
-  // Error
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
-    gap: Spacing.md,
-  },
-  errorEmoji: {
-    fontSize: 48,
-  },
-  errorTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-  },
-  errorMessage: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.lg,
-    marginTop: Spacing.md,
-  },
-  retryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
-    gap: Spacing.md,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  emptyTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  emptySubtitle: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-
-  // Rankings List
-  rankingsList: {
-    gap: Spacing.md,
-  },
-
-  // Your Rank Card
-  yourRankCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.accentDim,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.accent + '40',
-    padding: Spacing.lg,
-  },
-  yourRankCardShame: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger + '40',
-  },
-  yourRankLeft: {
-    gap: 4,
-  },
-  yourRankLabel: {
-    ...Typography.label,
-    color: Colors.accent,
-  },
-  yourRankLabelShame: {
-    color: Colors.danger,
-  },
-  yourRankMessage: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  yourRankMessageShame: {
-    color: Colors.danger + 'CC',
-  },
-  yourRankRight: {
-    alignItems: 'flex-end',
-  },
-  yourRankNumber: {
-    ...Typography.displaySmall,
-    color: Colors.accent,
-    fontFamily: Fonts.rounded,
-  },
-  yourRankNumberShame: {
-    color: Colors.danger,
-  },
-  yourRankTotal: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-
-  // Shame Header
-  shameHeader: {
-    alignItems: 'center',
-  },
-  shameHeaderGradient: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    borderRadius: Radius.xl,
-  },
-  shameTitle: {
-    ...Typography.displaySmall,
-    color: Colors.danger,
-    fontWeight: '800',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  shameTagline: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-    marginTop: Spacing.xs,
-  },
-
-  // Shame Metric Picker
-  shameMetricPicker: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  shameMetricButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  shameMetricButtonActive: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger + '60',
-  },
-  shameMetricEmoji: {
-    fontSize: 16,
-  },
-  shameMetricText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-  shameMetricTextActive: {
-    color: Colors.danger,
-  },
-
-  // Footer
-  footer: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.md,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-});
-

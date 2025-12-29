@@ -14,7 +14,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -26,7 +25,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import {
   type FriendProfile,
@@ -171,20 +169,22 @@ export default function FriendsListScreen() {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Header onBack={() => router.back()} />
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Sign in required</Text>
-          <Text style={styles.emptySubtitle}>Sign in to connect with friends</Text>
+        <View className="flex-1 items-center justify-center py-xxxl px-xl gap-md">
+          <Text className="text-[48px] mb-sm">🔒</Text>
+          <Text className="text-h3 text-white text-center">Sign in required</Text>
+          <Text className="text-body text-text-secondary text-center max-w-[280px]">
+            Sign in to connect with friends
+          </Text>
           <Pressable
             onPress={() => {
               hapticMedium();
               router.push('/auth/sign-in');
             }}
-            style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}
+            className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80"
           >
-            <Text style={styles.primaryButtonText}>Sign In</Text>
+            <Text className="text-body-semibold text-white">Sign In</Text>
           </Pressable>
         </View>
       </View>
@@ -192,25 +192,42 @@ export default function FriendsListScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <Header onBack={() => router.back()} onSearch={handleSearch} />
 
       {/* Tabs */}
-      <Animated.View entering={FadeInDown.delay(50).duration(200)} style={styles.tabContainer}>
+      <Animated.View
+        entering={FadeInDown.delay(50).duration(200)}
+        className="flex-row mx-lg mb-lg bg-card rounded-lg border border-border p-xs"
+      >
         <Pressable
           onPress={() => {
             hapticLight();
             setActiveTab('friends');
           }}
-          style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
+          className={`flex-1 flex-row items-center justify-center gap-xs py-md rounded-md ${
+            activeTab === 'friends' ? 'bg-card-hover' : ''
+          }`}
         >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
+          <Text
+            className={`text-body-semibold ${
+              activeTab === 'friends' ? 'text-white' : 'text-text-tertiary'
+            }`}
+          >
             Friends
           </Text>
           {friends.length > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'friends' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'friends' && styles.tabBadgeTextActive]}>
+            <View
+              className={`min-w-5 h-5 px-xs rounded-full items-center justify-center ${
+                activeTab === 'friends' ? 'bg-imessage-dim' : 'bg-card-hover'
+              }`}
+            >
+              <Text
+                className={`text-[11px] font-bold ${
+                  activeTab === 'friends' ? 'text-imessage' : 'text-text-muted'
+                }`}
+              >
                 {friends.length}
               </Text>
             </View>
@@ -222,20 +239,28 @@ export default function FriendsListScreen() {
             hapticLight();
             setActiveTab('requests');
           }}
-          style={[styles.tab, activeTab === 'requests' && styles.tabActive]}
+          className={`flex-1 flex-row items-center justify-center gap-xs py-md rounded-md ${
+            activeTab === 'requests' ? 'bg-card-hover' : ''
+          }`}
         >
-          <Text style={[styles.tabText, activeTab === 'requests' && styles.tabTextActive]}>
+          <Text
+            className={`text-body-semibold ${
+              activeTab === 'requests' ? 'text-white' : 'text-text-tertiary'
+            }`}
+          >
             Requests
           </Text>
           {pendingCount > 0 && (
             <View
-              style={[
-                styles.tabBadge,
-                styles.tabBadgeHighlight,
-                activeTab === 'requests' && styles.tabBadgeActive,
-              ]}
+              className={`min-w-5 h-5 px-xs rounded-full items-center justify-center ${
+                activeTab === 'requests' ? 'bg-imessage-dim' : 'bg-imessage'
+              }`}
             >
-              <Text style={[styles.tabBadgeText, styles.tabBadgeTextHighlight]}>
+              <Text
+                className={`text-[11px] font-bold ${
+                  activeTab === 'requests' ? 'text-imessage' : 'text-white'
+                }`}
+              >
                 {pendingCount}
               </Text>
             </View>
@@ -245,18 +270,18 @@ export default function FriendsListScreen() {
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.accent} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#0B93F6" />
         </View>
       ) : (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.xxl }]}
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={Colors.textMuted}
+              tintColor="rgba(255,255,255,0.3)"
             />
           }
         >
@@ -285,28 +310,28 @@ export default function FriendsListScreen() {
 
 function Header({ onBack, onSearch }: { onBack: () => void; onSearch?: () => void }) {
   return (
-    <View style={styles.header}>
+    <View className="flex-row items-center justify-between px-lg py-md">
       <Pressable
         onPress={() => {
           hapticLight();
           onBack();
         }}
-        style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
+        className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center active:opacity-70"
       >
-        <Text style={styles.backIcon}>←</Text>
+        <Text className="text-[20px] text-white">←</Text>
       </Pressable>
 
-      <Text style={styles.headerTitle}>Friends</Text>
+      <Text className="text-h2 text-white font-rounded">Friends</Text>
 
       {onSearch ? (
         <Pressable
           onPress={onSearch}
-          style={({ pressed }) => [styles.searchButton, pressed && { opacity: 0.7 }]}
+          className="w-10 h-10 rounded-full bg-imessage-dim border border-imessage/40 items-center justify-center active:opacity-70"
         >
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text className="text-[18px]">🔍</Text>
         </Pressable>
       ) : (
-        <View style={styles.headerSpacer} />
+        <View className="w-10" />
       )}
     </View>
   );
@@ -329,30 +354,30 @@ function FriendsTab({
 }) {
   if (friends.length === 0) {
     return (
-      <Animated.View entering={FadeIn.duration(300)} style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>👥</Text>
-        <Text style={styles.emptyTitle}>No friends yet</Text>
-        <Text style={styles.emptySubtitle}>
+      <Animated.View entering={FadeIn.duration(300)} className="flex-1 items-center justify-center py-xxxl px-xl gap-md">
+        <Text className="text-[48px] mb-sm">👥</Text>
+        <Text className="text-h3 text-white text-center">No friends yet</Text>
+        <Text className="text-body text-text-secondary text-center max-w-[280px]">
           Find people to keep you accountable on your commitments
         </Text>
         <Pressable
           onPress={onSearch}
-          style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}
+          className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80"
         >
-          <Text style={styles.primaryButtonText}>Find Friends</Text>
+          <Text className="text-body-semibold text-white">Find Friends</Text>
         </Pressable>
         <Pressable
           onPress={onInvite}
-          style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}
+          className="mt-sm px-xl py-md rounded-lg bg-card border border-border active:opacity-80"
         >
-          <Text style={styles.secondaryButtonText}>📨 Invite Someone New</Text>
+          <Text className="text-body-semibold text-text-secondary">📨 Invite Someone New</Text>
         </Pressable>
       </Animated.View>
     );
   }
 
   return (
-    <Animated.View layout={LinearTransition.springify()} style={styles.listContainer}>
+    <Animated.View layout={LinearTransition.springify()} className="gap-sm">
       {friends.map((friend, index) => (
         <Animated.View
           key={friend.id}
@@ -390,34 +415,34 @@ function RequestsTab({
 
   if (!hasAny) {
     return (
-      <Animated.View entering={FadeIn.duration(300)} style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>📬</Text>
-        <Text style={styles.emptyTitle}>No pending requests</Text>
-        <Text style={styles.emptySubtitle}>
+      <Animated.View entering={FadeIn.duration(300)} className="flex-1 items-center justify-center py-xxxl px-xl gap-md">
+        <Text className="text-[48px] mb-sm">📬</Text>
+        <Text className="text-h3 text-white text-center">No pending requests</Text>
+        <Text className="text-body text-text-secondary text-center max-w-[280px]">
           Search for users to send friend requests
         </Text>
         <Pressable
           onPress={onSearch}
-          style={({ pressed }) => [styles.primaryButton, pressed && { opacity: 0.8 }]}
+          className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80"
         >
-          <Text style={styles.primaryButtonText}>Find Friends</Text>
+          <Text className="text-body-semibold text-white">Find Friends</Text>
         </Pressable>
         <Pressable
           onPress={onInvite}
-          style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.8 }]}
+          className="mt-sm px-xl py-md rounded-lg bg-card border border-border active:opacity-80"
         >
-          <Text style={styles.secondaryButtonText}>📨 Invite Someone New</Text>
+          <Text className="text-body-semibold text-text-secondary">📨 Invite Someone New</Text>
         </Pressable>
       </Animated.View>
     );
   }
 
   return (
-    <Animated.View layout={LinearTransition.springify()} style={styles.listContainer}>
+    <Animated.View layout={LinearTransition.springify()} className="gap-sm">
       {/* Received Requests */}
       {pendingReceived.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>RECEIVED</Text>
+          <Text className="text-label text-text-muted ml-xs mb-xs uppercase tracking-wide">RECEIVED</Text>
           {pendingReceived.map((request, index) => (
             <Animated.View
               key={request.friendship_id}
@@ -439,7 +464,7 @@ function RequestsTab({
       {/* Sent Requests */}
       {pendingSent.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, pendingReceived.length > 0 && { marginTop: Spacing.xl }]}>
+          <Text className={`text-label text-text-muted ml-xs mb-xs uppercase tracking-wide ${pendingReceived.length > 0 ? 'mt-xl' : ''}`}>
             SENT
           </Text>
           {pendingSent.map((request, index) => (
@@ -473,27 +498,27 @@ function FriendCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.friendCard, pressed && { opacity: 0.8 }]}
+      className="flex-row items-center bg-card rounded-lg border border-border p-md gap-md active:opacity-80"
     >
       <LinearGradient
-        colors={[Colors.accent, '#0A7FD4']}
-        style={styles.avatar}
+        colors={['#0B93F6', '#0A7FD4']}
+        className="w-11 h-11 rounded-full items-center justify-center"
       >
-        <Text style={styles.avatarText}>{initial}</Text>
+        <Text className="text-[18px] font-bold text-white">{initial}</Text>
       </LinearGradient>
 
-      <View style={styles.friendInfo}>
-        <Text style={styles.friendName} numberOfLines={1}>
+      <View className="flex-1 gap-0.5">
+        <Text className="text-body-semibold text-white" numberOfLines={1}>
           {displayName}
         </Text>
         {friend.username && (
-          <Text style={styles.friendUsername} numberOfLines={1}>
+          <Text className="text-caption text-imessage font-mono" numberOfLines={1}>
             @{friend.username}
           </Text>
         )}
       </View>
 
-      <Text style={styles.chevron}>›</Text>
+      <Text className="text-[22px] text-text-muted font-light">›</Text>
     </Pressable>
   );
 }
@@ -520,40 +545,40 @@ function RequestCard({
   const initial = getInitials(user);
 
   return (
-    <View style={styles.requestCard}>
+    <View className="flex-row items-center bg-card rounded-lg border border-border p-md gap-md">
       <LinearGradient
-        colors={type === 'received' ? [Colors.success, Colors.successDim] : [Colors.systemGray3, Colors.systemGray4]}
-        style={styles.avatar}
+        colors={type === 'received' ? ['#34C759', 'rgba(52, 199, 89, 0.7)'] : ['#48484A', '#3A3A3C']}
+        className="w-11 h-11 rounded-full items-center justify-center"
       >
-        <Text style={styles.avatarText}>{initial}</Text>
+        <Text className="text-[18px] font-bold text-white">{initial}</Text>
       </LinearGradient>
 
-      <View style={styles.requestInfo}>
-        <Text style={styles.requestName} numberOfLines={1}>
+      <View className="flex-1 gap-0.5">
+        <Text className="text-body-semibold text-white" numberOfLines={1}>
           {displayName}
         </Text>
-        <Text style={styles.requestStatus}>
+        <Text className="text-caption text-text-tertiary">
           {type === 'received' ? 'Wants to connect' : 'Awaiting response'}
         </Text>
       </View>
 
       {type === 'received' && (
-        <View style={styles.requestActions}>
+        <View className="flex-row gap-sm">
           {isLoading ? (
-            <ActivityIndicator size="small" color={Colors.accent} />
+            <ActivityIndicator size="small" color="#0B93F6" />
           ) : (
             <>
               <Pressable
                 onPress={onReject}
-                style={({ pressed }) => [styles.rejectButton, pressed && { opacity: 0.7 }]}
+                className="w-9 h-9 rounded-full bg-danger-dim border border-danger/40 items-center justify-center active:opacity-70"
               >
-                <Text style={styles.rejectButtonText}>✕</Text>
+                <Text className="text-[14px] font-semibold text-danger">✕</Text>
               </Pressable>
               <Pressable
                 onPress={onAccept}
-                style={({ pressed }) => [styles.acceptButton, pressed && { opacity: 0.8 }]}
+                className="w-9 h-9 rounded-full bg-success-dim border border-success/40 items-center justify-center active:opacity-80"
               >
-                <Text style={styles.acceptButtonText}>✓</Text>
+                <Text className="text-[14px] font-semibold text-success">✓</Text>
               </Pressable>
             </>
           )}
@@ -561,310 +586,10 @@ function RequestCard({
       )}
 
       {type === 'sent' && (
-        <View style={styles.pendingBadge}>
-          <Text style={styles.pendingBadgeText}>Pending</Text>
+        <View className="px-sm py-xs rounded-full bg-card-hover">
+          <Text className="text-caption text-text-muted">Pending</Text>
         </View>
       )}
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Colors.text,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.accentDim,
-    borderWidth: 1,
-    borderColor: Colors.accent + '40',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchIcon: {
-    fontSize: 18,
-  },
-
-  // Tabs
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xs,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-  },
-  tabActive: {
-    backgroundColor: Colors.bgCardHover,
-  },
-  tabText: {
-    ...Typography.bodySemibold,
-    color: Colors.textTertiary,
-  },
-  tabTextActive: {
-    color: Colors.text,
-  },
-  tabBadge: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: Spacing.xs,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCardHover,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBadgeActive: {
-    backgroundColor: Colors.accentDim,
-  },
-  tabBadgeHighlight: {
-    backgroundColor: Colors.accent,
-  },
-  tabBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textMuted,
-  },
-  tabBadgeTextActive: {
-    color: Colors.accent,
-  },
-  tabBadgeTextHighlight: {
-    color: Colors.text,
-  },
-
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Scroll
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.lg,
-  },
-
-  // List
-  listContainer: {
-    gap: Spacing.sm,
-  },
-
-  // Section Title
-  sectionTitle: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-    marginBottom: Spacing.xs,
-  },
-
-  // Empty State
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.xxxl,
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.md,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: Spacing.sm,
-  },
-  emptyTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  primaryButton: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.lg,
-  },
-  primaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  secondaryButton: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  secondaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-
-  // Friend Card
-  friendCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  friendInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  friendName: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  friendUsername: {
-    ...Typography.caption,
-    color: Colors.accent,
-    fontFamily: Fonts.mono,
-  },
-  chevron: {
-    fontSize: 22,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-
-  // Request Card
-  requestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.md,
-  },
-  requestInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  requestName: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  requestStatus: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  rejectButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.dangerDim,
-    borderWidth: 1,
-    borderColor: Colors.danger + '40',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rejectButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.danger,
-  },
-  acceptButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.successDim,
-    borderWidth: 1,
-    borderColor: Colors.success + '40',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  acceptButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.success,
-  },
-  pendingBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCardHover,
-  },
-  pendingBadgeText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-});
-

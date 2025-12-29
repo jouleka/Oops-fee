@@ -5,11 +5,10 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 import {
   type GloryMetric,
@@ -112,17 +111,17 @@ export function MetricPicker({ value, onChange, scope, isShameMode = false }: Me
       {/* Trigger Button */}
       <Pressable
         onPress={handleOpen}
-        style={({ pressed }) => [
-          styles.trigger,
-          pressed && styles.triggerPressed,
-          isShameMode && styles.triggerShame,
-        ]}
+        className={`flex-row items-center gap-2 rounded-lg border py-3 px-4 ${
+          isShameMode
+            ? 'bg-danger-dim border-danger/40'
+            : 'bg-card border-border active:bg-card-hover'
+        }`}
       >
-        <Text style={styles.triggerEmoji}>{getEmoji(value)}</Text>
-        <Text style={[styles.triggerText, isShameMode && styles.triggerTextShame]}>
+        <Text className="text-base">{getEmoji(value)}</Text>
+        <Text className={`flex-1 text-body-semibold ${isShameMode ? 'text-danger' : 'text-white'}`}>
           {getMetricLabel(value)}
         </Text>
-        <Text style={styles.chevron}>▾</Text>
+        <Text className="text-xs text-text-muted">▾</Text>
       </Pressable>
 
       {/* Modal */}
@@ -133,37 +132,44 @@ export function MetricPicker({ value, onChange, scope, isShameMode = false }: Me
         onRequestClose={handleClose}
         statusBarTranslucent
       >
-        <View style={styles.overlay}>
-          <Pressable style={styles.overlayTouchable} onPress={handleClose} />
+        <View className="flex-1 bg-black/60 justify-end">
+          <Pressable className="flex-1" onPress={handleClose} />
           <Animated.View
             entering={FadeInDown.duration(200).damping(20)}
-            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.xl) }]}
+            className="bg-abyss-800 rounded-t-xxl pt-3 px-4 max-h-[60%]"
+            style={{ paddingBottom: Math.max(insets.bottom, 24) }}
           >
-            <View style={styles.handle} />
-            <Text style={styles.sheetTitle}>
+            <View className="w-9 h-1 rounded-full bg-system-gray-4 self-center mb-4" />
+            <Text className="text-h3 text-white text-center mb-4">
               {isShameMode ? '💀 Sort Wall of Shame' : '📊 Sort Leaderboard'}
             </Text>
-            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+            <ScrollView className="flex-grow-0" showsVerticalScrollIndicator={false}>
               {metrics.map((option) => (
                 <Pressable
                   key={option.value}
                   onPress={() => handleSelect(option.value)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    option.value === value && styles.optionSelected,
-                    pressed && styles.optionPressed,
-                  ]}
+                  className={`flex-row items-center gap-3 py-3 px-3 rounded-lg mb-2 ${
+                    option.value === value
+                      ? 'bg-imessage-dim'
+                      : 'active:bg-card-hover'
+                  }`}
                 >
-                  <Text style={styles.optionEmoji}>{option.emoji}</Text>
-                  <View style={styles.optionInfo}>
-                    <Text style={[styles.optionLabel, option.value === value && styles.optionLabelSelected]}>
+                  <Text className="text-2xl w-8 text-center">{option.emoji}</Text>
+                  <View className="flex-1 gap-0.5">
+                    <Text
+                      className={`text-body-semibold ${
+                        option.value === value ? 'text-imessage' : 'text-white'
+                      }`}
+                    >
                       {option.label}
                     </Text>
                     {option.description && (
-                      <Text style={styles.optionDescription}>{option.description}</Text>
+                      <Text className="text-caption text-text-tertiary">{option.description}</Text>
                     )}
                   </View>
-                  {option.value === value && <Text style={styles.checkmark}>✓</Text>}
+                  {option.value === value && (
+                    <Text className="text-lg text-imessage font-semibold">✓</Text>
+                  )}
                 </Pressable>
               ))}
             </ScrollView>
@@ -173,120 +179,3 @@ export function MetricPicker({ value, onChange, scope, isShameMode = false }: Me
     </>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  // Trigger
-  trigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  triggerPressed: {
-    backgroundColor: Colors.bgCardHover,
-  },
-  triggerShame: {
-    borderColor: Colors.danger + '40',
-    backgroundColor: Colors.dangerDim,
-  },
-  triggerEmoji: {
-    fontSize: 16,
-  },
-  triggerText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    flex: 1,
-  },
-  triggerTextShame: {
-    color: Colors.danger,
-  },
-  chevron: {
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-
-  // Modal
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  overlayTouchable: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: Colors.bgElevated,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    paddingTop: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    maxHeight: '60%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.systemGray4,
-    alignSelf: 'center',
-    marginBottom: Spacing.lg,
-  },
-  sheetTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: Spacing.lg,
-  },
-  optionsList: {
-    flexGrow: 0,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.lg,
-    marginBottom: Spacing.sm,
-  },
-  optionSelected: {
-    backgroundColor: Colors.accentDim,
-  },
-  optionPressed: {
-    backgroundColor: Colors.bgCardHover,
-  },
-  optionEmoji: {
-    fontSize: 24,
-    width: 32,
-    textAlign: 'center',
-  },
-  optionInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  optionLabel: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  optionLabelSelected: {
-    color: Colors.accent,
-  },
-  optionDescription: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  checkmark: {
-    fontSize: 18,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-});
-

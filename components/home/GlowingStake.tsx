@@ -4,7 +4,7 @@
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { COPY } from '@/constants/content';
-import { Colors, Spacing, Typography } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 
 interface GlowingStakeProps {
   amount: number;
@@ -43,66 +43,31 @@ export function GlowingStake({ amount }: GlowingStakeProps) {
   }));
 
   return (
-    <View style={styles.container}>
+    <View className="items-center py-8 relative">
       {hasStake && (
-        <Animated.View style={[styles.glow, glowStyle]}>
+        <Animated.View style={glowStyle} className="absolute inset-0 items-center justify-center">
           <LinearGradient
-            colors={[Colors.dangerGlow, 'transparent']}
-            style={styles.glowGradient}
+            colors={['rgba(255, 69, 58, 0.35)', 'transparent']}
+            className="w-[200px] h-[200px] rounded-full"
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
           />
         </Animated.View>
       )}
-      <View style={styles.content}>
-        <Text style={styles.label}>{COPY.stakeLabel}</Text>
-        <Text style={[styles.amount, hasStake && styles.amountActive]}>
+      <View className="items-center">
+        <Text className="text-label text-text-muted uppercase tracking-wide mb-2">
+          {COPY.stakeLabel}
+        </Text>
+        <Text
+          className={`text-display-lg ${hasStake ? 'text-danger' : 'text-text-tertiary'}`}
+          style={{ fontFamily: Fonts.rounded }}
+        >
           ${amount}
         </Text>
-        <Text style={styles.subtext}>
+        <Text className="text-caption text-text-tertiary mt-2 italic">
           {hasStake ? COPY.stakeActive : COPY.stakeEmpty}
         </Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxl,
-    position: 'relative',
-  },
-  glow: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glowGradient: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-  content: {
-    alignItems: 'center',
-  },
-  label: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginBottom: Spacing.sm,
-  },
-  amount: {
-    ...Typography.displayLarge,
-    color: Colors.textTertiary,
-  },
-  amountActive: {
-    color: Colors.danger,
-  },
-  subtext: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: Spacing.sm,
-    fontStyle: 'italic',
-  },
-});
-

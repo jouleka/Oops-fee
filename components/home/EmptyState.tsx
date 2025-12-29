@@ -5,18 +5,18 @@
 
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import {
-    COPY,
-    getLiveBettorCount,
-    GRAVEYARD_ENTRIES,
-    PROMISE_TEMPLATES,
-    ROTATING_QUOTES,
-    type PromiseTemplate,
+  COPY,
+  getLiveBettorCount,
+  GRAVEYARD_ENTRIES,
+  PROMISE_TEMPLATES,
+  ROTATING_QUOTES,
+  type PromiseTemplate,
 } from '@/constants/content';
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { hapticLight } from '@/lib/haptics';
 
 import { PulsingDot } from './PulsingDot';
@@ -27,17 +27,17 @@ interface EmptyStateProps {
 
 export function EmptyState({ onSelectTemplate }: EmptyStateProps) {
   return (
-    <View style={styles.container}>
+    <View className="pt-2">
       <RotatingQuote />
       <SocialProof />
 
-      <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.templatesSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{COPY.templatesTitle}</Text>
+      <Animated.View entering={FadeInDown.delay(150).duration(400)} className="mb-8">
+        <View className="flex-row items-center gap-2 mb-1">
+          <Text className="text-label text-text-muted uppercase tracking-wide">{COPY.templatesTitle}</Text>
         </View>
-        <Text style={styles.sectionSubtitle}>{COPY.templatesSubtitle}</Text>
+        <Text className="text-caption text-text-tertiary mb-4">{COPY.templatesSubtitle}</Text>
 
-        <View style={styles.templatesGrid}>
+        <View className="flex-row flex-wrap gap-3">
           {PROMISE_TEMPLATES.map((template, i) => (
             <TemplateCard
               key={template.id}
@@ -51,9 +51,9 @@ export function EmptyState({ onSelectTemplate }: EmptyStateProps) {
 
       <GraveyardPreview />
 
-      <Animated.View entering={FadeIn.delay(600).duration(400)} style={styles.footerNudge}>
-        <Text style={styles.footerText}>{COPY.footerPrimary}</Text>
-        <Text style={styles.footerSubtext}>{COPY.footerSecondary}</Text>
+      <Animated.View entering={FadeIn.delay(600).duration(400)} className="items-center py-4">
+        <Text className="text-caption text-text-tertiary">{COPY.footerPrimary}</Text>
+        <Text className="text-caption text-text-muted italic mt-0.5">{COPY.footerSecondary}</Text>
       </Animated.View>
     </View>
   );
@@ -74,9 +74,13 @@ function RotatingQuote() {
   const quote = ROTATING_QUOTES[index];
 
   return (
-    <Animated.View key={index} entering={FadeIn.duration(500)} style={styles.quoteContainer}>
-      <Text style={styles.quoteIcon}>{quote.icon}</Text>
-      <Text style={styles.quoteText}>{quote.text}</Text>
+    <Animated.View
+      key={index}
+      entering={FadeIn.duration(500)}
+      className="items-center py-4 px-3 min-h-[90px]"
+    >
+      <Text className="text-[28px] mb-1">{quote.icon}</Text>
+      <Text className="text-h3 text-text-secondary text-center italic">{quote.text}</Text>
     </Animated.View>
   );
 }
@@ -85,10 +89,15 @@ function SocialProof() {
   const count = useMemo(() => getLiveBettorCount(), []);
 
   return (
-    <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.socialProof}>
+    <Animated.View
+      entering={FadeIn.delay(100).duration(400)}
+      className="flex-row items-center justify-center gap-2 mb-6"
+    >
       <PulsingDot />
-      <Text style={styles.socialProofText}>
-        <Text style={styles.socialProofNumber}>{count.toLocaleString()}</Text>{' '}
+      <Text className="text-caption text-text-tertiary">
+        <Text className="text-white font-semibold" style={{ fontFamily: Fonts.mono }}>
+          {count.toLocaleString()}
+        </Text>{' '}
         {COPY.socialProofSuffix}
       </Text>
     </Animated.View>
@@ -105,23 +114,31 @@ function TemplateCard({
   onPress: () => void;
 }) {
   return (
-    <Animated.View entering={FadeInDown.delay(180 + index * 50).duration(280)}>
+    <Animated.View
+      entering={FadeInDown.delay(180 + index * 50).duration(280)}
+      className="basis-[47%] flex-grow"
+    >
       <Pressable
         onPress={() => {
           hapticLight();
           onPress();
         }}
-        style={({ pressed }) => [
-          styles.templateCard,
-          pressed && styles.templateCardPressed,
-        ]}
+        className="bg-card rounded-lg border border-border p-3 gap-1 active:bg-card-hover active:border-border-focus"
       >
-        <Text style={styles.templateEmoji}>{template.emoji}</Text>
-        <Text style={styles.templateText} numberOfLines={2}>
+        <Text className="text-[22px]">{template.emoji}</Text>
+        <Text
+          className="text-caption text-white leading-[18px] min-h-[36px]"
+          numberOfLines={2}
+        >
           {template.text}
         </Text>
-        <View style={styles.templateStake}>
-          <Text style={styles.templateStakeText}>${template.stake}</Text>
+        <View className="self-start bg-danger-dim py-[3px] px-2 rounded-sm mt-1">
+          <Text
+            className="text-caption text-danger font-semibold"
+            style={{ fontFamily: Fonts.mono }}
+          >
+            ${template.stake}
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -140,218 +157,36 @@ function GraveyardPreview() {
   }, []);
 
   return (
-    <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.graveyardSection}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionIcon}>⚰️</Text>
-        <Text style={styles.sectionTitle}>{COPY.graveyardTitle}</Text>
+    <Animated.View entering={FadeInDown.delay(450).duration(400)} className="mb-8">
+      <View className="flex-row items-center gap-2 mb-1">
+        <Text className="text-[16px]">⚰️</Text>
+        <Text className="text-label text-text-muted uppercase tracking-wide">{COPY.graveyardTitle}</Text>
       </View>
 
       <Pressable
         onPress={handleGraveyardPress}
-        style={({ pressed }) => [
-          styles.graveyardCard,
-          pressed && styles.graveyardCardPressed,
-        ]}
+        className="flex-row items-center bg-danger/5 rounded-lg border border-danger/[0.12] p-4 mt-2 active:bg-danger/[0.08] active:border-danger/[0.18]"
       >
-        <View style={styles.graveyardContent}>
-          <Text style={styles.graveyardRip}>RIP</Text>
-          <Text style={styles.graveyardText}>&ldquo;{entry.text}&rdquo;</Text>
-          <Text style={styles.graveyardMeta}>
+        <View className="flex-1 gap-[3px]">
+          <Text className="text-label text-danger text-[10px]">RIP</Text>
+          <Text className="text-body-medium text-text-secondary italic">
+            &ldquo;{entry.text}&rdquo;
+          </Text>
+          <Text className="text-caption text-text-tertiary">
             Lasted {entry.lasted} · Lost ${entry.lost}
           </Text>
         </View>
-        <View style={styles.graveyardRight}>
-          <Text style={styles.graveyardSkull}>💀</Text>
-          <Text style={styles.graveyardChevron}>›</Text>
+        <View className="items-center gap-1">
+          <Text className="text-[26px] opacity-60">💀</Text>
+          <Text className="text-[18px] text-text-muted font-light">›</Text>
         </View>
       </Pressable>
 
       <Pressable onPress={handleGraveyardPress}>
-        <Text style={styles.graveyardWarning}>{COPY.graveyardWarning}</Text>
+        <Text className="text-caption text-danger text-center mt-3 font-medium">
+          {COPY.graveyardWarning}
+        </Text>
       </Pressable>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingTop: Spacing.sm,
-  },
-
-  // Quote
-  quoteContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    minHeight: 90,
-  },
-  quoteIcon: {
-    fontSize: 28,
-    marginBottom: Spacing.xs,
-  },
-  quoteText: {
-    ...Typography.h3,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
-  // Social proof
-  socialProof: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  socialProofText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  socialProofNumber: {
-    color: Colors.text,
-    fontWeight: '600',
-    fontFamily: Fonts.mono,
-  },
-
-  // Section headers
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: 4,
-  },
-  sectionIcon: {
-    fontSize: 16,
-  },
-  sectionTitle: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginBottom: Spacing.lg,
-  },
-
-  // Templates
-  templatesSection: {
-    marginBottom: Spacing.xxl,
-  },
-  templatesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  templateCard: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.xs,
-  },
-  templateCardPressed: {
-    backgroundColor: Colors.bgCardHover,
-    borderColor: Colors.borderFocus,
-  },
-  templateEmoji: {
-    fontSize: 22,
-  },
-  templateText: {
-    ...Typography.caption,
-    color: Colors.text,
-    lineHeight: 18,
-    minHeight: 36,
-  },
-  templateStake: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.dangerDim,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-    marginTop: Spacing.xs,
-  },
-  templateStakeText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    fontFamily: Fonts.mono,
-    fontWeight: '600',
-  },
-
-  // Graveyard
-  graveyardSection: {
-    marginBottom: Spacing.xxl,
-  },
-  graveyardCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 69, 58, 0.05)',
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 69, 58, 0.12)',
-    padding: Spacing.lg,
-    marginTop: Spacing.sm,
-  },
-  graveyardCardPressed: {
-    backgroundColor: 'rgba(255, 69, 58, 0.08)',
-    borderColor: 'rgba(255, 69, 58, 0.18)',
-  },
-  graveyardContent: {
-    flex: 1,
-    gap: 3,
-  },
-  graveyardRight: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  graveyardChevron: {
-    fontSize: 18,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-  graveyardRip: {
-    ...Typography.label,
-    color: Colors.danger,
-    fontSize: 10,
-  },
-  graveyardText: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  graveyardMeta: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  graveyardSkull: {
-    fontSize: 26,
-    opacity: 0.6,
-  },
-  graveyardWarning: {
-    ...Typography.caption,
-    color: Colors.danger,
-    textAlign: 'center',
-    marginTop: Spacing.md,
-    fontWeight: '500',
-  },
-
-  // Footer nudge
-  footerNudge: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  footerSubtext: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-});
-

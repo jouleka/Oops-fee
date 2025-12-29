@@ -3,11 +3,10 @@
  */
 
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { CHECKIN_COPY } from '@/constants/content';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticMedium } from '@/lib/haptics';
 
 interface CheckInBannerProps {
@@ -28,13 +27,16 @@ export function CheckInBanner({ totalAtStake, streak, onCommit }: CheckInBannerP
   };
 
   return (
-    <Animated.View entering={FadeInDown.duration(300)} style={styles.banner}>
-      <View style={styles.header}>
-        <View style={styles.left}>
-          <Text style={styles.emoji}>👋</Text>
+    <Animated.View
+      entering={FadeInDown.duration(300)}
+      className="bg-card rounded-xl border border-success/30 p-4 mb-4 gap-3"
+    >
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3 flex-1">
+          <Text className="text-[28px]">👋</Text>
           <View>
-            <Text style={styles.title}>{CHECKIN_COPY.title}</Text>
-            <Text style={styles.subtitle}>
+            <Text className="text-body-medium text-white">{CHECKIN_COPY.title}</Text>
+            <Text className="text-caption text-text-tertiary mt-0.5">
               ${totalAtStake} on the line
               {streak > 0 && ` • 🔥 ${streak} day streak`}
             </Text>
@@ -42,108 +44,23 @@ export function CheckInBanner({ totalAtStake, streak, onCommit }: CheckInBannerP
         </View>
       </View>
 
-      <View style={styles.actions}>
+      <View className="flex-row gap-2">
         <Pressable
           disabled={working}
           onPress={() => handleCommit(true)}
-          style={({ pressed }) => [
-            styles.yesBtn,
-            pressed && styles.pressed,
-            working && styles.disabled,
-          ]}
+          className={`flex-1 h-11 bg-success rounded-md items-center justify-center active:opacity-90 active:scale-[0.98] ${working ? 'opacity-60' : ''}`}
         >
-          <Text style={styles.yesBtnText}>✓ On track</Text>
+          <Text className="text-body-semibold text-black">✓ On track</Text>
         </Pressable>
 
         <Pressable
           disabled={working}
           onPress={() => handleCommit(false)}
-          style={({ pressed }) => [
-            styles.noBtn,
-            pressed && styles.noBtnPressed,
-            working && styles.disabled,
-          ]}
+          className={`flex-1 h-11 bg-abyss-800 rounded-md border border-border items-center justify-center active:bg-danger-dim active:border-danger/40 ${working ? 'opacity-60' : ''}`}
         >
-          <Text style={styles.noBtnText}>✗ Failed</Text>
+          <Text className="text-body-semibold text-text-secondary">✗ Failed</Text>
         </Pressable>
       </View>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.success + '30',
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    gap: Spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    flex: 1,
-  },
-  emoji: {
-    fontSize: 28,
-  },
-  title: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-  },
-  subtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  yesBtn: {
-    flex: 1,
-    height: 44,
-    backgroundColor: Colors.success,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yesBtnText: {
-    ...Typography.bodySemibold,
-    color: '#000',
-  },
-  noBtn: {
-    flex: 1,
-    height: 44,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noBtnPressed: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger + '40',
-  },
-  noBtnText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-});
-

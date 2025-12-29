@@ -7,9 +7,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticLight } from '@/lib/haptics';
 
 interface BlockedBannerProps {
@@ -30,14 +29,19 @@ export function BlockedBanner({
   };
 
   return (
-    <Pressable style={styles.container} onPress={handlePress}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="ban" size={24} color={Colors.danger} />
+    <Pressable
+      className="flex-row items-center bg-card rounded-lg p-md gap-md border border-border border-l-[3px] border-l-danger"
+      onPress={handlePress}
+    >
+      <View className="w-10 h-10 rounded-full bg-danger-dim items-center justify-center">
+        <Ionicons name="ban" size={24} color="#FF453A" />
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Payment required</Text>
-        <Text style={styles.description}>
+      <View className="flex-1">
+        <Text className="text-body-semibold text-white mb-0.5">
+          Payment required
+        </Text>
+        <Text className="text-caption text-text-secondary">
           {message ||
             (failedPaymentCount > 1
               ? `You have ${failedPaymentCount} failed payments. Resolve them to continue.`
@@ -45,61 +49,10 @@ export function BlockedBanner({
         </Text>
       </View>
 
-      <View style={styles.action}>
-        <Text style={styles.actionText}>Fix</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.text} />
+      <View className="flex-row items-center gap-1 bg-danger px-md py-sm rounded-full">
+        <Text className="text-caption text-white font-semibold">Fix</Text>
+        <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
       </View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    // Subtle left accent
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.danger,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.dangerDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  description: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  action: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.danger,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-  },
-  actionText: {
-    ...Typography.caption,
-    color: Colors.text,
-    fontWeight: '600',
-  },
-});
-

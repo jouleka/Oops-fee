@@ -1,6 +1,6 @@
 /**
  * SettlementToast
- * 
+ *
  * In-app notification when a promise is settled (charged or payment failed).
  * Slides up from bottom with dramatic styling to reinforce loss salience.
  */
@@ -9,18 +9,16 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, Text, View } from 'react-native';
 import Animated, {
-    FadeIn,
-    FadeOut,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  FadeIn,
+  FadeOut,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 
 export type SettlementType = 'charged' | 'failed' | 'requires_action' | 'abandoned';
 
@@ -98,19 +96,19 @@ export function SettlementToast({
     if (visible) {
       setIsShowing(true);
       translateY.value = withTiming(0, { duration: 400 });
-      
+
       // Haptics - error feedback for losses
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       } catch {
         // Ignore
       }
-      
+
       // Auto-dismiss after 10 seconds (longer for settlements)
       const timeout = setTimeout(() => {
         handleDismiss();
       }, 10000);
-      
+
       return () => clearTimeout(timeout);
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
@@ -126,66 +124,73 @@ export function SettlementToast({
 
   const content = CONTENT[type];
   const isPaymentIssue = type === 'failed' || type === 'requires_action';
-  const accentColor = isPaymentIssue ? Colors.warning : Colors.danger;
-  const buttonColors: [string, string] = isPaymentIssue 
-    ? [Colors.warning, '#E68A00'] 
-    : [Colors.danger, '#CC362E'];
+  const accentColor = isPaymentIssue ? '#FF9F0A' : '#FF453A';
+  const buttonColors: [string, string] = isPaymentIssue
+    ? ['#FF9F0A', '#E68A00']
+    : ['#FF453A', '#CC362E'];
 
-  const truncatedText = promiseText.length > 50 
-    ? promiseText.substring(0, 50) + '...' 
-    : promiseText;
+  const truncatedText =
+    promiseText.length > 50 ? promiseText.substring(0, 50) + '...' : promiseText;
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
+    <View className="absolute inset-0 justify-end z-[9999]" pointerEvents="box-none">
       {/* Backdrop */}
       {visible && (
-        <Animated.View 
-          entering={FadeIn.duration(200)} 
+        <Animated.View
+          entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.backdrop}
+          className="absolute inset-0 bg-black/60"
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss} />
+          <Pressable className="absolute inset-0" onPress={handleDismiss} />
         </Animated.View>
       )}
 
       {/* Toast Card */}
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.card, 
           animatedStyle,
-          { 
-            paddingBottom: Math.max(insets.bottom, Spacing.lg),
+          {
+            paddingBottom: Math.max(insets.bottom, 16),
             borderColor: accentColor + '44',
-          }
+          },
         ]}
+        className="bg-abyss-700 rounded-t-xxl border border-b-0 overflow-hidden shadow-lg"
       >
         {/* Accent bar at top */}
-        <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+        <View className="h-1 w-full" style={{ backgroundColor: accentColor }} />
 
-        <View style={styles.content}>
+        <View className="p-xl gap-lg">
           {/* Header row */}
-          <View style={styles.headerRow}>
-            <View style={[styles.emojiContainer, { backgroundColor: accentColor + '20' }]}>
-              <Text style={styles.emoji}>{content.emoji}</Text>
+          <View className="flex-row items-center gap-md">
+            <View
+              className="w-14 h-14 rounded-full items-center justify-center"
+              style={{ backgroundColor: accentColor + '20' }}
+            >
+              <Text className="text-[28px]">{content.emoji}</Text>
             </View>
-            <View style={styles.headerText}>
-              <Text style={[styles.title, { color: accentColor }]}>{content.title}</Text>
-              <Text style={styles.subtitle}>{content.subtitle}</Text>
+            <View className="flex-1 gap-0.5">
+              <Text className="text-h3 font-rounded" style={{ color: accentColor }}>
+                {content.title}
+              </Text>
+              <Text className="text-body text-text-secondary">{content.subtitle}</Text>
             </View>
           </View>
 
           {/* Promise text */}
-          <View style={styles.promiseBox}>
-            <Text style={styles.promiseText}>&ldquo;{truncatedText}&rdquo;</Text>
+          <View className="bg-card rounded-lg border border-border p-md">
+            <Text className="text-body text-white italic text-center">
+              &ldquo;{truncatedText}&rdquo;
+            </Text>
           </View>
 
           {/* Stake amount */}
           {stake > 0 && (
-            <View style={[styles.stakeAmount, { backgroundColor: accentColor + '15' }]}>
-              <Text style={styles.stakeIcon}>
-                {type === 'charged' ? '🔥' : '💳'}
-              </Text>
-              <Text style={[styles.stakeText, { color: accentColor }]}>
+            <View
+              className="flex-row items-center justify-center gap-sm rounded-md py-sm px-md"
+              style={{ backgroundColor: accentColor + '15' }}
+            >
+              <Text className="text-[18px]">{type === 'charged' ? '🔥' : '💳'}</Text>
+              <Text className="text-body-semibold" style={{ color: accentColor }}>
                 {type === 'charged' ? `$${stake} charged` : `$${stake} pending`}
               </Text>
             </View>
@@ -194,135 +199,26 @@ export function SettlementToast({
           {/* Action button */}
           <Pressable
             onPress={handleAction}
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+            className="h-[52px] rounded-[26px] overflow-hidden shadow-md active:opacity-90 active:scale-[0.98]"
           >
             <LinearGradient
               colors={buttonColors}
-              style={styles.buttonGradient}
+              className="flex-1 items-center justify-center"
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.buttonText}>{content.buttonText}</Text>
+              <Text className="text-body-semibold text-white font-rounded">
+                {content.buttonText}
+              </Text>
             </LinearGradient>
           </Pressable>
 
           {/* Dismiss link */}
           <Pressable onPress={handleDismiss}>
-            <Text style={styles.dismissText}>Dismiss</Text>
+            <Text className="text-body text-text-tertiary text-center">Dismiss</Text>
           </Pressable>
         </View>
       </Animated.View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    zIndex: 9999,
-    elevation: 9999,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  card: {
-    backgroundColor: Colors.bgElevated,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  accentBar: {
-    height: 4,
-    width: '100%',
-  },
-  content: {
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  emojiContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: {
-    fontSize: 28,
-  },
-  headerText: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    ...Typography.h3,
-    fontFamily: Fonts.rounded,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-  promiseBox: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-  },
-  promiseText: {
-    ...Typography.body,
-    color: Colors.text,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  stakeAmount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
-  stakeIcon: {
-    fontSize: 18,
-  },
-  stakeText: {
-    ...Typography.bodySemibold,
-  },
-  button: {
-    height: 52,
-    borderRadius: 26,
-    overflow: 'hidden',
-    ...Shadows.md,
-  },
-  buttonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  dismissText: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-});
-

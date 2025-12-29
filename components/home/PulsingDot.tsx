@@ -3,7 +3,6 @@
  */
 
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -13,13 +12,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Colors } from '@/constants/theme';
-
 interface PulsingDotProps {
   color?: string;
 }
 
-export function PulsingDot({ color = Colors.success }: PulsingDotProps) {
+export function PulsingDot({ color = '#34C759' }: PulsingDotProps) {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
@@ -38,14 +35,10 @@ export function PulsingDot({ color = Colors.success }: PulsingDotProps) {
     transform: [{ scale: interpolate(opacity.value, [0.3, 1], [0.85, 1]) }],
   }));
 
-  return <Animated.View style={[styles.dot, { backgroundColor: color }, style]} />;
+  return (
+    <Animated.View
+      className="w-2 h-2 rounded-full"
+      style={[{ backgroundColor: color }, style]}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-});
-

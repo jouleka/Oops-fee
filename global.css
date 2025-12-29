@@ -6,6 +6,89 @@
 @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════════
+   CSS VARIABLES - Mobile Theme (from constants/theme.ts)
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Core backgrounds */
+  --color-bg: #000000;
+  --color-bg-elevated: #0A0A0C;
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-card-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-focus: rgba(255, 255, 255, 0.15);
+
+  /* Text */
+  --color-text: #FFFFFF;
+  --color-text-secondary: rgba(255, 255, 255, 0.70);
+  --color-text-tertiary: rgba(255, 255, 255, 0.45);
+  --color-text-muted: rgba(255, 255, 255, 0.30);
+
+  /* Brand / Accent */
+  --color-accent: #0B93F6;
+  --color-accent-dim: rgba(11, 147, 246, 0.15);
+  --color-accent-glow: rgba(11, 147, 246, 0.25);
+
+  /* Semantic colors */
+  --color-success: #34C759;
+  --color-success-dim: rgba(52, 199, 89, 0.15);
+  --color-warning: #FF9F0A;
+  --color-warning-dim: rgba(255, 159, 10, 0.15);
+  --color-danger: #FF453A;
+  --color-danger-dim: rgba(255, 69, 58, 0.12);
+  --color-danger-glow: rgba(255, 69, 58, 0.35);
+
+  /* Money colors */
+  --color-money: #00D632;
+  --color-money-dim: rgba(0, 214, 50, 0.12);
+
+  /* Urgency gradient */
+  --color-urgency-low: #34C759;
+  --color-urgency-medium: #FF9F0A;
+  --color-urgency-high: #FF6B35;
+  --color-urgency-critical: #FF453A;
+
+  /* iOS system grays */
+  --color-system-gray: #8E8E93;
+  --color-system-gray-2: #636366;
+  --color-system-gray-3: #48484A;
+  --color-system-gray-4: #3A3A3C;
+  --color-system-gray-5: #2C2C2E;
+  --color-system-gray-6: #1C1C1E;
+
+  /* Spacing (from theme.ts) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-xxxl: 48px;
+
+  /* Border radius (from theme.ts) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-xxl: 24px;
+  --radius-full: 9999px;
+
+  /* Animation durations (from theme.ts) */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* Safe area insets (fallback to 0) */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    KEYFRAME ANIMATIONS
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -362,6 +445,165 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 @layer utilities {
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE-SPECIFIC UTILITIES
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* Safe area padding utilities */
+  .pt-safe {
+    padding-top: var(--safe-area-top);
+  }
+  .pb-safe {
+    padding-bottom: var(--safe-area-bottom);
+  }
+  .pl-safe {
+    padding-left: var(--safe-area-left);
+  }
+  .pr-safe {
+    padding-right: var(--safe-area-right);
+  }
+  .px-safe {
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+  }
+  .py-safe {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+  }
+  .p-safe {
+    padding-top: var(--safe-area-top);
+    padding-right: var(--safe-area-right);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+  }
+
+  /* Safe area margin utilities */
+  .mt-safe {
+    margin-top: var(--safe-area-top);
+  }
+  .mb-safe {
+    margin-bottom: var(--safe-area-bottom);
+  }
+  .ml-safe {
+    margin-left: var(--safe-area-left);
+  }
+  .mr-safe {
+    margin-right: var(--safe-area-right);
+  }
+
+  /* Mobile card styles (common patterns from theme.ts) */
+  .card-elevated {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+  }
+  .card-elevated-lg {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xxl);
+  }
+  .card-glass {
+    background-color: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
+  }
+
+  /* Touch target minimum size (44x44 for accessibility) */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .touch-target-lg {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* Haptic feedback visual indicator */
+  .press-scale {
+    transition: transform var(--duration-fast) ease-out;
+  }
+  .press-scale:active {
+    transform: scale(0.97);
+  }
+
+  /* Text colors using CSS variables */
+  .text-primary {
+    color: var(--color-text);
+  }
+  .text-secondary-custom {
+    color: var(--color-text-secondary);
+  }
+  .text-tertiary {
+    color: var(--color-text-tertiary);
+  }
+  .text-muted-custom {
+    color: var(--color-text-muted);
+  }
+
+  /* Background colors using CSS variables */
+  .bg-elevated {
+    background-color: var(--color-bg-elevated);
+  }
+  .bg-card-custom {
+    background-color: var(--color-bg-card);
+  }
+
+  /* Border colors using CSS variables */
+  .border-subtle {
+    border-color: var(--color-border-subtle);
+  }
+  .border-focus {
+    border-color: var(--color-border-focus);
+  }
+
+  /* Urgency border utilities */
+  .border-urgency-low {
+    border-color: var(--color-urgency-low);
+  }
+  .border-urgency-medium {
+    border-color: var(--color-urgency-medium);
+  }
+  .border-urgency-high {
+    border-color: var(--color-urgency-high);
+  }
+  .border-urgency-critical {
+    border-color: var(--color-urgency-critical);
+  }
+
+  /* Urgency text utilities */
+  .text-urgency-low {
+    color: var(--color-urgency-low);
+  }
+  .text-urgency-medium {
+    color: var(--color-urgency-medium);
+  }
+  .text-urgency-high {
+    color: var(--color-urgency-high);
+  }
+  .text-urgency-critical {
+    color: var(--color-urgency-critical);
+  }
+
+  /* Urgency background utilities */
+  .bg-urgency-low {
+    background-color: var(--color-urgency-low);
+  }
+  .bg-urgency-medium {
+    background-color: var(--color-urgency-medium);
+  }
+  .bg-urgency-high {
+    background-color: var(--color-urgency-high);
+  }
+  .bg-urgency-critical {
+    background-color: var(--color-urgency-critical);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     TEXT UTILITIES
+     ═══════════════════════════════════════════════════════════════════ */
+
   /* Text gradient utility */
   .text-gradient {
     @apply bg-clip-text text-transparent;

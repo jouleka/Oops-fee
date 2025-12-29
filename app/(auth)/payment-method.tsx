@@ -13,13 +13,11 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { hapticLight } from '@/lib/haptics';
 import { isStripeConfigured, presentAddCardSheet, removePaymentMethod } from '@/lib/stripe';
@@ -120,30 +118,30 @@ export default function PaymentMethodScreen() {
   const paymentDisplay = getPaymentMethodDisplay();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft} />
-        <Text style={styles.headerTitle}>Payment Method</Text>
-        <Pressable onPress={handleClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={Colors.text} />
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
+        <View className="w-10" />
+        <Text className="text-h3 text-white">Payment Method</Text>
+        <Pressable onPress={handleClose} className="w-10 h-10 items-center justify-center">
+          <Ionicons name="close" size={24} color="#FFFFFF" />
         </Pressable>
       </View>
 
-      <View style={styles.content}>
+      <View className="flex-1 p-6">
         {/* Current Status */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusIcon}>
+        <View className="items-center py-12">
+          <View className="w-[72px] h-[72px] rounded-full bg-card items-center justify-center mb-4">
             {paymentState.hasPaymentMethod ? (
-              <Text style={styles.statusEmoji}>{paymentDisplay?.emoji || '💳'}</Text>
+              <Text className="text-[32px]">{paymentDisplay?.emoji || '💳'}</Text>
             ) : (
-              <Ionicons name="card-outline" size={32} color={Colors.textSecondary} />
+              <Ionicons name="card-outline" size={32} color="rgba(255, 255, 255, 0.70)" />
             )}
           </View>
-          <Text style={styles.statusTitle}>
+          <Text className="text-h2 text-white mb-2">
             {paymentDisplay ? paymentDisplay.full : 'No payment method'}
           </Text>
-          <Text style={styles.statusDescription}>
+          <Text className="text-body text-text-secondary text-center">
             {paymentState.hasPaymentMethod
               ? 'Your card will be charged if you fail a staked promise'
               : 'Add a card to create promises with real stakes'}
@@ -151,22 +149,22 @@ export default function PaymentMethodScreen() {
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Ionicons name="shield-checkmark" size={20} color={Colors.accent} />
-            <Text style={styles.infoText}>
+        <View className="bg-card rounded-lg p-4 gap-3 mb-6">
+          <View className="flex-row items-center gap-3">
+            <Ionicons name="shield-checkmark" size={20} color="#0B93F6" />
+            <Text className="text-body text-text-secondary flex-1">
               Your card is securely stored by Stripe
             </Text>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="lock-closed" size={20} color={Colors.accent} />
-            <Text style={styles.infoText}>
+          <View className="flex-row items-center gap-3">
+            <Ionicons name="lock-closed" size={20} color="#0B93F6" />
+            <Text className="text-body text-text-secondary flex-1">
               You&apos;re only charged if you fail a promise
             </Text>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="wallet" size={20} color={Colors.accent} />
-            <Text style={styles.infoText}>
+          <View className="flex-row items-center gap-3">
+            <Ionicons name="wallet" size={20} color="#0B93F6" />
+            <Text className="text-body text-text-secondary flex-1">
               Multiple payment options available
             </Text>
           </View>
@@ -174,44 +172,44 @@ export default function PaymentMethodScreen() {
 
         {/* Error Message */}
         {error && (
-          <View style={styles.errorCard}>
-            <Ionicons name="alert-circle" size={20} color={Colors.danger} />
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="flex-row items-center gap-2 bg-danger-dim rounded-md p-3 mb-4">
+            <Ionicons name="alert-circle" size={20} color="#FF453A" />
+            <Text className="text-body text-danger flex-1">{error}</Text>
           </View>
         )}
 
         {/* Success Message */}
         {success && (
-          <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-            <Text style={styles.successText}>Card added successfully!</Text>
+          <View className="flex-row items-center gap-2 bg-success-dim rounded-md p-3 mb-4">
+            <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+            <Text className="text-body text-success flex-1">Card added successfully!</Text>
           </View>
         )}
 
         {/* Remove Success Message */}
         {removeSuccess && (
-          <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-            <Text style={styles.successText}>Card removed successfully!</Text>
+          <View className="flex-row items-center gap-2 bg-success-dim rounded-md p-3 mb-4">
+            <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+            <Text className="text-body text-success flex-1">Card removed successfully!</Text>
           </View>
         )}
 
         {/* Add/Update Card Button */}
         <Pressable
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          className={`flex-row items-center justify-center gap-2 bg-imessage rounded-lg py-4 px-6 ${(isLoading || success || isRemoving) ? 'opacity-50' : ''}`}
           onPress={handleAddCard}
           disabled={isLoading || success || isRemoving}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.text} />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
               <Ionicons
                 name={paymentState.hasPaymentMethod ? 'refresh' : 'add'}
                 size={20}
-                color={Colors.text}
+                color="#FFFFFF"
               />
-              <Text style={styles.buttonText}>
+              <Text className="text-body-semibold text-white">
                 {paymentState.hasPaymentMethod ? 'Update Card' : 'Add Card'}
               </Text>
             </>
@@ -221,183 +219,27 @@ export default function PaymentMethodScreen() {
         {/* Remove Card Button - only show if card exists */}
         {paymentState.hasPaymentMethod && !success && !removeSuccess && (
           <Pressable
-            style={[styles.removeButton, isRemoving && styles.buttonDisabled]}
+            className={`flex-row items-center justify-center gap-2 bg-transparent border border-danger rounded-lg py-3 px-6 mt-3 ${(isLoading || isRemoving) ? 'opacity-50' : ''}`}
             onPress={handleRemoveCard}
             disabled={isLoading || isRemoving}
           >
             {isRemoving ? (
-              <ActivityIndicator color={Colors.danger} />
+              <ActivityIndicator color="#FF453A" />
             ) : (
               <>
-                <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-                <Text style={styles.removeButtonText}>Remove Card</Text>
+                <Ionicons name="trash-outline" size={20} color="#FF453A" />
+                <Text className="text-body-semibold text-danger">Remove Card</Text>
               </>
             )}
           </Pressable>
         )}
 
         {/* Stripe Branding */}
-        <View style={styles.stripeBranding}>
-          <Text style={styles.stripeText}>Powered by</Text>
-          <Text style={styles.stripeLogo}>stripe</Text>
+        <View className="flex-row items-center justify-center gap-1 mt-8">
+          <Text className="text-caption text-text-muted">Powered by</Text>
+          <Text className="text-base font-bold text-text-muted italic">stripe</Text>
         </View>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  headerLeft: {
-    width: 40,
-  },
-  headerTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-    padding: Spacing.xl,
-  },
-  statusCard: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
-  },
-  statusIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
-  },
-  statusEmoji: {
-    fontSize: 32,
-  },
-  statusTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-  },
-  statusDescription: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    marginBottom: Spacing.xl,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  infoText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.dangerDim,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  errorText: {
-    ...Typography.body,
-    color: Colors.danger,
-    flex: 1,
-  },
-  successCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  successText: {
-    ...Typography.body,
-    color: Colors.success,
-    flex: 1,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  removeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.danger,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    marginTop: Spacing.md,
-  },
-  removeButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.danger,
-  },
-  stripeBranding: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    marginTop: Spacing.xxl,
-  },
-  stripeText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-  stripeLogo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-});
-

@@ -16,13 +16,20 @@ module.exports = {
         },
         // Danger red for "failure" elements
         danger: {
+          400: '#FF6B60',
           500: '#FF3B30',
           600: '#E6352B',
+          DEFAULT: '#FF453A',
+          dim: 'rgba(255, 69, 58, 0.12)',
+          glow: 'rgba(255, 69, 58, 0.35)',
         },
         // iMessage blue for CTAs
         imessage: {
           500: '#007AFF',
           600: '#0066D6',
+          DEFAULT: '#0B93F6',
+          dim: 'rgba(11, 147, 246, 0.15)',
+          glow: 'rgba(11, 147, 246, 0.25)',
         },
         // Deep background
         abyss: {
@@ -30,11 +37,126 @@ module.exports = {
           800: '#121212',
           700: '#1A1A1A',
         },
+        // Semantic colors (from theme.ts)
+        success: {
+          DEFAULT: '#34C759',
+          dim: 'rgba(52, 199, 89, 0.15)',
+        },
+        warning: {
+          DEFAULT: '#FF9F0A',
+          dim: 'rgba(255, 159, 10, 0.15)',
+        },
+        money: {
+          DEFAULT: '#00D632',
+          dim: 'rgba(0, 214, 50, 0.12)',
+        },
+        // Urgency gradient colors
+        urgency: {
+          low: '#34C759',
+          medium: '#FF9F0A',
+          high: '#FF6B35',
+          critical: '#FF453A',
+        },
+        // iOS system grays
+        'system-gray': {
+          DEFAULT: '#8E8E93',
+          2: '#636366',
+          3: '#48484A',
+          4: '#3A3A3C',
+          5: '#2C2C2E',
+          6: '#1C1C1E',
+        },
+        // Card and background colors
+        card: {
+          DEFAULT: 'rgba(255, 255, 255, 0.04)',
+          hover: 'rgba(255, 255, 255, 0.06)',
+        },
+        // Border colors
+        border: {
+          DEFAULT: 'rgba(255, 255, 255, 0.08)',
+          subtle: 'rgba(255, 255, 255, 0.05)',
+          focus: 'rgba(255, 255, 255, 0.15)',
+        },
+        // Text colors
+        text: {
+          DEFAULT: '#FFFFFF',
+          secondary: 'rgba(255, 255, 255, 0.70)',
+          tertiary: 'rgba(255, 255, 255, 0.45)',
+          muted: 'rgba(255, 255, 255, 0.30)',
+        },
+      },
+      // Spacing matching theme.ts (in addition to default Tailwind scale)
+      spacing: {
+        'xs': '4px',   // Spacing.xs
+        'sm': '8px',   // Spacing.sm (same as Tailwind's 2)
+        'md': '12px',  // Spacing.md (same as Tailwind's 3)
+        'lg': '16px',  // Spacing.lg (same as Tailwind's 4)
+        'xl': '24px',  // Spacing.xl (same as Tailwind's 6)
+        'xxl': '32px', // Spacing.xxl (same as Tailwind's 8)
+        'xxxl': '48px', // Spacing.xxxl (same as Tailwind's 12)
+        // Safe area insets for mobile
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      // Border radius matching theme.ts
+      borderRadius: {
+        'sm': '8px',   // Radius.sm
+        'md': '12px',  // Radius.md
+        'lg': '16px',  // Radius.lg
+        'xl': '20px',  // Radius.xl
+        'xxl': '24px', // Radius.xxl
+        'full': '9999px', // Radius.full
+      },
+      // Box shadows matching theme.ts Shadows
+      boxShadow: {
+        'sm': '0 1px 2px rgba(0, 0, 0, 0.15)',
+        'md': '0 4px 8px rgba(0, 0, 0, 0.2)',
+        'lg': '0 8px 16px rgba(0, 0, 0, 0.25)',
+        'glow-accent': '0 0 20px rgba(11, 147, 246, 0.5)',
+        'glow-success': '0 0 20px rgba(52, 199, 89, 0.5)',
+        'glow-danger': '0 0 20px rgba(255, 69, 58, 0.5)',
+        'glow-warning': '0 0 20px rgba(255, 159, 10, 0.5)',
+        'glow-money': '0 0 20px rgba(0, 214, 50, 0.5)',
+        'glow-lime': '0 0 20px rgba(191, 255, 0, 0.5)',
+      },
+      // Font sizes matching theme.ts Typography
+      fontSize: {
+        // Display sizes
+        'display-lg': ['56px', { lineHeight: '60px', letterSpacing: '-1.5px', fontWeight: '800' }],
+        'display-md': ['40px', { lineHeight: '44px', letterSpacing: '-1px', fontWeight: '700' }],
+        'display-sm': ['32px', { lineHeight: '36px', letterSpacing: '-0.5px', fontWeight: '700' }],
+        // Headings
+        'h1': ['28px', { lineHeight: '34px', letterSpacing: '-0.4px', fontWeight: '700' }],
+        'h2': ['22px', { lineHeight: '28px', letterSpacing: '-0.2px', fontWeight: '600' }],
+        'h3': ['18px', { lineHeight: '24px', fontWeight: '600' }],
+        // Body
+        'body': ['16px', { lineHeight: '22px', fontWeight: '400' }],
+        'body-medium': ['16px', { lineHeight: '22px', fontWeight: '500' }],
+        'body-semibold': ['16px', { lineHeight: '22px', fontWeight: '600' }],
+        // Small
+        'caption': ['13px', { lineHeight: '18px', fontWeight: '500' }],
+        'label': ['11px', { lineHeight: '14px', letterSpacing: '0.5px', fontWeight: '600' }],
       },
       fontFamily: {
         display: ['Archivo Black', 'system-ui', 'sans-serif'],
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        // iOS system fonts for native feel
+        'system': ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        'rounded': ['SF Pro Rounded', 'system-ui', 'sans-serif'],
+      },
+      // Opacity values for text hierarchy
+      opacity: {
+        '4': '0.04',   // bgCard
+        '5': '0.05',   // borderSubtle
+        '6': '0.06',   // bgCardHover
+        '8': '0.08',   // border
+        '15': '0.15',  // borderFocus
+        '30': '0.30',  // textMuted
+        '45': '0.45',  // textTertiary
+        '70': '0.70',  // textSecondary
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

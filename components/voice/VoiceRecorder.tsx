@@ -6,7 +6,7 @@
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -18,8 +18,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 
 type VoiceRecorderProps = {
   onRecordingComplete: (uri: string) => void;
@@ -268,11 +266,11 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
   // Denied state
   if (permissionStatus === 'denied') {
     return (
-      <View style={styles.container}>
-        <View style={styles.deniedCard}>
-          <Text style={styles.deniedIcon}>🎤</Text>
-          <Text style={styles.deniedTitle}>Microphone denied</Text>
-          <Text style={styles.deniedSubtitle}>
+      <View className="gap-3">
+        <View className="bg-white/[0.04] rounded-xl border border-white/10 p-6 items-center gap-3">
+          <Text className="text-[32px] opacity-50">🎤</Text>
+          <Text className="text-base font-semibold text-white/70">Microphone denied</Text>
+          <Text className="text-[13px] leading-[18px] font-medium text-white/45 text-center">
             Can&apos;t record your voice without permission. Go to Settings to enable it.
           </Text>
         </View>
@@ -282,59 +280,51 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
 
   // Has recording - show playback controls
   if (recordingUri && !isRecording) {
+    const progressPercent = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
+
     return (
-      <Animated.View entering={FadeIn.duration(200)} style={styles.container}>
-        <View style={styles.playbackCard}>
-          <View style={styles.playbackHeader}>
-            <Text style={styles.recordedIcon}>🎙️</Text>
-            <View style={styles.playbackInfo}>
-              <Text style={styles.recordedLabel}>VOICE COMMITMENT</Text>
-              <Text style={styles.recordedHint}>
+      <Animated.View entering={FadeIn.duration(200)} className="gap-3">
+        <View className="bg-white/[0.04] rounded-xl border border-imessage/25 p-4 gap-3">
+          <View className="flex-row items-start gap-3">
+            <Text className="text-2xl mt-0.5">🎙️</Text>
+            <View className="flex-1 gap-1">
+              <Text className="text-[11px] leading-[14px] font-semibold tracking-[0.5px] uppercase text-imessage">
+                VOICE COMMITMENT
+              </Text>
+              <Text className="text-[13px] leading-[18px] font-medium text-white/45">
                 {isPlaying ? 'Playing your promise...' : 'Tap to hear yourself'}
               </Text>
             </View>
           </View>
 
           {/* Progress bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1 h-1 bg-abyss-800 rounded-full overflow-hidden">
               <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: playbackDuration > 0
-                      ? `${(playbackPosition / playbackDuration) * 100}%`
-                      : '0%',
-                  },
-                ]}
+                className="h-full bg-imessage rounded-full"
+                style={{ width: `${progressPercent}%` }}
               />
             </View>
-            <Text style={styles.progressTime}>
+            <Text className="text-[13px] leading-[18px] font-medium font-mono text-white/70 min-w-[40px] text-right">
               {formatDuration(isPlaying ? playbackPosition : playbackDuration)}
             </Text>
           </View>
 
-          <View style={styles.playbackActions}>
+          <View className="flex-row gap-2">
             <Pressable
               onPress={isPlaying ? stopPlayback : playRecording}
-              style={({ pressed }) => [
-                styles.playButton,
-                pressed && styles.pressed,
-              ]}
+              className="flex-1 h-11 rounded-full bg-imessage-dim border border-imessage/25 items-center justify-center active:opacity-90 active:scale-[0.98]"
             >
-              <Text style={styles.playButtonText}>
+              <Text className="text-base font-semibold text-imessage">
                 {isPlaying ? '⏹ Stop' : '▶ Play'}
               </Text>
             </Pressable>
 
             <Pressable
               onPress={clearRecording}
-              style={({ pressed }) => [
-                styles.clearButton,
-                pressed && styles.pressed,
-              ]}
+              className="flex-1 h-11 rounded-full bg-abyss-800 border border-white/10 items-center justify-center active:opacity-90 active:scale-[0.98]"
             >
-              <Text style={styles.clearButtonText}>Re-record</Text>
+              <Text className="text-base font-semibold text-white/70">Re-record</Text>
             </Pressable>
           </View>
         </View>
@@ -344,13 +334,15 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
 
   // Recording state or empty state
   return (
-    <View style={styles.container}>
-      <View style={styles.recorderCard}>
-        <View style={styles.recorderHeader}>
-          <Text style={styles.recorderIcon}>🎙️</Text>
-          <View style={styles.recorderInfo}>
-            <Text style={styles.recorderLabel}>VOICE COMMITMENT</Text>
-            <Text style={styles.recorderHint}>
+    <View className="gap-3">
+      <View className="bg-white/[0.04] rounded-xl border border-white/10 p-4 gap-4 items-center">
+        <View className="flex-row items-start gap-3 w-full">
+          <Text className="text-2xl mt-0.5">🎙️</Text>
+          <View className="flex-1 gap-1">
+            <Text className="text-[11px] leading-[14px] font-semibold tracking-[0.5px] uppercase text-white/30">
+              VOICE COMMITMENT
+            </Text>
+            <Text className="text-[13px] leading-[18px] font-medium text-white/45">
               {isRecording
                 ? 'Recording... Say your promise out loud.'
                 : "Say it out loud. We'll play it back when you try to quit."}
@@ -359,26 +351,31 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
         </View>
 
         {/* Recording button */}
-        <View style={styles.recordButtonContainer}>
+        <View className="relative items-center justify-center h-20 w-20">
           {isRecording && (
-            <Animated.View style={[styles.recordGlow, glowStyle]} />
+            <Animated.View
+              style={glowStyle}
+              className="absolute w-20 h-20 rounded-full bg-danger"
+            />
           )}
           <Animated.View style={pulseStyle}>
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButton,
-                isRecording && styles.recordButtonActive,
-                pressed && styles.pressed,
-              ]}
+              className={`w-[72px] h-[72px] rounded-full border-[3px] border-danger items-center justify-center shadow-md ${
+                isRecording ? 'bg-danger-dim' : 'bg-abyss-800'
+              } active:opacity-90`}
             >
-              <View style={[styles.recordButtonInner, isRecording && styles.recordButtonInnerActive]}>
+              <View
+                className={`items-center justify-center ${
+                  isRecording
+                    ? 'w-7 h-7 rounded-lg bg-danger'
+                    : 'w-12 h-12 rounded-full bg-danger'
+                }`}
+              >
                 {isRecording ? (
-                  <View style={styles.stopIcon} />
+                  <View className="w-full h-full bg-danger rounded" />
                 ) : (
-                  <View style={styles.micIcon}>
-                    <Text style={styles.micIconText}>🎤</Text>
-                  </View>
+                  <Text className="text-xl">🎤</Text>
                 )}
               </View>
             </Pressable>
@@ -388,264 +385,24 @@ export function VoiceRecorder({ onRecordingComplete, existingUri, onClear }: Voi
         {/* Duration display */}
         {isRecording && (
           <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)}>
-            <View style={styles.durationRow}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.durationText}>{formatDuration(duration)}</Text>
-              <Text style={styles.durationMax}>/ {formatDuration(MAX_DURATION_MS)}</Text>
+            <View className="flex-row items-center gap-2">
+              <View className="w-2 h-2 rounded-full bg-danger" />
+              <Text className="text-base font-medium font-mono text-white">
+                {formatDuration(duration)}
+              </Text>
+              <Text className="text-[13px] leading-[18px] font-medium font-mono text-white/30">
+                / {formatDuration(MAX_DURATION_MS)}
+              </Text>
             </View>
           </Animated.View>
         )}
 
         {!isRecording && (
-          <Text style={styles.tapHint}>Tap to record</Text>
+          <Text className="text-[13px] leading-[18px] font-medium text-white/30 italic">
+            Tap to record
+          </Text>
         )}
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: Spacing.md,
-  },
-
-  // Recorder card
-  recorderCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-    alignItems: 'center',
-  },
-  recorderHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-    width: '100%',
-  },
-  recorderIcon: {
-    fontSize: 24,
-    marginTop: 2,
-  },
-  recorderInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  recorderLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  recorderHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    lineHeight: 18,
-  },
-
-  // Record button
-  recordButtonContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 80,
-    width: 80,
-  },
-  recordGlow: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.danger,
-  },
-  recordButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 3,
-    borderColor: Colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.md,
-  },
-  recordButtonActive: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger,
-  },
-  recordButtonInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordButtonInnerActive: {
-    borderRadius: 8,
-    width: 28,
-    height: 28,
-  },
-  stopIcon: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: Colors.danger,
-    borderRadius: 4,
-  },
-  micIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  micIconText: {
-    fontSize: 20,
-  },
-
-  // Duration
-  durationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.danger,
-  },
-  durationText: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontFamily: Fonts.mono,
-  },
-  durationMax: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontFamily: Fonts.mono,
-  },
-
-  tapHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-
-  // Playback card
-  playbackCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.accent + '44',
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  playbackHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-  },
-  recordedIcon: {
-    fontSize: 24,
-    marginTop: 2,
-  },
-  playbackInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  recordedLabel: {
-    ...Typography.label,
-    color: Colors.accent,
-  },
-  recordedHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-
-  // Progress
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.accent,
-    borderRadius: 2,
-  },
-  progressTime: {
-    ...Typography.captionMono,
-    color: Colors.textSecondary,
-    minWidth: 40,
-    textAlign: 'right',
-  },
-
-  // Actions
-  playbackActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  playButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.accentDim,
-    borderWidth: 1,
-    borderColor: Colors.accent + '44',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.accent,
-  },
-  clearButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-
-  // Denied
-  deniedCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  deniedIcon: {
-    fontSize: 32,
-    opacity: 0.5,
-  },
-  deniedTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-  },
-  deniedSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-});
-

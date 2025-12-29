@@ -10,7 +10,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Switch,
   Text,
   TextInput,
@@ -31,7 +30,6 @@ import { InlineFriendPicker } from '@/components/promise';
 import { VerificationPicker } from '@/components/verification';
 import { VoiceRecorder } from '@/components/voice';
 import { PROMISE_TEMPLATES, STAKES_THRESHOLDS, STATS_COPY, VERIFICATION_COPY, type PromiseTemplate } from '@/constants/content';
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { usePromiseStore } from '@/context/promise-store';
 import { useRequireAuth } from '@/hooks/use-require-auth';
@@ -70,7 +68,7 @@ const DESTINATIONS: {
   {
     id: 'oopsfee',
     title: 'OopsFee (us)',
-    subtitle: 'We’ll buy coffee and call it “infrastructure”.',
+    subtitle: "We'll buy coffee and call it \"infrastructure\".",
     emoji: '☕️',
   },
 ];
@@ -161,7 +159,7 @@ function defaultDeadlineForTemplate(t: PromiseTemplate, nowMs: number): number {
       return d.getTime();
     }
     case 'gym': {
-      // End of this week (Sunday night). Yes, that’s when consequences happen.
+      // End of this week (Sunday night). Yes, that's when consequences happen.
       const d = new Date(nowMs);
       const day = d.getDay(); // 0 Sun
       const daysUntilSunday = (7 - day) % 7;
@@ -321,32 +319,37 @@ function DeadlinePickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
-      <View style={styles.modalBackdrop}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={dismiss} />
+      <View className="flex-1 bg-black/65 items-center justify-end p-4">
+        <Pressable className="absolute inset-0" onPress={dismiss} />
 
         <KeyboardAvoidingView
           behavior={Platform.select({ ios: 'padding', android: 'height' })}
-          style={styles.modalKav}
+          className="flex-1 w-full items-center justify-end"
           keyboardVerticalOffset={0}
         >
-          <Animated.View style={[styles.modalSheet, sheetAnimStyle]}>
-            <View style={styles.modalHandleHit} {...panResponder.panHandlers}>
-              <View style={styles.modalHandle} />
+          <Animated.View
+            style={sheetAnimStyle}
+            className="w-full h-[78%] bg-[#0A0A0C] rounded-xxl border border-white/8 p-6 gap-4"
+          >
+            <View className="w-full items-center pt-0.5 pb-3 -mt-1.5" {...panResponder.panHandlers}>
+              <View className="self-center w-11 h-[5px] rounded-[3px] bg-system-gray-4" />
             </View>
 
             <ScrollView
-              style={styles.modalBodyScroll}
-              contentContainerStyle={styles.modalBodyContent}
+              className="flex-1 w-full"
+              contentContainerClassName="gap-4 pb-2"
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               ref={bodyScrollRef}
             >
-              <Text style={styles.modalTitle}>Pick a deadline</Text>
-              <Text style={styles.modalSubtitle}>Be realistic. Then ignore it. (Just kidding. Mostly.)</Text>
+              <Text className="text-h3 text-white font-rounded text-center">Pick a deadline</Text>
+              <Text className="text-caption text-white/45 text-center -mt-2">
+                Be realistic. Then ignore it. (Just kidding. Mostly.)
+              </Text>
 
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionLabel}>DATE</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+              <View className="gap-2">
+                <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">DATE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="py-2 pr-2 gap-2">
                   {dateOptions.map((opt) => {
                     const active = opt.dayStart === selectedDayStart;
                     return (
@@ -356,22 +359,24 @@ function DeadlinePickerModal({
                           hapticLight();
                           setSelectedDayStart(opt.dayStart);
                         }}
-                        style={({ pressed }) => [
-                          styles.chip,
-                          active && styles.chipActive,
-                          pressed && styles.chipPressed,
-                        ]}
+                        className={`py-2 px-3 rounded-full border ${
+                          active
+                            ? 'bg-imessage-dim border-imessage'
+                            : 'bg-card border-white/8 active:opacity-90 active:scale-[0.98]'
+                        }`}
                       >
-                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
+                        <Text className={`text-caption font-semibold font-mono ${active ? 'text-white' : 'text-white/70'}`}>
+                          {opt.label}
+                        </Text>
                       </Pressable>
                     );
                   })}
                 </ScrollView>
               </View>
 
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionLabel}>TIME</Text>
-                <View style={styles.timeList}>
+              <View className="gap-2">
+                <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">TIME</Text>
+                <View className="gap-2">
                   <Pressable
                     onPress={() => {
                       hapticLight();
@@ -386,54 +391,54 @@ function DeadlinePickerModal({
                         setTimeout(() => hourInputRef.current?.focus(), 120);
                       }, 60);
                     }}
-                    style={({ pressed }) => [
-                      styles.timeRow,
-                      timeMode === 'custom' && styles.timeRowActive,
-                      pressed && styles.timeRowPressed,
-                    ]}
+                    className={`flex-row items-center justify-between py-3 px-3.5 rounded-lg border ${
+                      timeMode === 'custom'
+                        ? 'border-imessage bg-imessage-dim'
+                        : 'bg-card border-white/8 active:bg-card-hover'
+                    }`}
                   >
-                    <Text style={[styles.timeRowText, timeMode === 'custom' && styles.timeRowTextActive]}>
+                    <Text className={`text-body-medium ${timeMode === 'custom' ? 'text-white' : 'text-white/70'}`}>
                       Custom · {timeMode === 'custom' ? (isCustomValid ? `${pad2(hourNum)}:${pad2(minuteNum)}` : '--:--') : 'Set your own'}
                     </Text>
-                    {timeMode === 'custom' && <Text style={styles.timeRowCheck}>✓</Text>}
+                    {timeMode === 'custom' && <Text className="text-imessage font-bold">✓</Text>}
                   </Pressable>
 
                   {timeMode === 'custom' && (
                     <Animated.View
                       entering={FadeIn.duration(150)}
                       layout={Layout.springify()}
-                      style={styles.customTimePanel}
+                      className="bg-[#0A0A0C] border border-white/5 rounded-lg p-3 gap-2"
                     >
-                      <View style={styles.customTimeInputsRow}>
-                        <View style={styles.timeInputBox}>
+                      <View className="flex-row items-center justify-center gap-2">
+                        <View className="w-16 py-2.5 px-2.5 rounded-md bg-card border border-white/8">
                           <TextInput
                             ref={hourInputRef}
                             value={hourRaw}
                             onChangeText={(t) => setCustomHour(parseTimePart(t, 2))}
                             placeholder="HH"
-                            placeholderTextColor={Colors.textMuted}
+                            placeholderTextColor="rgba(255, 255, 255, 0.30)"
                             keyboardType="number-pad"
                             inputMode="numeric"
                             maxLength={2}
-                            style={styles.timeInput}
+                            className="text-body-semibold text-white font-mono text-center py-0"
                           />
                         </View>
-                        <Text style={styles.timeColon}>:</Text>
-                        <View style={styles.timeInputBox}>
+                        <Text className="text-white/70 text-xl font-bold -mt-0.5">:</Text>
+                        <View className="w-16 py-2.5 px-2.5 rounded-md bg-card border border-white/8">
                           <TextInput
                             value={minuteRaw}
                             onChangeText={(t) => setCustomMinute(parseTimePart(t, 2))}
                             placeholder="MM"
-                            placeholderTextColor={Colors.textMuted}
+                            placeholderTextColor="rgba(255, 255, 255, 0.30)"
                             keyboardType="number-pad"
                             inputMode="numeric"
                             maxLength={2}
-                            style={styles.timeInput}
+                            className="text-body-semibold text-white font-mono text-center py-0"
                           />
                         </View>
-                        <Text style={styles.timeSuffix}>24h</Text>
+                        <Text className="text-caption text-white/30 font-mono">24h</Text>
                       </View>
-                      <Text style={[styles.customTimeHelper, !isCustomValid && styles.customTimeHelperDanger]}>
+                      <Text className={`text-caption text-center ${!isCustomValid ? 'text-danger font-semibold' : 'text-white/45'}`}>
                         {isCustomValid ? '00–23 hours · 00–59 minutes.' : 'Hour must be 00–23 and minutes 00–59.'}
                       </Text>
                     </Animated.View>
@@ -449,14 +454,14 @@ function DeadlinePickerModal({
                           setTimeMode('preset');
                           setSelectedPresetMinutes(opt.minutes);
                         }}
-                        style={({ pressed }) => [
-                          styles.timeRow,
-                          active && styles.timeRowActive,
-                          pressed && styles.timeRowPressed,
-                        ]}
+                        className={`flex-row items-center justify-between py-3 px-3.5 rounded-lg border ${
+                          active
+                            ? 'border-imessage bg-imessage-dim'
+                            : 'bg-card border-white/8 active:bg-card-hover'
+                        }`}
                       >
-                        <Text style={[styles.timeRowText, active && styles.timeRowTextActive]}>{opt.label}</Text>
-                        {active && <Text style={styles.timeRowCheck}>✓</Text>}
+                        <Text className={`text-body-medium ${active ? 'text-white' : 'text-white/70'}`}>{opt.label}</Text>
+                        {active && <Text className="text-imessage font-bold">✓</Text>}
                       </Pressable>
                     );
                   })}
@@ -464,14 +469,13 @@ function DeadlinePickerModal({
               </View>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <View style={styles.modalPreview}>
-                <Text style={styles.modalPreviewLabel}>DEADLINE</Text>
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between px-2">
+                <Text className="text-label text-white/30 uppercase tracking-wide">DEADLINE</Text>
                 <Text
-                  style={[
-                    styles.modalPreviewValue,
-                    (selectedDeadlineAt === null || isInPast) && styles.modalPreviewValueDanger,
-                  ]}
+                  className={`text-body-semibold font-rounded ${
+                    selectedDeadlineAt === null || isInPast ? 'text-danger' : 'text-white'
+                  }`}
                 >
                   {selectedDeadlineAt === null ? 'Fix the time' : formatDeadlineFriendly(selectedDeadlineAt)}
                 </Text>
@@ -485,23 +489,21 @@ function DeadlinePickerModal({
                   onSelect(selectedDeadlineAt);
                   dismiss();
                 }}
-                style={({ pressed }) => [
-                  styles.modalPrimaryButton,
-                  pressed && styles.modalPrimaryButtonPressed,
-                  (selectedDeadlineAt === null || isInPast) && styles.modalPrimaryButtonDisabled,
-                ]}
+                className={`h-12 rounded-3xl overflow-hidden ${
+                  (selectedDeadlineAt === null || isInPast) ? 'opacity-60' : 'active:scale-[0.99]'
+                }`}
               >
                 <LinearGradient
                   colors={
                     selectedDeadlineAt === null || isInPast
-                      ? [Colors.systemGray4, Colors.systemGray5]
-                      : [Colors.accent, '#0A7FD4']
+                      ? ['#3A3A3C', '#2C2C2E']
+                      : ['#0B93F6', '#0A7FD4']
                   }
-                  style={styles.modalPrimaryButtonGradient}
+                  className="flex-1 items-center justify-center"
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.modalPrimaryButtonText}>
+                  <Text className="text-body-semibold text-white">
                     {selectedDeadlineAt === null ? 'Fix it' : isInPast ? 'Time travel required' : 'Done'}
                   </Text>
                 </LinearGradient>
@@ -596,58 +598,63 @@ function ConfirmModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
-      <View style={styles.modalBackdrop}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={dismiss} />
-        <Animated.View style={[styles.confirmSheet, sheetAnimStyle]}>
-          <View style={styles.modalHandleHit} {...panResponder.panHandlers}>
-            <View style={styles.modalHandle} />
+      <View className="flex-1 bg-black/65 items-center justify-end p-4">
+        <Pressable className="absolute inset-0" onPress={dismiss} />
+        <Animated.View
+          style={sheetAnimStyle}
+          className="w-full bg-[#0A0A0C] rounded-xxl border border-white/8 p-6 gap-4"
+        >
+          <View className="w-full items-center pt-0.5 pb-3 -mt-1.5" {...panResponder.panHandlers}>
+            <View className="self-center w-11 h-[5px] rounded-[3px] bg-system-gray-4" />
           </View>
 
-          <Text style={styles.confirmTitle}>Lock it in?</Text>
-          <Text style={styles.confirmSubtitle}>This is the part where your future self gets nervous.</Text>
+          <Text className="text-h3 text-white font-rounded text-center">Lock it in?</Text>
+          <Text className="text-caption text-white/45 text-center -mt-2">
+            This is the part where your future self gets nervous.
+          </Text>
 
-          <View style={styles.confirmCard}>
-            <Text style={styles.confirmPromiseText} numberOfLines={3}>
+          <View className="bg-card rounded-xl border border-white/8 p-4 gap-4">
+            <Text className="text-body-semibold text-white font-rounded leading-[22px]" numberOfLines={3}>
               {text}
             </Text>
 
-            <View style={styles.confirmMetaRow}>
-              <View style={styles.confirmMetaItem}>
-                <Text style={styles.confirmMetaLabel}>FINE</Text>
+            <View className="flex-row items-center gap-4">
+              <View className="flex-1 gap-1">
+                <Text className="text-label text-white/30 uppercase tracking-wide">FINE</Text>
                 {hasMultiplier ? (
-                  <View style={styles.confirmStakeBreakdown}>
-                    <Text style={styles.confirmBaseStake}>${baseStake} ×{multiplier}</Text>
-                    <Text style={styles.confirmMetaValue}>${stake}</Text>
+                  <View className="gap-0.5">
+                    <Text className="text-caption text-white/70 font-mono">${baseStake} ×{multiplier}</Text>
+                    <Text className="text-h2 text-danger font-mono">${stake}</Text>
                   </View>
                 ) : (
-                  <Text style={styles.confirmMetaValue}>${stake}</Text>
+                  <Text className="text-h2 text-danger font-mono">${stake}</Text>
                 )}
               </View>
-              <View style={styles.confirmMetaDivider} />
-              <View style={styles.confirmMetaItem}>
-                <Text style={styles.confirmMetaLabel}>DEADLINE</Text>
-                <Text style={styles.confirmMetaValueSmall}>{formatDeadlineFriendly(deadlineAt)}</Text>
+              <View className="w-px h-[42px] bg-white/8" />
+              <View className="flex-1 gap-1">
+                <Text className="text-label text-white/30 uppercase tracking-wide">DEADLINE</Text>
+                <Text className="text-body-medium text-white/70">{formatDeadlineFriendly(deadlineAt)}</Text>
               </View>
             </View>
 
             {hasMultiplier && (
-              <View style={styles.confirmMultiplierNote}>
-                <Text style={styles.confirmMultiplierNoteIcon}>⚠️</Text>
-                <Text style={styles.confirmMultiplierNoteText}>
+              <View className="flex-row items-center gap-2 bg-danger-dim rounded-md p-2">
+                <Text className="text-sm">⚠️</Text>
+                <Text className="text-caption text-danger flex-1">
                   Failure tax applied. Complete 3 promises to reset.
                 </Text>
               </View>
             )}
 
             {hasWalletUsage && (
-              <View style={styles.confirmWalletNote}>
-                <Text style={styles.confirmWalletNoteIcon}>💰</Text>
-                <View style={styles.confirmWalletNoteBody}>
-                  <Text style={styles.confirmWalletNoteText}>
+              <View className="flex-row items-center gap-2 bg-success-dim rounded-md p-2">
+                <Text className="text-sm">💰</Text>
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-caption text-success font-semibold">
                     ${walletUsageDollars.toFixed(2)} from wallet
                   </Text>
                   {cardChargeDollars > 0 && (
-                    <Text style={styles.confirmWalletNoteSubtext}>
+                    <Text className="text-caption text-white/70 font-mono">
                       + ${cardChargeDollars.toFixed(2)} from card
                     </Text>
                   )}
@@ -655,35 +662,36 @@ function ConfirmModal({
               </View>
             )}
 
-            <View style={styles.confirmMetaDividerHorizontal} />
-            <View style={styles.confirmMetaRowSingle}>
-              <Text style={styles.confirmMetaLabel}>GOES TO</Text>
-              <Text style={styles.confirmMetaValueSmall}>
+            <View className="h-px bg-white/5" />
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="text-label text-white/30 uppercase tracking-wide">GOES TO</Text>
+              <Text className="text-body-medium text-white/70">
                 {formatDestinationTitle(moneyDestination, friendName, selectedFriend)}
               </Text>
             </View>
           </View>
 
-          <View style={styles.confirmActions}>
-            <Pressable onPress={dismiss} style={({ pressed }) => [styles.confirmSecondary, pressed && styles.pressed]}>
-              <Text style={styles.confirmSecondaryText}>Not yet</Text>
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={dismiss}
+              className="flex-1 h-[52px] rounded-[26px] bg-card border border-white/8 items-center justify-center active:opacity-90 active:scale-[0.98]"
+            >
+              <Text className="text-body-semibold text-white/70">Not yet</Text>
             </Pressable>
             <Pressable
               disabled={confirming}
               onPress={onConfirm}
-              style={({ pressed }) => [
-                styles.confirmPrimary,
-                pressed && styles.pressed,
-                confirming && styles.confirmPrimaryDisabled,
-              ]}
+              className={`flex-1 h-[52px] rounded-[26px] overflow-hidden ${confirming ? 'opacity-70' : 'active:opacity-90 active:scale-[0.98]'}`}
             >
               <LinearGradient
-                colors={[Colors.danger, '#FF6B35']}
-                style={styles.confirmPrimaryGradient}
+                colors={['#FF453A', '#FF6B35']}
+                className="flex-1 items-center justify-center"
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.confirmPrimaryText}>{confirming ? 'Saving your regret…' : 'Lock it in 🔒'}</Text>
+                <Text className="text-body-semibold text-white font-rounded">
+                  {confirming ? 'Saving your regret…' : 'Lock it in 🔒'}
+                </Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -862,52 +870,59 @@ export default function NewPromiseScreen() {
   }, [canLock, createPromise, deadlineAt, effectiveStake, freePasses, friendEmail, friendName, moneyDestination, selectedFriend, text, useExternalFriend, useFreePass, verificationType, voiceNoteUri]);
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-black">
       <KeyboardAvoidingView
-        style={styles.screen}
+        className="flex-1"
         behavior={Platform.select({ ios: 'padding', android: undefined })}
         keyboardVerticalOffset={Platform.select({ ios: 6, android: 0 })}
       >
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-          <Pressable onPress={handleBack} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-            <Text style={styles.backButtonText}>‹</Text>
+        <View
+          className="px-6 pb-4 flex-row items-center gap-3 border-b border-white/5"
+          style={{ paddingTop: insets.top + 16 }}
+        >
+          <Pressable
+            onPress={handleBack}
+            className="w-9 h-9 rounded-full bg-card border border-white/8 items-center justify-center active:opacity-90 active:scale-[0.98]"
+          >
+            <Text className="text-[28px] leading-7 text-white/70 -mt-0.5">‹</Text>
           </Pressable>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>New promise</Text>
-            <Text style={styles.headerSubtitle}>Say it out loud. Price it. Regret later.</Text>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-h2 text-white font-rounded">New promise</Text>
+            <Text className="text-caption text-white/45">Say it out loud. Price it. Regret later.</Text>
           </View>
-          <View style={{ width: 36 }} />
+          <View className="w-9" />
         </View>
 
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
+          className="flex-1"
+          contentContainerClassName="px-6 pt-6 gap-8"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 28 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Templates */}
-          <Animated.View entering={FadeInDown.duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>TEMPLATES</Text>
-            <Text style={styles.sectionHint}>Because thinking is hard.</Text>
-            <View style={styles.templatesGrid}>
+          <Animated.View entering={FadeInDown.duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">TEMPLATES</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">Because thinking is hard.</Text>
+            <View className="flex-row flex-wrap gap-3">
               {PROMISE_TEMPLATES.map((t) => {
                 const active = text.trim() === t.text.trim();
                 return (
                   <Pressable
                     key={t.id}
                     onPress={() => applyTemplate(t)}
-                    style={({ pressed }) => [
-                      styles.templateCard,
-                      active && styles.templateCardActive,
-                      pressed && styles.templateCardPressed,
-                    ]}
+                    className={`basis-[47%] grow bg-card rounded-lg border p-3 gap-1 ${
+                      active
+                        ? 'border-imessage bg-imessage-dim'
+                        : 'border-white/8 active:bg-card-hover active:border-white/15'
+                    }`}
                   >
-                    <Text style={styles.templateEmoji}>{t.emoji}</Text>
-                    <Text style={styles.templateText} numberOfLines={2}>
+                    <Text className="text-[22px]">{t.emoji}</Text>
+                    <Text className="text-caption text-white leading-[18px] min-h-[36px]" numberOfLines={2}>
                       {t.text}
                     </Text>
-                    <View style={styles.templateStake}>
-                      <Text style={styles.templateStakeText}>${t.stake}</Text>
+                    <View className="self-start bg-danger-dim py-[3px] px-2 rounded-sm mt-1">
+                      <Text className="text-caption text-danger font-mono font-semibold">${t.stake}</Text>
                     </View>
                   </Pressable>
                 );
@@ -916,69 +931,71 @@ export default function NewPromiseScreen() {
           </Animated.View>
 
           {/* Text input */}
-          <Animated.View entering={FadeInDown.delay(80).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>I WILL…</Text>
-            <Text style={styles.sectionHint}>Try not to write a novel. Just the part you’ll break.</Text>
+          <Animated.View entering={FadeInDown.delay(80).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">I WILL…</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">Try not to write a novel. Just the part you&apos;ll break.</Text>
 
-            <View style={styles.inputCard}>
+            <View className="bg-card rounded-xl border border-white/8 p-4 gap-3">
               <TextInput
                 value={text}
                 onChangeText={setText}
                 placeholder="Stop negotiating with my alarm clock"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor="rgba(255, 255, 255, 0.30)"
                 multiline
                 maxLength={120}
-                style={styles.textInput}
+                className="min-h-[84px] text-body text-white leading-[22px]"
               />
-              <View style={styles.inputFooter}>
-                <Text style={styles.inputHelper}>{text.trim().length === 0 ? 'Say it. Commit. Panic.' : 'Nice.'}</Text>
-                <Text style={styles.charCount}>{text.length}/120</Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-caption text-white/45 italic">
+                  {text.trim().length === 0 ? 'Say it. Commit. Panic.' : 'Nice.'}
+                </Text>
+                <Text className="text-caption text-white/30 font-mono">{text.length}/120</Text>
               </View>
             </View>
           </Animated.View>
 
           {/* Deadline */}
-          <Animated.View entering={FadeInDown.delay(120).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>DEADLINE</Text>
-            <Text style={styles.sectionHint}>Pick a date your future self will hate.</Text>
+          <Animated.View entering={FadeInDown.delay(120).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">DEADLINE</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">Pick a date your future self will hate.</Text>
 
             <Pressable
               onPress={() => {
                 hapticLight();
                 setDeadlineModalOpen(true);
               }}
-              style={({ pressed }) => [styles.rowCard, pressed && styles.rowCardPressed]}
+              className="bg-card rounded-xl border border-white/8 p-4 flex-row items-center gap-3 active:bg-card-hover"
             >
-              <View style={styles.rowLeft}>
-                <Text style={styles.rowIcon}>⏳</Text>
+              <View className="w-[34px] h-[34px] rounded-[17px] bg-[#0A0A0C] border border-white/5 items-center justify-center">
+                <Text className="text-base">⏳</Text>
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Deadline</Text>
-                <Text style={styles.rowValue}>{formatDeadlineFriendly(deadlineAt)}</Text>
+              <View className="flex-1 gap-0.5">
+                <Text className="text-caption text-white/70 font-semibold">Deadline</Text>
+                <Text className="text-body-medium text-white font-rounded">{formatDeadlineFriendly(deadlineAt)}</Text>
               </View>
-              <Text style={styles.rowChevron}>›</Text>
+              <Text className="text-[22px] text-white/30 font-light">›</Text>
             </Pressable>
           </Animated.View>
 
           {/* Stake */}
-          <Animated.View entering={FadeInDown.delay(160).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>STAKES</Text>
-            <Text style={styles.sectionHint}>Loss aversion, but make it personal.</Text>
+          <Animated.View entering={FadeInDown.delay(160).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">STAKES</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">Loss aversion, but make it personal.</Text>
 
-            <View style={styles.stakeCard}>
-              <View style={styles.stakeTopRow}>
-                <Text style={styles.stakeLabel}>FINE</Text>
-                <View style={styles.stakeAmountContainer}>
+            <View className="bg-card rounded-xl border border-white/8 p-4 gap-4">
+              <View className="flex-row items-baseline justify-between">
+                <Text className="text-label text-white/30 uppercase tracking-wide">FINE</Text>
+                <View className="flex-row items-baseline gap-2">
                   {showMultiplierWarning && stake > 0 && (
-                    <Text style={styles.stakeBaseAmount}>${stake} ×{failureMultiplier} =</Text>
+                    <Text className="text-body text-white/70 font-mono">${stake} ×{failureMultiplier} =</Text>
                   )}
-                  <Text style={[styles.stakeAmount, showMultiplierWarning && stake > 0 && styles.stakeAmountPenalty]}>
+                  <Text className={`text-display-sm font-rounded ${showMultiplierWarning && stake > 0 ? 'text-danger' : 'text-danger'}`}>
                     ${effectiveStake}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.stakePresets}>
+              <View className="flex-row flex-wrap gap-2 items-center">
                 {STAKE_PRESETS.map((amt) => {
                   const active = amt === stake;
                   return (
@@ -989,13 +1006,15 @@ export default function NewPromiseScreen() {
                         setStake(amt);
                         setStakeInput(String(amt));
                       }}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        active && styles.chipDangerActive,
-                        pressed && styles.chipPressed,
-                      ]}
+                      className={`py-2 px-3 rounded-full border ${
+                        active
+                          ? 'bg-danger-dim border-danger'
+                          : 'bg-card border-white/8 active:opacity-90 active:scale-[0.98]'
+                      }`}
                     >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>${amt}</Text>
+                      <Text className={`text-caption font-semibold font-mono ${active ? 'text-white' : 'text-white/70'}`}>
+                        ${amt}
+                      </Text>
                     </Pressable>
                   );
                 })}
@@ -1009,9 +1028,9 @@ export default function NewPromiseScreen() {
                       return next;
                     });
                   }}
-                  style={({ pressed }) => [styles.iconChip, pressed && styles.chipPressed]}
+                  className="w-10 h-9 rounded-full bg-[#0A0A0C] border border-white/5 items-center justify-center active:opacity-90 active:scale-[0.98]"
                 >
-                  <Text style={styles.iconChipText}>+</Text>
+                  <Text className="text-white/70 text-xl font-semibold -mt-0.5">+</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
@@ -1022,16 +1041,16 @@ export default function NewPromiseScreen() {
                       return next;
                     });
                   }}
-                  style={({ pressed }) => [styles.iconChip, pressed && styles.chipPressed]}
+                  className="w-10 h-9 rounded-full bg-[#0A0A0C] border border-white/5 items-center justify-center active:opacity-90 active:scale-[0.98]"
                 >
-                  <Text style={styles.iconChipText}>−</Text>
+                  <Text className="text-white/70 text-xl font-semibold -mt-0.5">−</Text>
                 </Pressable>
               </View>
 
-              <View style={styles.customFineRow}>
-                <Text style={styles.customFineLabel}>CUSTOM</Text>
-                <View style={styles.customFineInputWrap}>
-                  <Text style={styles.customFineDollar}>$</Text>
+              <View className="gap-2 pt-1">
+                <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">CUSTOM</Text>
+                <View className="flex-row items-center gap-2 py-3 px-3.5 rounded-lg bg-[#0A0A0C] border border-white/5">
+                  <Text className="text-body-semibold text-white/70 font-mono">$</Text>
                   <TextInput
                     value={stakeInput}
                     onFocus={() => setIsEditingStake(true)}
@@ -1043,47 +1062,59 @@ export default function NewPromiseScreen() {
                       setStake(next);
                     }}
                     placeholder="25"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor="rgba(255, 255, 255, 0.30)"
                     keyboardType="number-pad"
                     inputMode="numeric"
                     maxLength={3}
-                    style={styles.customFineInput}
+                    className="flex-1 text-body-semibold text-white font-mono py-0"
                   />
                 </View>
-                <Text style={styles.customFineHelper}>Type it like an adult. We’ll still judge quietly.</Text>
+                <Text className="text-caption text-white/45 italic ml-1">
+                  Type it like an adult. We&apos;ll still judge quietly.
+                </Text>
               </View>
 
               {warningFree && (
-                <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.warningRow}>
-                  <Text style={styles.warningIcon}>⚠️</Text>
-                  <Text style={styles.warningText}>$0 is allowed. So is lying for free. Classic combo.</Text>
+                <Animated.View
+                  entering={FadeIn.duration(180)}
+                  layout={Layout.springify()}
+                  className="flex-row items-start gap-2 bg-[rgba(255,159,10,0.08)] border border-[rgba(255,159,10,0.18)] p-3 rounded-lg"
+                >
+                  <Text className="text-sm mt-0.5">⚠️</Text>
+                  <Text className="text-caption text-warning flex-1">
+                    $0 is allowed. So is lying for free. Classic combo.
+                  </Text>
                 </Animated.View>
               )}
 
               {/* Wallet Usage Indicator */}
               {effectiveStake > 0 && walletState.hasBalance && (
-                <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.walletUsageRow}>
-                  <View style={styles.walletUsageIcon}>
-                    <Text style={styles.walletUsageIconText}>💰</Text>
+                <Animated.View
+                  entering={FadeIn.duration(180)}
+                  layout={Layout.springify()}
+                  className="flex-row items-center gap-3 bg-success-dim border border-success/20 p-3 rounded-lg"
+                >
+                  <View className="w-7 h-7 rounded-[14px] bg-success/15 items-center justify-center">
+                    <Text className="text-sm">💰</Text>
                   </View>
-                  <View style={styles.walletUsageBody}>
+                  <View className="flex-1 gap-0.5">
                     {cardChargeCents > 0 ? (
                       <>
-                        <Text style={styles.walletUsageText}>
-                          Using <Text style={styles.walletUsageAmount}>${walletUsageDollars.toFixed(2)}</Text> from wallet
+                        <Text className="text-caption text-success font-semibold">
+                          Using <Text className="font-mono font-bold">${walletUsageDollars.toFixed(2)}</Text> from wallet
                         </Text>
-                        <Text style={styles.walletUsageSubtext}>
+                        <Text className="text-caption text-white/70 font-mono">
                           + ${cardChargeDollars.toFixed(2)} from card
                         </Text>
                       </>
                     ) : (
-                      <Text style={styles.walletUsageText}>
-                        Covered by wallet <Text style={styles.walletUsageAmount}>✓</Text>
+                      <Text className="text-caption text-success font-semibold">
+                        Covered by wallet <Text className="font-mono font-bold">✓</Text>
                       </Text>
                     )}
                   </View>
-                  <View style={styles.walletBalanceBadge}>
-                    <Text style={styles.walletBalanceBadgeText}>
+                  <View className="bg-success/15 py-1 px-2 rounded-sm">
+                    <Text className="text-caption text-success font-mono font-semibold">
                       ${walletState.balanceDollars.toFixed(2)}
                     </Text>
                   </View>
@@ -1092,15 +1123,19 @@ export default function NewPromiseScreen() {
 
               {/* Free Pass Toggle */}
               {freePasses > 0 && effectiveStake > 0 && (
-                <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.freePassRow}>
-                  <View style={styles.freePassIcon}>
-                    <Text style={styles.freePassIconText}>🎟️</Text>
+                <Animated.View
+                  entering={FadeIn.duration(180)}
+                  layout={Layout.springify()}
+                  className="flex-row items-center gap-3 bg-imessage-dim border border-imessage/25 p-3 rounded-lg"
+                >
+                  <View className="w-7 h-7 rounded-[14px] bg-imessage/15 items-center justify-center">
+                    <Text className="text-sm">🎟️</Text>
                   </View>
-                  <View style={styles.freePassBody}>
-                    <Text style={styles.freePassTitle}>
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-caption text-imessage font-semibold">
                       Use free pass ({freePasses} left)
                     </Text>
-                    <Text style={styles.freePassSubtitle}>
+                    <Text className="text-caption text-white/70">
                       If you fail, no charge. Pass consumed either way.
                     </Text>
                   </View>
@@ -1110,9 +1145,9 @@ export default function NewPromiseScreen() {
                       hapticLight();
                       setUseFreePass(val);
                     }}
-                    trackColor={{ false: Colors.systemGray4, true: Colors.accent + '66' }}
-                    thumbColor={useFreePass ? Colors.accent : Colors.systemGray2}
-                    ios_backgroundColor={Colors.systemGray4}
+                    trackColor={{ false: '#3A3A3C', true: 'rgba(11, 147, 246, 0.4)' }}
+                    thumbColor={useFreePass ? '#0B93F6' : '#636366'}
+                    ios_backgroundColor="#3A3A3C"
                   />
                 </Animated.View>
               )}
@@ -1120,9 +1155,9 @@ export default function NewPromiseScreen() {
           </Animated.View>
 
           {/* Verification */}
-          <Animated.View entering={FadeInDown.delay(170).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>{VERIFICATION_COPY.sectionTitle}</Text>
-            <Text style={styles.sectionHint}>{VERIFICATION_COPY.sectionHint}</Text>
+          <Animated.View entering={FadeInDown.delay(170).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">{VERIFICATION_COPY.sectionTitle}</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">{VERIFICATION_COPY.sectionHint}</Text>
 
             <VerificationPicker
               value={verificationType}
@@ -1132,11 +1167,11 @@ export default function NewPromiseScreen() {
           </Animated.View>
 
           {/* Where money goes */}
-          <Animated.View entering={FadeInDown.delay(190).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>WHERE THE MONEY GOES</Text>
-            <Text style={styles.sectionHint}>UI-only for now. But your guilt can have preferences.</Text>
+          <Animated.View entering={FadeInDown.delay(190).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">WHERE THE MONEY GOES</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">UI-only for now. But your guilt can have preferences.</Text>
 
-            <View style={styles.destinationList}>
+            <View className="gap-2">
               {DESTINATIONS.map((d) => {
                 const active = d.id === moneyDestination;
                 return (
@@ -1146,27 +1181,31 @@ export default function NewPromiseScreen() {
                       hapticLight();
                       setMoneyDestination(d.id);
                     }}
-                    style={({ pressed }) => [
-                      styles.destinationCard,
-                      active && styles.destinationCardActive,
-                      pressed && styles.destinationCardPressed,
-                    ]}
+                    className={`flex-row items-center gap-3 rounded-xl border p-4 ${
+                      active
+                        ? 'border-imessage bg-imessage-dim'
+                        : 'bg-card border-white/8 active:bg-card-hover'
+                    }`}
                   >
-                    <View style={styles.destinationLeft}>
-                      <Text style={styles.destinationEmoji}>{d.emoji}</Text>
+                    <View className="w-[34px] h-[34px] rounded-[17px] bg-[#0A0A0C] border border-white/5 items-center justify-center">
+                      <Text className="text-base">{d.emoji}</Text>
                     </View>
-                    <View style={styles.destinationBody}>
-                      <Text style={styles.destinationTitle}>{d.title}</Text>
-                      <Text style={styles.destinationSubtitle}>{d.subtitle}</Text>
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-body-semibold text-white font-rounded">{d.title}</Text>
+                      <Text className="text-caption text-white/45">{d.subtitle}</Text>
                     </View>
-                    {active && <Text style={styles.destinationCheck}>✓</Text>}
+                    {active && <Text className="text-imessage font-bold text-base">✓</Text>}
                   </Pressable>
                 );
               })}
             </View>
 
             {moneyDestination === 'friend' && (
-              <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} style={styles.friendCard}>
+              <Animated.View
+                entering={FadeIn.duration(180)}
+                layout={Layout.springify()}
+                className="bg-card rounded-xl border border-white/8 p-4"
+              >
                 <InlineFriendPicker
                   selectedFriend={selectedFriend}
                   useExternal={useExternalFriend}
@@ -1189,9 +1228,9 @@ export default function NewPromiseScreen() {
           </Animated.View>
 
           {/* Voice commitment */}
-          <Animated.View entering={FadeInDown.delay(210).duration(220)} style={styles.section}>
-            <Text style={styles.sectionLabel}>OPTIONAL: VOICE COMMITMENT</Text>
-            <Text style={styles.sectionHint}>Say it out loud. We&apos;ll haunt you with it later.</Text>
+          <Animated.View entering={FadeInDown.delay(210).duration(220)} className="gap-3">
+            <Text className="text-label text-white/30 ml-1 uppercase tracking-wide">OPTIONAL: VOICE COMMITMENT</Text>
+            <Text className="text-caption text-white/45 ml-1 -mt-2">Say it out loud. We&apos;ll haunt you with it later.</Text>
 
             <VoiceRecorder
               existingUri={voiceNoteUri}
@@ -1200,9 +1239,9 @@ export default function NewPromiseScreen() {
             />
 
             {voiceNoteUri && (
-              <Animated.View entering={FadeIn.duration(150)} style={styles.voiceConfirmation}>
-                <Text style={styles.voiceConfirmationIcon}>✓</Text>
-                <Text style={styles.voiceConfirmationText}>
+              <Animated.View entering={FadeIn.duration(150)} className="flex-row items-center gap-2 pt-2 pl-1">
+                <Text className="text-success text-sm font-bold">✓</Text>
+                <Text className="text-caption text-success italic">
                   Voice recorded. Your future self will hear this.
                 </Text>
               </Animated.View>
@@ -1211,30 +1250,37 @@ export default function NewPromiseScreen() {
 
           {/* Failure Multiplier Warning */}
           {showMultiplierWarning && (
-            <Animated.View entering={FadeIn.duration(200)} layout={Layout.springify()} style={styles.multiplierWarning}>
-              <View style={styles.multiplierWarningHeader}>
-                <Text style={styles.multiplierWarningIcon}>⚠️</Text>
-                <Text style={styles.multiplierWarningTitle}>{STATS_COPY.multiplierTitle}: {failureMultiplier}×</Text>
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              layout={Layout.springify()}
+              className="bg-danger-dim border border-danger/25 rounded-xl p-4 gap-2"
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-lg">⚠️</Text>
+                <Text className="text-body-semibold text-danger font-rounded">
+                  {STATS_COPY.multiplierTitle}: {failureMultiplier}×
+                </Text>
               </View>
-              <Text style={styles.multiplierWarningText}>
+              <Text className="text-body text-danger">
                 {failureMultiplier >= 8
                   ? STATS_COPY.multiplier8x
                   : failureMultiplier >= 4
                     ? STATS_COPY.multiplier4x
                     : STATS_COPY.multiplier2x}
               </Text>
-              <View style={styles.multiplierProgressRow}>
-                <Text style={styles.multiplierProgressText}>
+              <View className="flex-row items-center justify-between mt-1">
+                <Text className="text-caption text-white/70">
                   Complete {3 - multiplierProgress.current} more to reset
                 </Text>
-                <View style={styles.multiplierProgressDots}>
+                <View className="flex-row gap-1">
                   {[0, 1, 2].map((i) => (
                     <View
                       key={i}
-                      style={[
-                        styles.multiplierDot,
-                        i < multiplierProgress.current && styles.multiplierDotFilled,
-                      ]}
+                      className={`w-2.5 h-2.5 rounded-[5px] border ${
+                        i < multiplierProgress.current
+                          ? 'bg-success border-success'
+                          : 'bg-system-gray-4 border-system-gray-3'
+                      }`}
                     />
                   ))}
                 </View>
@@ -1244,23 +1290,26 @@ export default function NewPromiseScreen() {
 
           {/* Payment Warning */}
           {(needsPaymentMethod || isPaymentBlocked) && (
-            <Animated.View entering={FadeIn.duration(200)} style={styles.paymentWarning}>
-              <View style={styles.paymentWarningHeader}>
-                <Text style={styles.paymentWarningIcon}>{isPaymentBlocked ? '🚫' : '💳'}</Text>
-                <Text style={styles.paymentWarningTitle}>
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              className="bg-warning-dim border border-warning/25 rounded-xl p-4 gap-2"
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-lg">{isPaymentBlocked ? '🚫' : '💳'}</Text>
+                <Text className="text-body-semibold text-warning font-rounded">
                   {isPaymentBlocked ? 'Payment required' : 'Add payment method'}
                 </Text>
               </View>
-              <Text style={styles.paymentWarningText}>
+              <Text className="text-body text-white/70">
                 {isPaymentBlocked
                   ? 'Resolve your failed payment before creating new stakes.'
                   : 'Add a card to create promises with real stakes. You only pay if you fail.'}
               </Text>
               <Pressable
                 onPress={() => router.push('/(auth)/payment-method' as never)}
-                style={({ pressed }) => [styles.paymentWarningButton, pressed && styles.pressed]}
+                className="self-start bg-warning py-2 px-4 rounded-full mt-1 active:opacity-90 active:scale-[0.98]"
               >
-                <Text style={styles.paymentWarningButtonText}>
+                <Text className="text-caption text-black font-semibold">
                   {isPaymentBlocked ? 'Fix payment' : 'Add card'}
                 </Text>
               </Pressable>
@@ -1268,28 +1317,28 @@ export default function NewPromiseScreen() {
           )}
 
           {/* Lock in */}
-          <Animated.View entering={FadeInDown.delay(230).duration(220)} style={styles.lockSection}>
+          <Animated.View entering={FadeInDown.delay(230).duration(220)} className="gap-3 pt-2">
             <Pressable
               disabled={!canLock || isWorking}
               onPress={openConfirm}
-              style={({ pressed }) => [
-                styles.lockButton,
-                pressed && styles.lockButtonPressed,
-                (!canLock || isWorking) && styles.lockButtonDisabled,
-              ]}
+              className={`h-14 rounded-[28px] overflow-hidden shadow-lg ${
+                (!canLock || isWorking) ? 'opacity-55' : 'active:scale-[0.99]'
+              }`}
             >
               <LinearGradient
-                colors={!canLock || isWorking ? [Colors.systemGray4, Colors.systemGray5] : [Colors.danger, '#FF6B35']}
-                style={styles.lockButtonGradient}
+                colors={!canLock || isWorking ? ['#3A3A3C', '#2C2C2E'] : ['#FF453A', '#FF6B35']}
+                className="flex-1 items-center justify-center"
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.lockButtonText}>
+                <Text className="text-body-semibold text-white font-rounded">
                   {isWorking ? 'Working…' : needsPaymentMethod ? 'Add card to stake 💳' : 'Lock it in 🔒'}
                 </Text>
               </LinearGradient>
             </Pressable>
-            <Text style={styles.lockFootnote}>You can&apos;t &quot;un-send&quot; this. (You can, but it ruins the vibe.)</Text>
+            <Text className="text-caption text-white/30 text-center italic">
+              You can&apos;t &quot;un-send&quot; this. (You can, but it ruins the vibe.)
+            </Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1317,879 +1366,6 @@ export default function NewPromiseScreen() {
         onCancel={() => setConfirmOpen(false)}
         onConfirm={doCreate}
       />
-
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  headerCenter: {
-    flex: 1,
-    gap: 2,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  headerSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: 28,
-    lineHeight: 28,
-    color: Colors.textSecondary,
-    marginTop: -2,
-  },
-
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    gap: Spacing.xxl,
-  },
-
-  section: { gap: Spacing.md },
-  sectionLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-  sectionHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginLeft: Spacing.xs,
-    marginTop: -8,
-  },
-
-  templatesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  templateCard: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.xs,
-  },
-  templateCardPressed: {
-    backgroundColor: Colors.bgCardHover,
-    borderColor: Colors.borderFocus,
-  },
-  templateCardActive: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accentDim,
-  },
-  templateEmoji: { fontSize: 22 },
-  templateText: {
-    ...Typography.caption,
-    color: Colors.text,
-    lineHeight: 18,
-    minHeight: 36,
-  },
-  templateStake: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.dangerDim,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-    marginTop: Spacing.xs,
-  },
-  templateStakeText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    fontFamily: Fonts.mono,
-    fontWeight: '600',
-  },
-
-  inputCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  textInput: {
-    minHeight: 84,
-    ...Typography.body,
-    color: Colors.text,
-    lineHeight: 22,
-  },
-  inputFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  inputHelper: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-  },
-  charCount: {
-    ...Typography.captionMono,
-    color: Colors.textMuted,
-  },
-
-  rowCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  rowCardPressed: { backgroundColor: Colors.bgCardHover },
-  rowLeft: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowIcon: { fontSize: 16 },
-  rowBody: { flex: 1, gap: 2 },
-  rowTitle: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  rowValue: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  rowChevron: {
-    fontSize: 22,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-
-  stakeCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-  },
-  stakeTopRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  stakeLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  stakeAmountContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.sm,
-  },
-  stakeBaseAmount: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-  stakeAmount: {
-    ...Typography.displaySmall,
-    color: Colors.danger,
-    fontFamily: Fonts.rounded,
-  },
-  stakeAmountPenalty: {
-    color: Colors.danger,
-  },
-  stakePresets: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    alignItems: 'center',
-  },
-
-  customFineRow: {
-    gap: Spacing.sm,
-    paddingTop: Spacing.xs,
-  },
-  customFineLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-  customFineInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-  },
-  customFineDollar: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-  customFineInput: {
-    flex: 1,
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.mono,
-    paddingVertical: 0,
-  },
-  customFineHelper: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-    marginLeft: Spacing.xs,
-  },
-
-  chipsRow: {
-    paddingVertical: Spacing.sm,
-    paddingRight: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  chipActive: {
-    backgroundColor: Colors.accentDim,
-    borderColor: Colors.accent,
-  },
-  chipDangerActive: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger,
-  },
-  chipPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
-  chipText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    fontFamily: Fonts.mono,
-  },
-  chipTextActive: { color: Colors.text },
-
-  iconChip: {
-    width: 40,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconChipText: {
-    color: Colors.textSecondary,
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: -1,
-  },
-
-  warningRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(255, 159, 10, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 159, 10, 0.18)',
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-  },
-  warningIcon: { fontSize: 14, marginTop: 1 },
-  warningText: {
-    ...Typography.caption,
-    color: Colors.warning,
-    flex: 1,
-  },
-
-  // Wallet usage indicator
-  walletUsageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.successDim,
-    borderWidth: 1,
-    borderColor: Colors.success + '33',
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-  },
-  walletUsageIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.success + '22',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  walletUsageIconText: {
-    fontSize: 14,
-  },
-  walletUsageBody: {
-    flex: 1,
-    gap: 2,
-  },
-  walletUsageText: {
-    ...Typography.caption,
-    color: Colors.success,
-    fontWeight: '600',
-  },
-  walletUsageAmount: {
-    fontFamily: Fonts.mono,
-    fontWeight: '700',
-  },
-  walletUsageSubtext: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-  walletBalanceBadge: {
-    backgroundColor: Colors.success + '22',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-  },
-  walletBalanceBadgeText: {
-    ...Typography.captionMono,
-    color: Colors.success,
-    fontWeight: '600',
-  },
-
-  // Free pass toggle
-  freePassRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.accentDim,
-    borderWidth: 1,
-    borderColor: Colors.accent + '44',
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-  },
-  freePassIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.accent + '22',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  freePassIconText: {
-    fontSize: 14,
-  },
-  freePassBody: {
-    flex: 1,
-    gap: 2,
-  },
-  freePassTitle: {
-    ...Typography.caption,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-  freePassSubtitle: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-
-  destinationList: {
-    gap: Spacing.sm,
-  },
-  destinationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  destinationCardActive: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accentDim,
-  },
-  destinationCardPressed: {
-    backgroundColor: Colors.bgCardHover,
-  },
-  destinationLeft: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  destinationEmoji: {
-    fontSize: 16,
-  },
-  destinationBody: {
-    flex: 1,
-    gap: 2,
-  },
-  destinationTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  destinationSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  destinationCheck: {
-    color: Colors.accent,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-
-  friendCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-
-  voiceConfirmation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingTop: Spacing.sm,
-    paddingLeft: Spacing.xs,
-  },
-  voiceConfirmationIcon: {
-    color: Colors.success,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  voiceConfirmationText: {
-    ...Typography.caption,
-    color: Colors.success,
-    fontStyle: 'italic',
-  },
-
-  lockSection: {
-    gap: Spacing.md,
-    paddingTop: Spacing.sm,
-  },
-  lockButton: {
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  lockButtonDisabled: {
-    opacity: 0.55,
-  },
-  lockButtonPressed: {
-    transform: [{ scale: 0.99 }],
-  },
-  lockButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  lockFootnote: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
-  // Payment warning
-  paymentWarning: {
-    backgroundColor: Colors.warningDim,
-    borderWidth: 1,
-    borderColor: Colors.warning + '44',
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  paymentWarningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  paymentWarningIcon: {
-    fontSize: 18,
-  },
-  paymentWarningTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.warning,
-    fontFamily: Fonts.rounded,
-  },
-  paymentWarningText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-  paymentWarningButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.warning,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.full,
-    marginTop: Spacing.xs,
-  },
-  paymentWarningButtonText: {
-    ...Typography.caption,
-    color: Colors.bg,
-    fontWeight: '600',
-  },
-
-  // Multiplier warning
-  multiplierWarning: {
-    backgroundColor: Colors.dangerDim,
-    borderWidth: 1,
-    borderColor: Colors.danger + '44',
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  multiplierWarningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  multiplierWarningIcon: {
-    fontSize: 18,
-  },
-  multiplierWarningTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.danger,
-    fontFamily: Fonts.rounded,
-  },
-  multiplierWarningText: {
-    ...Typography.body,
-    color: Colors.danger,
-  },
-  multiplierProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.xs,
-  },
-  multiplierProgressText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  multiplierProgressDots: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  multiplierDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.systemGray4,
-    borderWidth: 1,
-    borderColor: Colors.systemGray3,
-  },
-  multiplierDotFilled: {
-    backgroundColor: Colors.success,
-    borderColor: Colors.success,
-  },
-
-  pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
-
-  // Deadline modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    padding: Spacing.lg,
-  },
-  modalKav: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    width: '100%',
-    height: '78%',
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.xxl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  modalHandleHit: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 2,
-    paddingBottom: Spacing.md,
-    marginTop: -6,
-  },
-  modalHandle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: Colors.systemGray4,
-  },
-  modalBodyScroll: {
-    flex: 1,
-    width: '100%',
-  },
-  modalBodyContent: {
-    gap: Spacing.lg,
-    paddingBottom: Spacing.sm,
-  },
-  modalTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    marginTop: -8,
-  },
-  modalSection: { gap: Spacing.sm },
-  modalSectionLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-  timeList: { gap: Spacing.sm },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  timeRowActive: { borderColor: Colors.accent, backgroundColor: Colors.accentDim },
-  timeRowPressed: { backgroundColor: Colors.bgCardHover },
-  timeRowText: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
-  },
-  timeRowTextActive: { color: Colors.text },
-  timeRowCheck: {
-    color: Colors.accent,
-    fontWeight: '700',
-  },
-  customTimePanel: {
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  customTimeInputsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  timeInputBox: {
-    width: 64,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  timeInput: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.mono,
-    textAlign: 'center',
-    paddingVertical: 0,
-  },
-  timeColon: {
-    color: Colors.textSecondary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: -1,
-  },
-  timeSuffix: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontFamily: Fonts.mono,
-  },
-  customTimeHelper: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-  customTimeHelperDanger: {
-    color: Colors.danger,
-    fontWeight: '600',
-  },
-  modalFooter: { gap: Spacing.md },
-  modalPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.sm,
-  },
-  modalPreviewLabel: { ...Typography.label, color: Colors.textMuted },
-  modalPreviewValue: { ...Typography.bodySemibold, color: Colors.text, fontFamily: Fonts.rounded },
-  modalPreviewValueDanger: { color: Colors.danger },
-  modalPrimaryButton: { height: 48, borderRadius: 24, overflow: 'hidden' },
-  modalPrimaryButtonPressed: { transform: [{ scale: 0.99 }] },
-  modalPrimaryButtonDisabled: { opacity: 0.6 },
-  modalPrimaryButtonGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  modalPrimaryButtonText: { ...Typography.bodySemibold, color: Colors.text },
-
-  // Confirm modal
-  confirmSheet: {
-    width: '100%',
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.xxl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  confirmTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  confirmSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    marginTop: -8,
-  },
-  confirmCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-  },
-  confirmPromiseText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    lineHeight: 22,
-  },
-  confirmMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.lg,
-  },
-  confirmMetaItem: { flex: 1, gap: 4 },
-  confirmMetaLabel: { ...Typography.label, color: Colors.textMuted },
-  confirmMetaValue: { ...Typography.h2, color: Colors.danger, fontFamily: Fonts.mono },
-  confirmMetaValueSmall: { ...Typography.bodyMedium, color: Colors.textSecondary },
-  confirmStakeBreakdown: { gap: 2 },
-  confirmBaseStake: { ...Typography.caption, color: Colors.textSecondary, fontFamily: Fonts.mono },
-  confirmMultiplierNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.dangerDim,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-  },
-  confirmMultiplierNoteIcon: { fontSize: 14 },
-  confirmMultiplierNoteText: { ...Typography.caption, color: Colors.danger, flex: 1 },
-  confirmWalletNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-  },
-  confirmWalletNoteIcon: { fontSize: 14 },
-  confirmWalletNoteBody: { flex: 1, gap: 2 },
-  confirmWalletNoteText: { ...Typography.caption, color: Colors.success, fontWeight: '600' },
-  confirmWalletNoteSubtext: { ...Typography.caption, color: Colors.textSecondary, fontFamily: Fonts.mono },
-  confirmMetaDivider: { width: 1, height: 42, backgroundColor: Colors.border },
-  confirmMetaDividerHorizontal: { height: 1, backgroundColor: Colors.borderSubtle },
-  confirmMetaRowSingle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
-  confirmActions: { flexDirection: 'row', gap: Spacing.md },
-  confirmSecondary: {
-    flex: 1,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmSecondaryText: { ...Typography.bodySemibold, color: Colors.textSecondary },
-  confirmPrimary: {
-    flex: 1,
-    height: 52,
-    borderRadius: 26,
-    overflow: 'hidden',
-  },
-  confirmPrimaryDisabled: { opacity: 0.7 },
-  confirmPrimaryGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  confirmPrimaryText: { ...Typography.bodySemibold, color: Colors.text, fontFamily: Fonts.rounded },
-});
-
-

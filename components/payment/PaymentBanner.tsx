@@ -7,15 +7,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticError, hapticLight, hapticSuccess } from '@/lib/haptics';
 import { presentPaymentForSCA } from '@/lib/stripe';
 
@@ -57,39 +50,43 @@ export function PaymentBanner({
     }
   };
 
-  const formattedAmount = stakeAmount
-    ? `$${stakeAmount}`
-    : null;
+  const formattedAmount = stakeAmount ? `$${stakeAmount}` : null;
 
   return (
     <Pressable
-      style={[styles.container, error && styles.containerError]}
+      className={`flex-row items-center rounded-lg p-md gap-md border ${
+        error
+          ? 'bg-danger-dim border-danger'
+          : 'bg-warning-dim border-warning'
+      }`}
       onPress={handlePress}
       disabled={isLoading}
     >
-      <View style={styles.iconContainer}>
+      <View className="w-10 h-10 rounded-full bg-black/20 items-center justify-center">
         {isLoading ? (
-          <ActivityIndicator color={Colors.text} size="small" />
+          <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (
           <Ionicons
             name="alert-circle"
             size={24}
-            color={error ? Colors.danger : Colors.warning}
+            color={error ? '#FF453A' : '#FF9F0A'}
           />
         )}
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>
+      <View className="flex-1">
+        <Text className="text-body-semibold text-white mb-0.5">
           {error ? 'Payment failed' : 'Complete payment'}
         </Text>
-        <Text style={styles.description} numberOfLines={2}>
+        <Text className="text-caption text-text-secondary" numberOfLines={2}>
           {error ? (
             error
           ) : promiseText ? (
             <>
               {formattedAmount && (
-                <Text style={styles.amount}>{formattedAmount} · </Text>
+                <Text className="text-caption text-warning font-semibold">
+                  {formattedAmount} ·{' '}
+                </Text>
               )}
               {promiseText.length > 40
                 ? `${promiseText.slice(0, 40)}...`
@@ -101,54 +98,7 @@ export function PaymentBanner({
         </Text>
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={20}
-        color={Colors.textSecondary}
-      />
+      <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.warningDim,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.warning,
-  },
-  containerError: {
-    backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  description: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  amount: {
-    ...Typography.caption,
-    color: Colors.warning,
-    fontWeight: '600',
-  },
-});
-

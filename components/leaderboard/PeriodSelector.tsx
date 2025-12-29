@@ -4,10 +4,9 @@
  * Pill-style selector for time period filtering
  */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
 import { hapticLight } from '@/lib/haptics';
 import { type Period, getPeriodLabel } from '@/lib/leaderboard/api';
 
@@ -48,14 +47,19 @@ export function PeriodSelector({ value, onChange, isShameMode = false }: PeriodS
   };
 
   return (
-    <View style={[styles.container, isShameMode && styles.containerShame]}>
+    <View
+      className={`relative flex-row p-1 rounded-lg border ${
+        isShameMode
+          ? 'bg-danger-dim border-danger/30'
+          : 'bg-card border-border'
+      }`}
+    >
       {/* Animated sliding indicator */}
       <Animated.View
-        style={[
-          styles.indicator,
-          isShameMode && styles.indicatorShame,
-          animatedIndicatorStyle,
-        ]}
+        className={`absolute top-1 bottom-1 rounded-md shadow-md ${
+          isShameMode ? 'bg-danger/25' : 'bg-abyss-800'
+        }`}
+        style={animatedIndicatorStyle}
       />
 
       {/* Period options */}
@@ -63,14 +67,16 @@ export function PeriodSelector({ value, onChange, isShameMode = false }: PeriodS
         <Pressable
           key={period}
           onPress={() => handleSelect(period)}
-          style={styles.option}
+          className="flex-1 items-center justify-center py-2.5 z-[1]"
         >
           <Text
-            style={[
-              styles.optionText,
-              value === period && styles.optionTextActive,
-              value === period && isShameMode && styles.optionTextShame,
-            ]}
+            className={`text-caption font-semibold ${
+              value === period
+                ? isShameMode
+                  ? 'text-danger'
+                  : 'text-white'
+                : 'text-text-tertiary'
+            }`}
           >
             {getPeriodLabel(period)}
           </Text>
@@ -79,57 +85,3 @@ export function PeriodSelector({ value, onChange, isShameMode = false }: PeriodS
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 4,
-    position: 'relative',
-  },
-  containerShame: {
-    borderColor: Colors.danger + '30',
-    backgroundColor: Colors.dangerDim,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 4,
-    bottom: 4,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  indicatorShame: {
-    backgroundColor: Colors.danger + '25',
-  },
-  option: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm + 2,
-    zIndex: 1,
-  },
-  optionText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontWeight: '600',
-  },
-  optionTextActive: {
-    color: Colors.text,
-  },
-  optionTextShame: {
-    color: Colors.danger,
-  },
-});
-

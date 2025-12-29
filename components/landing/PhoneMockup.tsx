@@ -350,7 +350,6 @@ function BottomNav() {
 export function PhoneMockup() {
   const [stake, setStake] = useState(50);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [notificationIndex, setNotificationIndex] = useState(0);
 
   // Animate stake value occasionally
   useEffect(() => {
@@ -366,25 +365,31 @@ export function PhoneMockup() {
 
   // Show notifications periodically
   useEffect(() => {
+    let currentIndex = 0;
+
     const showNotification = () => {
-      const notif = NOTIFICATION_MESSAGES[notificationIndex % NOTIFICATION_MESSAGES.length];
+      const notif = NOTIFICATION_MESSAGES[currentIndex % NOTIFICATION_MESSAGES.length];
       const newNotification: NotificationData = {
         id: Date.now(),
         ...notif,
       };
       setNotifications((prev) => [...prev, newNotification]);
-      setNotificationIndex((prev) => prev + 1);
+      currentIndex++;
     };
 
     // Show first notification after 2s, then every 6s
-    const initialTimer = setTimeout(showNotification, 2000);
-    const interval = setInterval(showNotification, 6000);
+    const initialTimer = setTimeout(() => {
+      showNotification();
+      // Start the interval only after the initial notification
+      interval = setInterval(showNotification, 6000);
+    }, 2000);
+    let interval: ReturnType<typeof setInterval>;
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
     };
-  }, [notificationIndex]);
+  }, []);
 
   const handleNotificationComplete = useCallback((id: number) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));

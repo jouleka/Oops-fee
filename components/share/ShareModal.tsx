@@ -18,7 +18,6 @@ import {
   Modal,
   Pressable,
   Share,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -26,7 +25,6 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import type { UserPromise } from '@/lib/promises/types';
 import { createShareLink, type ShareLinkType } from '@/lib/share';
@@ -69,13 +67,13 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
 
   // Track previous partner state to detect changes
   const prevPartnerStateRef = useRef(promise.partnerState);
-  
+
   // Auto-close when partner verification completes
   useEffect(() => {
     const prev = prevPartnerStateRef.current;
     const curr = promise.partnerState;
     prevPartnerStateRef.current = curr;
-    
+
     // If partner just approved/rejected, close modal
     if (prev === 'awaiting' && (curr === 'approved' || curr === 'rejected')) {
       onClose();
@@ -238,49 +236,53 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
             }
           }}
           disabled={sharing || isLoading}
-          style={({ pressed }) => [
-            styles.optionBtn,
-            isActive && styles.optionBtnActive,
-            pressed && styles.pressed,
-          ]}
+          className={`flex-row items-center gap-md rounded-lg border p-md ${
+            isActive
+              ? 'border-imessage bg-imessage-dim'
+              : 'border-border bg-card'
+          } active:opacity-90`}
         >
-          <Text style={styles.optionEmoji}>{emoji}</Text>
-          <View style={styles.optionTextContainer}>
-            <Text style={styles.optionTitle}>{title}</Text>
-            <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          <Text className="text-[24px]">{emoji}</Text>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-body-semibold text-white">{title}</Text>
+            <Text className="text-caption text-text-tertiary">{subtitle}</Text>
           </View>
-          {isLoading && <ActivityIndicator size="small" color={Colors.accent} />}
+          {isLoading && <ActivityIndicator size="small" color="#0B93F6" />}
         </Pressable>
 
         {/* Link actions */}
         {isActive && hasLink && linkType && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.linkActions}>
+          <Animated.View entering={FadeIn.duration(200)} className="flex-row gap-sm pt-sm px-md">
             <Pressable
-              style={[styles.linkActionBtn, state.copied && styles.linkActionBtnSuccess]}
+              className={`flex-1 items-center justify-center py-sm rounded-md border ${
+                state.copied
+                  ? 'bg-success-dim border-success'
+                  : 'bg-card border-border'
+              }`}
               onPress={() => copyLink(state.url!, linkType)}
             >
-              <Text style={styles.linkActionText}>
+              <Text className="text-caption text-white">
                 {state.copied ? '✓ Copied!' : '📋 Copy link'}
               </Text>
             </Pressable>
             <Pressable
-              style={styles.linkActionBtn}
+              className="flex-1 items-center justify-center py-sm bg-card rounded-md border border-border"
               onPress={() => shareLink(state.url!, linkType)}
             >
-              <Text style={styles.linkActionText}>📤 Share</Text>
+              <Text className="text-caption text-white">📤 Share</Text>
             </Pressable>
           </Animated.View>
         )}
 
         {/* Error */}
         {isActive && state?.error && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
-            <Text style={styles.errorText}>{state.error}</Text>
-            <Pressable
-              style={styles.retryBtn}
-              onPress={() => linkType && generateShareLink(linkType)}
-            >
-              <Text style={styles.retryText}>Try again</Text>
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            className="flex-row items-center justify-between bg-danger-dim rounded-md p-sm mt-sm mx-md"
+          >
+            <Text className="text-caption text-danger flex-1">{state.error}</Text>
+            <Pressable className="px-md py-xs" onPress={() => linkType && generateShareLink(linkType)}>
+              <Text className="text-caption text-imessage font-semibold">Try again</Text>
             </Pressable>
           </Animated.View>
         )}
@@ -290,37 +292,34 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
-      <View style={styles.container}>
+      <View className="flex-1 bg-black/60 justify-end">
         {/* Tap to dismiss */}
-        <Pressable style={styles.backdrop} onPress={dismiss} />
+        <Pressable className="flex-1" onPress={dismiss} />
 
         {/* Sheet */}
-        <Animated.View style={[styles.sheet, sheetAnimStyle]}>
+        <Animated.View style={sheetAnimStyle} className="bg-abyss-700 rounded-t-xxl max-h-[90%]">
           {/* Handle */}
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
+          <View className="items-center pt-md pb-sm">
+            <View className="w-10 h-1 rounded-sm bg-system-gray-4" />
           </View>
 
-          <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View className="px-xl gap-lg" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Share commitment</Text>
-              <Text style={styles.subtitle}>Get friends involved for extra accountability.</Text>
+            <View className="items-center gap-1">
+              <Text className="text-h3 text-white font-rounded">Share commitment</Text>
+              <Text className="text-caption text-text-tertiary text-center">
+                Get friends involved for extra accountability.
+              </Text>
             </View>
 
             {/* Card Preview */}
-            <Animated.View entering={FadeIn.duration(300)} style={styles.cardWrapper}>
+            <Animated.View entering={FadeIn.duration(300)} className="items-center scale-75 -my-xxl">
               <ShareCommitmentCard promise={promise} />
             </Animated.View>
 
             {/* Share Options */}
-            <View style={styles.options}>
-              {renderShareOption(
-                'image',
-                '🖼️',
-                'Share image',
-                'Post this card to social media',
-              )}
+            <View className="gap-sm">
+              {renderShareOption('image', '🖼️', 'Share image', 'Post this card to social media')}
 
               {renderShareOption(
                 'friend',
@@ -348,16 +347,25 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
             <Pressable
               disabled={sharing}
               onPress={handleShareImage}
-              style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed, sharing && styles.disabled]}
+              className={`h-14 rounded-[28px] overflow-hidden shadow-lg active:opacity-90 active:scale-[0.98] ${
+                sharing ? 'opacity-60' : ''
+              }`}
             >
-              <LinearGradient colors={[Colors.accent, '#0A7FD4']} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Text style={styles.btnText}>{sharing ? 'Sharing...' : 'Share commitment image'}</Text>
+              <LinearGradient
+                colors={['#0B93F6', '#0A7FD4']}
+                className="flex-1 items-center justify-center"
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text className="text-body-semibold text-white font-rounded">
+                  {sharing ? 'Sharing...' : 'Share commitment image'}
+                </Text>
               </LinearGradient>
             </Pressable>
           </View>
 
           {/* Hidden capture card */}
-          <View style={styles.hiddenCapture}>
+          <View className="absolute -left-[9999px] -top-[9999px]">
             <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1, result: 'tmpfile' }}>
               <ShareCommitmentCard promise={promise} />
             </ViewShot>
@@ -367,176 +375,3 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: Colors.bgElevated,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    maxHeight: '90%',
-  },
-  handleRow: {
-    alignItems: 'center',
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.systemGray4,
-  },
-  content: {
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.lg,
-  },
-
-  // Header
-  header: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  title: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  subtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-
-  // Card wrapper
-  cardWrapper: {
-    alignItems: 'center',
-    transform: [{ scale: 0.75 }],
-    marginVertical: -Spacing.xxl,
-  },
-
-  // Options
-  options: {
-    gap: Spacing.sm,
-  },
-  optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-  },
-  optionBtnActive: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accentDim,
-  },
-  optionEmoji: {
-    fontSize: 24,
-  },
-  optionTextContainer: {
-    flex: 1,
-    gap: 2,
-  },
-  optionTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-  optionSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-
-  // Link actions
-  linkActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingTop: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
-  linkActionBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  linkActionBtnSuccess: {
-    backgroundColor: Colors.successDim,
-    borderColor: Colors.success,
-  },
-  linkActionText: {
-    ...Typography.caption,
-    color: Colors.text,
-  },
-
-  // Error
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.dangerDim,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginTop: Spacing.sm,
-    marginHorizontal: Spacing.md,
-  },
-  errorText: {
-    ...Typography.caption,
-    color: Colors.danger,
-    flex: 1,
-  },
-  retryBtn: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  retryText: {
-    ...Typography.caption,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-
-  // Share button
-  shareBtn: {
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  btnGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-
-  // Hidden capture
-  hiddenCapture: {
-    position: 'absolute',
-    left: -9999,
-    top: -9999,
-  },
-});

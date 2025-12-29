@@ -14,7 +14,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -27,7 +26,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAppleAuthAvailable, useAuth } from '@/context/auth';
 
 type SignInStep = 'initial' | 'email-input' | 'email-verify';
@@ -159,40 +157,42 @@ export default function SignInScreen() {
   }, [step, router]);
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-black">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.screen}
+        className="flex-1"
       >
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + Spacing.xl },
-          ]}
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 24,
+            gap: 24,
+            paddingTop: insets.top + 16,
+            paddingBottom: insets.bottom + 24,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <View style={styles.header}>
+          <View className="flex-row items-center">
             <Pressable
               onPress={handleBack}
-              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+              className="w-10 h-10 rounded-full bg-card items-center justify-center border border-border active:opacity-80"
             >
-              <Text style={styles.backButtonText}>
+              <Text className="text-2xl text-text-secondary -mt-0.5">
                 {step === 'initial' ? '✕' : '‹'}
               </Text>
             </Pressable>
           </View>
 
           {/* Title Section */}
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.titleSection}>
-            <Text style={styles.title}>
+          <Animated.View entering={FadeInDown.duration(300)} className="gap-2">
+            <Text className="text-display-sm text-white font-rounded">
               {step === 'initial' && 'Sign in'}
               {step === 'email-input' && 'Your email'}
               {step === 'email-verify' && 'Enter code'}
             </Text>
-            <Text style={styles.subtitle}>
+            <Text className="text-body text-text-secondary">
               {step === 'initial' && 'To put actual money on your promises. No pressure.'}
               {step === 'email-input' && "We'll email you a magic code. Check your inbox."}
               {step === 'email-verify' && `Sent to ${email}. Check your inbox (and spam).`}
@@ -204,10 +204,10 @@ export default function SignInScreen() {
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(150)}
-              style={styles.errorCard}
+              className="flex-row items-start gap-2 bg-danger-dim border border-danger/25 rounded-lg p-3"
             >
-              <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text className="text-sm mt-0.5">⚠️</Text>
+              <Text className="text-body text-danger flex-1">{error}</Text>
             </Animated.View>
           )}
 
@@ -215,19 +215,19 @@ export default function SignInScreen() {
           {step === 'initial' && (
             <Animated.View
               entering={FadeInDown.delay(100).duration(300)}
-              style={styles.section}
+              className="gap-3"
             >
-              <Text style={styles.sectionLabel}>QUICK OPTIONS</Text>
-              <Text style={styles.sectionHint}>One tap. No password to forget.</Text>
+              <Text className="text-label text-text-muted ml-1 uppercase tracking-wider">QUICK OPTIONS</Text>
+              <Text className="text-caption text-text-tertiary ml-1 -mt-2">One tap. No password to forget.</Text>
 
-              <View style={styles.buttonStack}>
+              <View className="gap-3">
                 {/* Apple Sign-In */}
                 {appleAuthAvailable && (
                   <AppleAuthentication.AppleAuthenticationButton
                     buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                     buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                    cornerRadius={Radius.lg}
-                    style={styles.appleButton}
+                    cornerRadius={16}
+                    style={{ height: 54, width: '100%' }}
                     onPress={handleAppleSignIn}
                   />
                 )}
@@ -236,47 +236,40 @@ export default function SignInScreen() {
                 <Pressable
                   onPress={handleGoogleSignIn}
                   disabled={isLoading}
-                  style={({ pressed }) => [
-                    styles.socialButton,
-                    pressed && styles.socialButtonPressed,
-                    isLoading && styles.buttonDisabled,
-                  ]}
+                  className={`flex-row items-center justify-center h-[54px] rounded-lg bg-white gap-2 active:opacity-90 active:scale-[0.99] ${isLoading ? 'opacity-60' : ''}`}
                 >
-                  <Text style={styles.socialButtonIcon}>G</Text>
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  <Text className="text-xl font-bold text-black">G</Text>
+                  <Text className="text-body-semibold text-black">Continue with Google</Text>
                 </Pressable>
               </View>
 
               {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or the old-fashioned way</Text>
-                <View style={styles.dividerLine} />
+              <View className="flex-row items-center my-4 gap-3">
+                <View className="flex-1 h-px bg-border" />
+                <Text className="text-caption text-text-muted">or the old-fashioned way</Text>
+                <View className="flex-1 h-px bg-border" />
               </View>
 
               {/* Email option */}
-              <View style={styles.buttonStack}>
+              <View className="gap-3">
                 <Pressable
                   onPress={() => {
                     hapticLight();
                     setStep('email-input');
                   }}
                   disabled={isLoading}
-                  style={({ pressed }) => [
-                    styles.optionCard,
-                    pressed && styles.cardPressed,
-                  ]}
+                  className="flex-row items-center gap-3 bg-card rounded-xl border border-border p-4 active:bg-card-hover active:border-border-focus"
                 >
-                  <View style={styles.optionIcon}>
-                    <Text style={styles.optionEmoji}>✉️</Text>
+                  <View className="w-10 h-10 rounded-full bg-abyss-800 border border-border-subtle items-center justify-center">
+                    <Text className="text-lg">✉️</Text>
                   </View>
-                  <View style={styles.optionBody}>
-                    <Text style={styles.optionTitle}>Email</Text>
-                    <Text style={styles.optionSubtitle}>
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-body-semibold text-white font-rounded">Email</Text>
+                    <Text className="text-caption text-text-tertiary">
                       Magic link. No password needed.
                     </Text>
                   </View>
-                  <Text style={styles.chevron}>›</Text>
+                  <Text className="text-2xl text-text-muted font-light">›</Text>
                 </Pressable>
               </View>
             </Animated.View>
@@ -287,18 +280,18 @@ export default function SignInScreen() {
             <Animated.View
               entering={FadeInDown.duration(300)}
               layout={Layout.springify()}
-              style={styles.section}
+              className="gap-3"
             >
-              <Text style={styles.sectionLabel}>EMAIL ADDRESS</Text>
-              <Text style={styles.sectionHint}>We&apos;ll send you a 6-digit code. No password needed.</Text>
+              <Text className="text-label text-text-muted ml-1 uppercase tracking-wider">EMAIL ADDRESS</Text>
+              <Text className="text-caption text-text-tertiary ml-1 -mt-2">We&apos;ll send you a 6-digit code. No password needed.</Text>
 
-              <View style={styles.inputCard}>
+              <View className="bg-card rounded-xl border border-border p-4">
                 <TextInput
-                  style={styles.emailInput}
+                  className="text-white text-center py-3 text-lg"
                   value={email}
                   onChangeText={setEmail}
                   placeholder="you@example.com"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor="rgba(255, 255, 255, 0.30)"
                   keyboardType="email-address"
                   autoFocus
                   autoComplete="email"
@@ -310,22 +303,18 @@ export default function SignInScreen() {
               <Pressable
                 onPress={handleSendEmailOtp}
                 disabled={isLoading || !email.trim()}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.primaryButtonPressed,
-                  (!email.trim() || isLoading) && styles.buttonDisabled,
-                ]}
+                className={`h-14 rounded-full overflow-hidden shadow-lg active:scale-[0.99] ${(!email.trim() || isLoading) ? 'opacity-60' : ''}`}
               >
                 <LinearGradient
-                  colors={!email.trim() || isLoading ? [Colors.systemGray4, Colors.systemGray5] : [Colors.accent, '#0A7FD4']}
-                  style={styles.primaryButtonGradient}
+                  colors={!email.trim() || isLoading ? ['#3A3A3C', '#2C2C2E'] : ['#0B93F6', '#0A7FD4']}
+                  className="flex-1 items-center justify-center"
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color={Colors.text} />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Send code</Text>
+                    <Text className="text-body-semibold text-white font-rounded">Send code</Text>
                   )}
                 </LinearGradient>
               </Pressable>
@@ -337,18 +326,18 @@ export default function SignInScreen() {
             <Animated.View
               entering={FadeInDown.duration(300)}
               layout={Layout.springify()}
-              style={styles.section}
+              className="gap-3"
             >
-              <Text style={styles.sectionLabel}>VERIFICATION CODE</Text>
-              <Text style={styles.sectionHint}>Check your inbox for the code.</Text>
+              <Text className="text-label text-text-muted ml-1 uppercase tracking-wider">VERIFICATION CODE</Text>
+              <Text className="text-caption text-text-tertiary ml-1 -mt-2">Check your inbox for the code.</Text>
 
-              <View style={styles.inputCard}>
+              <View className="bg-card rounded-xl border border-border p-4">
                 <TextInput
-                  style={styles.emailOtpInput}
+                  className="text-h2 text-white text-center tracking-widest py-3 font-mono"
                   value={otpCode}
                   onChangeText={(text) => setOtpCode(text.replace(/\D/g, ''))}
                   placeholder="00000000"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor="rgba(255, 255, 255, 0.30)"
                   keyboardType="number-pad"
                   autoFocus
                   maxLength={8}
@@ -359,22 +348,18 @@ export default function SignInScreen() {
               <Pressable
                 onPress={handleVerifyEmailOtp}
                 disabled={isLoading || otpCode.length < 6}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.primaryButtonPressed,
-                  (otpCode.length < 6 || isLoading) && styles.buttonDisabled,
-                ]}
+                className={`h-14 rounded-full overflow-hidden shadow-lg active:scale-[0.99] ${(otpCode.length < 6 || isLoading) ? 'opacity-60' : ''}`}
               >
                 <LinearGradient
-                  colors={otpCode.length < 6 || isLoading ? [Colors.systemGray4, Colors.systemGray5] : [Colors.accent, '#0A7FD4']}
-                  style={styles.primaryButtonGradient}
+                  colors={otpCode.length < 6 || isLoading ? ['#3A3A3C', '#2C2C2E'] : ['#0B93F6', '#0A7FD4']}
+                  className="flex-1 items-center justify-center"
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color={Colors.text} />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Verify</Text>
+                    <Text className="text-body-semibold text-white font-rounded">Verify</Text>
                   )}
                 </LinearGradient>
               </Pressable>
@@ -382,16 +367,16 @@ export default function SignInScreen() {
               <Pressable
                 onPress={handleSendEmailOtp}
                 disabled={isLoading}
-                style={({ pressed }) => [styles.resendButton, pressed && styles.pressed]}
+                className="self-center py-3 px-4 active:opacity-80"
               >
-                <Text style={styles.resendText}>Didn&apos;t get it? Resend code</Text>
+                <Text className="text-body text-imessage">Didn&apos;t get it? Resend code</Text>
               </Pressable>
             </Animated.View>
           )}
 
           {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
+          <View className="mt-auto pt-6">
+            <Text className="text-caption text-text-muted text-center leading-[18px]">
               By continuing, you agree to our Terms of Service and Privacy Policy.
               {'\n'}(The lawyers made us say that.)
             </Text>
@@ -401,302 +386,13 @@ export default function SignInScreen() {
 
       {/* Loading overlay */}
       {isLoading && step === 'initial' && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color={Colors.accent} />
-            <Text style={styles.loadingText}>Working on it...</Text>
+        <View className="absolute inset-0 bg-black/70 justify-center items-center">
+          <View className="bg-abyss-800 rounded-xl border border-border p-8 items-center gap-3">
+            <ActivityIndicator size="large" color="#0B93F6" />
+            <Text className="text-body text-text-secondary">Working on it...</Text>
           </View>
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.xl,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: Colors.textSecondary,
-    marginTop: -2,
-  },
-
-  // Title section
-  titleSection: {
-    gap: Spacing.sm,
-  },
-  title: {
-    ...Typography.displaySmall,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-
-  // Sections
-  section: {
-    gap: Spacing.md,
-  },
-  sectionLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-  sectionHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginLeft: Spacing.xs,
-    marginTop: -8,
-  },
-
-  // Error
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    backgroundColor: Colors.dangerDim,
-    borderWidth: 1,
-    borderColor: Colors.danger + '44',
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-  },
-  errorIcon: {
-    fontSize: 14,
-    marginTop: 1,
-  },
-  errorText: {
-    ...Typography.body,
-    color: Colors.danger,
-    flex: 1,
-  },
-
-  // Buttons stack
-  buttonStack: {
-    gap: Spacing.md,
-  },
-
-  // Apple button
-  appleButton: {
-    height: 54,
-    width: '100%',
-  },
-
-  // Social button (Google)
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 54,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.text,
-    gap: Spacing.sm,
-  },
-  socialButtonPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
-  },
-  socialButtonIcon: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.bg,
-  },
-  socialButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.bg,
-  },
-
-  // Divider
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.lg,
-    gap: Spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-
-  // Option cards
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  cardPressed: {
-    backgroundColor: Colors.bgCardHover,
-    borderColor: Colors.borderFocus,
-  },
-  optionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.bgElevated,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionEmoji: {
-    fontSize: 18,
-  },
-  optionBody: {
-    flex: 1,
-    gap: 2,
-  },
-  optionTitle: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  optionSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  chevron: {
-    fontSize: 24,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-
-  // Input card
-  inputCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  emailInput: {
-    ...Typography.body,
-    color: Colors.text,
-    textAlign: 'center',
-    paddingVertical: Spacing.md,
-    fontSize: 18,
-  },
-  otpInput: {
-    ...Typography.displaySmall,
-    color: Colors.text,
-    textAlign: 'center',
-    letterSpacing: 8,
-    paddingVertical: Spacing.md,
-    fontFamily: Fonts.mono,
-  },
-  emailOtpInput: {
-    ...Typography.h2,
-    color: Colors.text,
-    textAlign: 'center',
-    letterSpacing: 4,
-    paddingVertical: Spacing.md,
-    fontFamily: Fonts.mono,
-  },
-
-  // Primary button
-  primaryButton: {
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    ...Shadows.lg,
-  },
-  primaryButtonPressed: {
-    transform: [{ scale: 0.99 }],
-  },
-  primaryButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-
-  // Resend
-  resendButton: {
-    alignSelf: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  resendText: {
-    ...Typography.body,
-    color: Colors.accent,
-  },
-
-  // Footer
-  footer: {
-    marginTop: 'auto',
-    paddingTop: Spacing.xl,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-
-  // Loading overlay
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingCard: {
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xxl,
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  loadingText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-
-  pressed: {
-    opacity: 0.8,
-  },
-});

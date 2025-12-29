@@ -6,10 +6,10 @@
  */
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { hapticLight } from '@/lib/haptics';
 import { type ShameMetric, formatMetricValue } from '@/lib/leaderboard/api';
 
@@ -117,21 +117,27 @@ export function ShameCard({
       >
         <LinearGradient
           colors={config.gradient}
-          style={[styles.card, { borderColor: config.accentColor + '30' }]}
+          className="rounded-xl border overflow-hidden p-4"
+          style={{ borderColor: config.accentColor + '30' }}
         >
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.emoji}>{emoji}</Text>
-            <View style={styles.headerText}>
-              <Text style={[styles.title, { color: config.accentColor }]}>{title}</Text>
-              <Text style={styles.subtitle}>{subtitle}</Text>
+          <View className="flex-row items-center gap-3 mb-4">
+            <Text className="text-[32px]">{emoji}</Text>
+            <View className="flex-1 gap-0.5">
+              <Text
+                className="text-sm font-extrabold uppercase tracking-wider"
+                style={{ color: config.accentColor }}
+              >
+                {title}
+              </Text>
+              <Text className="text-caption text-text-tertiary italic">{subtitle}</Text>
             </View>
-            {onPress && <Text style={styles.chevron}>›</Text>}
+            {onPress && <Text className="text-2xl text-text-muted font-light">›</Text>}
           </View>
 
           {/* Entries */}
           {entries.length > 0 && (
-            <View style={styles.entriesList}>
+            <View className="gap-2">
               {entries.slice(0, 3).map((entry, i) => (
                 <ShameEntryRow
                   key={entry.username}
@@ -146,9 +152,11 @@ export function ShameCard({
           )}
 
           {entries.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No data yet</Text>
-              <Text style={styles.emptySubtext}>Be the first... or don&apos;t</Text>
+            <View className="items-center py-4 gap-1">
+              <Text className="text-body-semibold text-text-tertiary">No data yet</Text>
+              <Text className="text-caption text-text-muted italic">
+                Be the first... or don&apos;t
+              </Text>
             </View>
           )}
         </LinearGradient>
@@ -177,23 +185,25 @@ function ShameEntryRow({ entry, metric, config, index, onPress }: ShameEntryRowP
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={({ pressed }) => [
-        styles.entryRow,
-        entry.is_current_user && styles.entryRowCurrentUser,
-        pressed && styles.entryRowPressed,
-      ]}
+      className={`flex-row items-center gap-2 py-2 px-2 rounded-md ${
+        entry.is_current_user
+          ? 'bg-danger/10'
+          : 'bg-white/[0.03] active:bg-white/[0.06]'
+      }`}
     >
-      <Text style={styles.entryRank}>{rankEmoji}</Text>
+      <Text className="text-base w-6 text-center">{rankEmoji}</Text>
       <Text
-        style={[styles.entryUsername, entry.is_current_user && styles.entryUsernameCurrentUser]}
+        className={`flex-1 text-sm font-semibold ${
+          entry.is_current_user ? 'text-danger' : 'text-white'
+        }`}
         numberOfLines={1}
       >
         @{entry.username}
       </Text>
-      <Text style={[styles.entryValue, { color: config.accentColor }]}>
+      <Text className="text-sm font-semibold font-mono" style={{ color: config.accentColor }}>
         {formatMetricValue(entry.value, metric)}
       </Text>
-      <Text style={styles.entryLabel}>{config.valueLabel}</Text>
+      <Text className="text-[11px] text-text-muted">{config.valueLabel}</Text>
     </Pressable>
   );
 }
@@ -256,109 +266,3 @@ export function LosingStreakCard(props: ShameCardPresetProps) {
     />
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: Spacing.lg,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  emoji: {
-    fontSize: 32,
-  },
-  headerText: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    ...Typography.h3,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  subtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-  },
-  chevron: {
-    fontSize: 24,
-    color: Colors.textMuted,
-    fontWeight: '300',
-  },
-
-  // Entries
-  entriesList: {
-    gap: Spacing.sm,
-  },
-  entryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: Radius.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  entryRowCurrentUser: {
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
-  },
-  entryRowPressed: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  entryRank: {
-    fontSize: 16,
-    width: 24,
-    textAlign: 'center',
-  },
-  entryUsername: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-    flex: 1,
-    fontSize: 14,
-  },
-  entryUsernameCurrentUser: {
-    color: Colors.danger,
-  },
-  entryValue: {
-    ...Typography.bodySemibold,
-    fontFamily: Fonts.mono,
-    fontSize: 14,
-  },
-  entryLabel: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontSize: 11,
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    gap: 4,
-  },
-  emptyText: {
-    ...Typography.bodySemibold,
-    color: Colors.textTertiary,
-  },
-  emptySubtext: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-});
-

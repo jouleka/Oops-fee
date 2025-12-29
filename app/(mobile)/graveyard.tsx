@@ -6,7 +6,7 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -21,7 +21,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LoadingState } from '@/components/ui/loading-state';
 import { GRAVEYARD_COPY } from '@/constants/content';
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { usePromiseStore } from '@/context/promise-store';
 import { formatShortDateTime } from '@/lib/promises/time';
 import type { UserPromise } from '@/lib/promises/types';
@@ -65,42 +64,44 @@ function TombstoneCard({ promise, index }: { promise: UserPromise; index: number
   return (
     <Animated.View
       entering={FadeInDown.delay(100 + index * 60).duration(280)}
-      style={styles.tombstone}
+      className="bg-danger/[0.04] rounded-xl border border-danger/[0.12] p-xl items-center gap-md relative overflow-hidden"
     >
       {/* Cross decoration */}
-      <View style={styles.tombstoneCross}>
-        <View style={styles.crossVertical} />
-        <View style={styles.crossHorizontal} />
+      <View className="absolute top-md left-md w-4 h-5">
+        <View className="absolute left-1.5 top-0 w-1 h-5 bg-danger opacity-25 rounded-sm" />
+        <View className="absolute left-0 top-1 w-4 h-1 bg-danger opacity-25 rounded-sm" />
       </View>
 
       {/* RIP header */}
-      <Text style={styles.ripText}>{GRAVEYARD_COPY.ripLabel}</Text>
+      <Text className="text-label text-danger text-xs tracking-[3px] mt-sm">
+        {GRAVEYARD_COPY.ripLabel}
+      </Text>
 
       {/* Promise text */}
-      <Text style={styles.tombstoneText} numberOfLines={3}>
+      <Text className="text-h3 text-white text-center italic leading-6" numberOfLines={3}>
         &quot;{promise.text}&quot;
       </Text>
 
       {/* Epitaph: duration and loss */}
-      <View style={styles.epitaph}>
-        <View style={styles.epitaphRow}>
-          <Text style={styles.epitaphLabel}>{GRAVEYARD_COPY.lastedLabel}</Text>
-          <Text style={styles.epitaphValue}>{duration}</Text>
+      <View className="flex-row items-center gap-lg mt-sm">
+        <View className="items-center gap-0.5">
+          <Text className="text-label text-text-muted text-[9px]">{GRAVEYARD_COPY.lastedLabel}</Text>
+          <Text className="text-body-semibold text-text-secondary font-mono">{duration}</Text>
         </View>
-        <View style={styles.epitaphDivider} />
-        <View style={styles.epitaphRow}>
-          <Text style={styles.epitaphLabel}>{GRAVEYARD_COPY.lostLabel}</Text>
-          <Text style={[styles.epitaphValue, styles.epitaphLost]}>
+        <View className="w-px h-6 bg-border" />
+        <View className="items-center gap-0.5">
+          <Text className="text-label text-text-muted text-[9px]">{GRAVEYARD_COPY.lostLabel}</Text>
+          <Text className="text-body-semibold text-danger font-mono">
             ${promise.stake + (promise.sponsorAmount ?? 0)}
           </Text>
         </View>
       </View>
 
       {/* Date of death */}
-      <Text style={styles.deathDate}>{endDate}</Text>
+      <Text className="text-caption text-text-muted mt-xs">{endDate}</Text>
 
       {/* Skull accent */}
-      <Text style={styles.skullAccent}>💀</Text>
+      <Text className="absolute top-md right-md text-lg opacity-40">💀</Text>
     </Animated.View>
   );
 }
@@ -129,12 +130,15 @@ function TotalLostHero({ amount, count }: { amount: number; count: number }) {
   }));
 
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.heroContainer}>
-      <Animated.View style={[styles.heroGlow, flickerStyle]} />
-      <View style={styles.heroContent}>
-        <Text style={styles.heroLabel}>{GRAVEYARD_COPY.totalLostLabel}</Text>
-        <Text style={styles.heroAmount}>${amount}</Text>
-        <Text style={styles.heroSubtext}>
+    <Animated.View entering={FadeIn.duration(400)} className="items-center py-xxl relative">
+      <Animated.View
+        style={flickerStyle}
+        className="absolute w-[200px] h-[200px] rounded-full bg-danger opacity-15"
+      />
+      <View className="items-center gap-sm">
+        <Text className="text-label text-text-muted">{GRAVEYARD_COPY.totalLostLabel}</Text>
+        <Text className="text-display-lg text-danger font-rounded">${amount}</Text>
+        <Text className="text-caption text-text-tertiary italic">
           {count} promise{count === 1 ? '' : 's'} broken
         </Text>
       </View>
@@ -148,11 +152,13 @@ function TotalLostHero({ amount, count }: { amount: number; count: number }) {
 
 function EmptyGraveyard() {
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.emptyContainer}>
-      <Text style={styles.emptyEmoji}>⚰️</Text>
-      <Text style={styles.emptyTitle}>{GRAVEYARD_COPY.emptyTitle}</Text>
-      <Text style={styles.emptySubtitle}>{GRAVEYARD_COPY.emptySubtitle}</Text>
-      <Text style={styles.emptyHint}>{GRAVEYARD_COPY.emptyHint}</Text>
+    <Animated.View entering={FadeIn.duration(400)} className="flex-1 items-center justify-center py-[96px] gap-md">
+      <Text className="text-[64px] mb-md">⚰️</Text>
+      <Text className="text-h2 text-white font-rounded">{GRAVEYARD_COPY.emptyTitle}</Text>
+      <Text className="text-body text-text-tertiary text-center max-w-[280px]">
+        {GRAVEYARD_COPY.emptySubtitle}
+      </Text>
+      <Text className="text-caption text-text-muted italic mt-md">{GRAVEYARD_COPY.emptyHint}</Text>
     </Animated.View>
   );
 }
@@ -177,10 +183,7 @@ export default function GraveyardScreen() {
   }, [promises]);
 
   const totalLost = useMemo(() => {
-    return deadPromises.reduce(
-      (sum, p) => sum + p.stake + (p.sponsorAmount ?? 0),
-      0
-    );
+    return deadPromises.reduce((sum, p) => sum + p.stake + (p.sponsorAmount ?? 0), 0);
   }, [deadPromises]);
 
   const handleBack = useCallback(() => {
@@ -198,28 +201,25 @@ export default function GraveyardScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View style={styles.header}>
+      <View className="px-xl pt-lg pb-lg flex-row items-center gap-md border-b border-border-subtle">
         <Pressable
           onPress={handleBack}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          className="w-9 h-9 rounded-full bg-card border border-border items-center justify-center active:opacity-80"
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Text className="text-[28px] leading-7 text-text-secondary -mt-0.5">‹</Text>
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{GRAVEYARD_COPY.title}</Text>
-          <Text style={styles.headerSubtitle}>{GRAVEYARD_COPY.subtitle}</Text>
+        <View className="flex-1 gap-0.5">
+          <Text className="text-h2 text-white font-rounded">{GRAVEYARD_COPY.title}</Text>
+          <Text className="text-caption text-text-tertiary">{GRAVEYARD_COPY.subtitle}</Text>
         </View>
-        <View style={{ width: 36 }} />
+        <View className="w-9" />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 32 },
-        ]}
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, gap: 32, paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
         {deadPromises.length === 0 ? (
@@ -230,7 +230,7 @@ export default function GraveyardScreen() {
             <TotalLostHero amount={totalLost} count={deadPromises.length} />
 
             {/* Tombstones */}
-            <View style={styles.tombstoneGrid}>
+            <View className="gap-lg">
               {deadPromises.map((promise, i) => (
                 <TombstoneCard key={promise.id} promise={promise} index={i} />
               ))}
@@ -239,9 +239,11 @@ export default function GraveyardScreen() {
             {/* Footer */}
             <Animated.View
               entering={FadeIn.delay(400 + deadPromises.length * 60).duration(300)}
-              style={styles.footer}
+              className="items-center pt-lg"
             >
-              <Text style={styles.footerText}>{GRAVEYARD_COPY.footerText}</Text>
+              <Text className="text-caption text-text-muted italic text-center">
+                {GRAVEYARD_COPY.footerText}
+              </Text>
             </Animated.View>
           </>
         )}
@@ -249,242 +251,3 @@ export default function GraveyardScreen() {
     </View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-
-  // Header
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  headerCenter: {
-    flex: 1,
-    gap: 2,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  headerSubtitle: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: 28,
-    lineHeight: 28,
-    color: Colors.textSecondary,
-    marginTop: -2,
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-
-  // Scroll
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    gap: Spacing.xxl,
-  },
-
-  // Hero - Total Lost
-  heroContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xxl,
-    position: 'relative',
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: Colors.danger,
-    opacity: 0.15,
-  },
-  heroContent: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  heroLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  heroAmount: {
-    ...Typography.displayLarge,
-    color: Colors.danger,
-    fontFamily: Fonts.rounded,
-  },
-  heroSubtext: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-  },
-
-  // Tombstone grid
-  tombstoneGrid: {
-    gap: Spacing.lg,
-  },
-
-  // Tombstone card
-  tombstone: {
-    backgroundColor: 'rgba(255, 69, 58, 0.04)',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 69, 58, 0.12)',
-    padding: Spacing.xl,
-    alignItems: 'center',
-    gap: Spacing.md,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  tombstoneCross: {
-    position: 'absolute',
-    top: Spacing.md,
-    left: Spacing.md,
-    width: 16,
-    height: 20,
-  },
-  crossVertical: {
-    position: 'absolute',
-    left: 6,
-    top: 0,
-    width: 4,
-    height: 20,
-    backgroundColor: Colors.danger,
-    opacity: 0.25,
-    borderRadius: 1,
-  },
-  crossHorizontal: {
-    position: 'absolute',
-    left: 0,
-    top: 4,
-    width: 16,
-    height: 4,
-    backgroundColor: Colors.danger,
-    opacity: 0.25,
-    borderRadius: 1,
-  },
-  ripText: {
-    ...Typography.label,
-    color: Colors.danger,
-    fontSize: 12,
-    letterSpacing: 3,
-    marginTop: Spacing.sm,
-  },
-  tombstoneText: {
-    ...Typography.h3,
-    color: Colors.text,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: 24,
-  },
-  epitaph: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.lg,
-    marginTop: Spacing.sm,
-  },
-  epitaphRow: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  epitaphLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    fontSize: 9,
-  },
-  epitaphValue: {
-    ...Typography.bodySemibold,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-  epitaphLost: {
-    color: Colors.danger,
-  },
-  epitaphDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: Colors.border,
-  },
-  deathDate: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    marginTop: Spacing.xs,
-  },
-  skullAccent: {
-    position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md,
-    fontSize: 18,
-    opacity: 0.4,
-  },
-
-  // Empty state
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.xxxl * 2,
-    gap: Spacing.md,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: Spacing.md,
-  },
-  emptyTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  emptySubtitle: {
-    ...Typography.body,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  emptyHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    marginTop: Spacing.md,
-  },
-
-  // Footer
-  footer: {
-    alignItems: 'center',
-    paddingTop: Spacing.lg,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-});

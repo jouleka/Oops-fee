@@ -13,7 +13,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -29,7 +28,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import {
   getFriendProfile,
@@ -42,10 +41,10 @@ import {
 import { getTimeRemaining as getTimeRemainingShared, type Urgency } from '@/lib/promises/time';
 
 const URGENCY_COLORS: Record<Urgency, string> = {
-  low: Colors.urgencyLow,
-  medium: Colors.urgencyMedium,
-  high: Colors.urgencyHigh,
-  critical: Colors.urgencyCritical,
+  low: '#34C759',
+  medium: '#FF9F0A',
+  high: '#FF6B35',
+  critical: '#FF453A',
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -64,10 +63,10 @@ function formatDate(dateString: string | null): string {
 }
 
 function getSuccessRateColor(rate: number): string {
-  if (rate >= 80) return Colors.success;
-  if (rate >= 50) return Colors.warning;
-  if (rate > 0) return Colors.danger;
-  return Colors.textMuted;
+  if (rate >= 80) return 'text-success';
+  if (rate >= 50) return 'text-warning';
+  if (rate > 0) return 'text-danger';
+  return 'text-text-muted';
 }
 
 function getStreakEmoji(count: number): string {
@@ -131,12 +130,14 @@ export default function FriendProfileScreen() {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Header onBack={handleBack} />
-        <View style={styles.centerContent}>
-          <Text style={styles.errorEmoji}>🔒</Text>
-          <Text style={styles.errorTitle}>Sign in required</Text>
-          <Text style={styles.errorSubtitle}>Sign in to view friend profiles</Text>
+        <View className="flex-1 items-center justify-center px-xl gap-md">
+          <Text className="text-[48px] mb-sm">🔒</Text>
+          <Text className="text-h3 text-white text-center">Sign in required</Text>
+          <Text className="text-body text-text-secondary text-center max-w-[280px]">
+            Sign in to view friend profiles
+          </Text>
         </View>
       </View>
     );
@@ -145,11 +146,11 @@ export default function FriendProfileScreen() {
   // Loading
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Header onBack={handleBack} />
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+        <View className="flex-1 items-center justify-center px-xl gap-md">
+          <ActivityIndicator size="large" color="#0B93F6" />
+          <Text className="text-caption text-text-tertiary mt-sm">Loading profile...</Text>
         </View>
       </View>
     );
@@ -158,20 +159,22 @@ export default function FriendProfileScreen() {
   // Error
   if (error || !data) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Header onBack={handleBack} />
-        <View style={styles.centerContent}>
-          <Text style={styles.errorEmoji}>😕</Text>
-          <Text style={styles.errorTitle}>Couldn&apos;t load profile</Text>
-          <Text style={styles.errorSubtitle}>{error || 'Something went wrong'}</Text>
+        <View className="flex-1 items-center justify-center px-xl gap-md">
+          <Text className="text-[48px] mb-sm">😕</Text>
+          <Text className="text-h3 text-white text-center">Couldn&apos;t load profile</Text>
+          <Text className="text-body text-text-secondary text-center max-w-[280px]">
+            {error || 'Something went wrong'}
+          </Text>
           <Pressable
             onPress={() => {
               hapticLight();
               fetchData();
             }}
-            style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]}
+            className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80"
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text className="text-body-semibold text-white">Try Again</Text>
           </Pressable>
         </View>
       </View>
@@ -183,33 +186,36 @@ export default function FriendProfileScreen() {
   const initial = getInitials(profile);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header onBack={handleBack} title={displayName} />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing.xxl }]}
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, gap: 24, paddingBottom: insets.bottom + 32 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={Colors.textMuted}
+            tintColor="rgba(255,255,255,0.3)"
           />
         }
       >
         {/* Profile Card */}
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.profileCard}>
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          className="flex-row items-center gap-lg bg-card rounded-xl border border-border p-lg"
+        >
           <LinearGradient
-            colors={[Colors.accent, '#0A7FD4']}
-            style={styles.avatar}
+            colors={['#0B93F6', '#0A7FD4']}
+            className="w-16 h-16 rounded-full items-center justify-center"
           >
-            <Text style={styles.avatarText}>{initial}</Text>
+            <Text className="text-[28px] font-bold text-white">{initial}</Text>
           </LinearGradient>
 
-          <View style={styles.profileInfo}>
-            <Text style={styles.displayName}>{displayName}</Text>
+          <View className="flex-1 gap-xs">
+            <Text className="text-h2 text-white font-rounded">{displayName}</Text>
             {profile.username && (
-              <Text style={styles.username}>@{profile.username}</Text>
+              <Text className="text-caption text-imessage font-mono">@{profile.username}</Text>
             )}
           </View>
         </Animated.View>
@@ -224,8 +230,8 @@ export default function FriendProfileScreen() {
         <HistorySection history={recentHistory} />
 
         {/* Footer */}
-        <Animated.View entering={FadeIn.delay(600).duration(400)} style={styles.footer}>
-          <Text style={styles.footerText}>
+        <Animated.View entering={FadeIn.delay(600).duration(400)} className="items-center pt-lg pb-md">
+          <Text className="text-caption text-text-muted italic text-center">
             Friends hold each other accountable. 💪
           </Text>
         </Animated.View>
@@ -240,18 +246,18 @@ export default function FriendProfileScreen() {
 
 function Header({ onBack, title }: { onBack: () => void; title?: string }) {
   return (
-    <View style={styles.header}>
+    <View className="flex-row items-center justify-between px-lg py-md">
       <Pressable
         onPress={onBack}
-        style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
+        className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center active:opacity-70"
       >
-        <Text style={styles.backIcon}>←</Text>
+        <Text className="text-[20px] text-white">←</Text>
       </Pressable>
 
-      <Text style={styles.headerTitle} numberOfLines={1}>
+      <Text className="text-h2 text-white font-rounded flex-1 text-center mx-md" numberOfLines={1}>
         {title || 'Profile'}
       </Text>
-      <View style={styles.headerSpacer} />
+      <View className="w-10" />
     </View>
   );
 }
@@ -282,71 +288,73 @@ function StatsSection({ stats }: { stats: FriendStats }) {
   }));
 
   return (
-    <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.section}>
-      <Text style={styles.sectionTitle}>STATS</Text>
+    <Animated.View entering={FadeInDown.delay(100).duration(300)} className="gap-md">
+      <Text className="text-label text-text-muted ml-xs uppercase tracking-wide">STATS</Text>
 
       {/* Streak Hero */}
-      <View style={styles.streakCard}>
+      <View className="bg-card rounded-lg border border-border p-xl items-center relative overflow-hidden">
         {shouldGlow && (
-          <Animated.View style={[styles.streakGlow, glowStyle]}>
-            <View style={styles.streakGlowCircle} />
+          <Animated.View
+            style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }, glowStyle]}
+          >
+            <View className="w-[120px] h-[120px] rounded-full bg-warning" />
           </Animated.View>
         )}
-        <View style={styles.streakContent}>
-          <Text style={styles.streakLabel}>CURRENT STREAK</Text>
-          <View style={styles.streakNumberRow}>
-            <Text style={[styles.streakNumber, stats.currentStreak > 0 && styles.streakNumberActive]}>
+        <View className="items-center gap-xs">
+          <Text className="text-label text-text-muted uppercase tracking-wide">CURRENT STREAK</Text>
+          <View className="flex-row items-center gap-sm">
+            <Text className={`text-display-md font-rounded ${stats.currentStreak > 0 ? 'text-warning' : 'text-text-tertiary'}`}>
               {stats.currentStreak}
             </Text>
             {stats.currentStreak > 0 && (
-              <Text style={styles.streakEmoji}>{getStreakEmoji(stats.currentStreak)}</Text>
+              <Text className="text-[32px]">{getStreakEmoji(stats.currentStreak)}</Text>
             )}
           </View>
         </View>
       </View>
 
       {/* Stats Grid */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>SUCCESS RATE</Text>
-          <Text style={[styles.statValue, { color: getSuccessRateColor(stats.successRate) }]}>
+      <View className="flex-row gap-md">
+        <View className="flex-1 bg-card rounded-lg border border-border p-lg items-center gap-xs">
+          <Text className="text-label text-text-muted text-[9px] uppercase tracking-wide">SUCCESS RATE</Text>
+          <Text className={`text-h2 font-rounded ${getSuccessRateColor(stats.successRate)}`}>
             {stats.successRate}%
           </Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>LONGEST STREAK</Text>
-          <Text style={[styles.statValue, stats.longestStreak > 0 && { color: Colors.accent }]}>
+        <View className="flex-1 bg-card rounded-lg border border-border p-lg items-center gap-xs">
+          <Text className="text-label text-text-muted text-[9px] uppercase tracking-wide">LONGEST STREAK</Text>
+          <Text className={`text-h2 font-rounded ${stats.longestStreak > 0 ? 'text-imessage' : 'text-white'}`}>
             {stats.longestStreak}
           </Text>
         </View>
       </View>
 
       {/* Money Stats */}
-      <View style={styles.moneyGrid}>
-        <View style={styles.moneyCard}>
-          <Text style={styles.moneyLabel}>SAVED</Text>
-          <Text style={[styles.moneyValue, styles.moneyValueGreen]}>${stats.totalSaved}</Text>
+      <View className="flex-row gap-sm">
+        <View className="flex-1 bg-card rounded-lg border border-border p-md items-center gap-1">
+          <Text className="text-label text-text-muted text-[9px] uppercase tracking-wide">SAVED</Text>
+          <Text className="text-h3 font-mono text-success">${stats.totalSaved}</Text>
         </View>
-        <View style={styles.moneyCard}>
-          <Text style={styles.moneyLabel}>LOST</Text>
-          <Text style={[styles.moneyValue, styles.moneyValueRed]}>${stats.totalLost}</Text>
+        <View className="flex-1 bg-card rounded-lg border border-border p-md items-center gap-1">
+          <Text className="text-label text-text-muted text-[9px] uppercase tracking-wide">LOST</Text>
+          <Text className="text-h3 font-mono text-danger">${stats.totalLost}</Text>
         </View>
-        <View style={styles.moneyCard}>
-          <Text style={styles.moneyLabel}>TOTAL</Text>
-          <Text style={styles.moneyValue}>{stats.totalPromises}</Text>
+        <View className="flex-1 bg-card rounded-lg border border-border p-md items-center gap-1">
+          <Text className="text-label text-text-muted text-[9px] uppercase tracking-wide">TOTAL</Text>
+          <Text className="text-h3 font-mono text-white">{stats.totalPromises}</Text>
         </View>
       </View>
 
       {/* Promise Breakdown */}
-      <View style={styles.breakdownRow}>
-        <View style={styles.breakdownItem}>
-          <Text style={[styles.breakdownValue, { color: Colors.success }]}>{stats.completed}</Text>
-          <Text style={styles.breakdownLabel}>Kept</Text>
+      <View className="flex-row bg-card rounded-lg border border-border p-lg">
+        <View className="flex-1 items-center gap-1">
+          <Text className="text-h2 font-rounded text-success">{stats.completed}</Text>
+          <Text className="text-caption text-text-tertiary">Kept</Text>
         </View>
-        <View style={styles.breakdownDivider} />
-        <View style={styles.breakdownItem}>
-          <Text style={[styles.breakdownValue, { color: Colors.danger }]}>{stats.failed}</Text>
-          <Text style={styles.breakdownLabel}>Broken</Text>
+        <View className="w-px bg-border my-1" />
+        <View className="flex-1 items-center gap-1">
+          <Text className="text-h2 font-rounded text-danger">{stats.failed}</Text>
+          <Text className="text-caption text-text-tertiary">Broken</Text>
         </View>
       </View>
     </Animated.View>
@@ -360,12 +368,12 @@ function StatsSection({ stats }: { stats: FriendStats }) {
 function ActivePromisesSection({ promises, friendName }: { promises: FriendPromise[]; friendName: string }) {
   if (promises.length === 0) {
     return (
-      <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.section}>
-        <Text style={styles.sectionTitle}>ACTIVE PROMISES</Text>
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>🎯</Text>
-          <Text style={styles.emptyText}>No active promises right now</Text>
-          <Text style={styles.emptyHint}>{friendName} is taking a break</Text>
+      <Animated.View entering={FadeInDown.delay(200).duration(300)} className="gap-md">
+        <Text className="text-label text-text-muted ml-xs uppercase tracking-wide">ACTIVE PROMISES</Text>
+        <View className="bg-card rounded-lg border border-border p-xl items-center gap-sm">
+          <Text className="text-[36px]">🎯</Text>
+          <Text className="text-body text-white text-center">No active promises right now</Text>
+          <Text className="text-caption text-text-tertiary text-center italic">{friendName} is taking a break</Text>
         </View>
       </Animated.View>
     );
@@ -377,9 +385,9 @@ function ActivePromisesSection({ promises, friendName }: { promises: FriendPromi
   );
 
   return (
-    <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.section}>
-      <Text style={styles.sectionTitle}>ACTIVE PROMISES ({promises.length})</Text>
-      <View style={styles.promisesList}>
+    <Animated.View entering={FadeInDown.delay(200).duration(300)} className="gap-md">
+      <Text className="text-label text-text-muted ml-xs uppercase tracking-wide">ACTIVE PROMISES ({promises.length})</Text>
+      <View className="gap-sm">
         {sorted.map((promise, index) => (
           <PromiseCard key={promise.id} promise={promise} index={index} />
         ))}
@@ -396,25 +404,27 @@ function PromiseCard({ promise, index }: { promise: FriendPromise; index: number
   return (
     <Animated.View
       entering={FadeInDown.delay(250 + index * 50).duration(250)}
-      style={styles.promiseCard}
+      className="flex-row items-center bg-card rounded-lg border border-border overflow-hidden"
     >
-      <View style={[styles.promiseAccent, { backgroundColor: color }]} />
-      <View style={styles.promiseBody}>
-        <Text style={styles.promiseText} numberOfLines={2}>
+      <View className="w-1 self-stretch" style={{ backgroundColor: color }} />
+      <View className="flex-1 p-lg gap-sm">
+        <Text className="text-body-medium text-white" numberOfLines={2}>
           {promise.text}
         </Text>
-        <View style={styles.promiseMeta}>
-          <View style={styles.promiseStakeRow}>
-            <Text style={styles.promiseStake}>${promise.stake}</Text>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-sm">
+            <Text className="text-body-semibold text-danger font-mono">${promise.stake}</Text>
             {promise.sponsor_count > 0 && (
-              <View style={styles.sponsorBadge}>
-                <Text style={styles.sponsorText}>+${(promise.sponsor_total / 100).toFixed(0)}</Text>
+              <View className="bg-success-dim px-xs py-0.5 rounded-sm">
+                <Text className="text-caption text-success font-mono text-[11px]">
+                  +${(promise.sponsor_total / 100).toFixed(0)}
+                </Text>
               </View>
             )}
-            {promise.has_roast && <Text style={styles.roastEmoji}>🔥</Text>}
+            {promise.has_roast && <Text className="text-[14px]">🔥</Text>}
           </View>
-          <View style={[styles.timeBadge, { backgroundColor: color + '18' }]}>
-            <Text style={[styles.timeText, { color }]}>{label}</Text>
+          <View className="py-1 px-2 rounded-sm" style={{ backgroundColor: color + '18' }}>
+            <Text className="text-caption font-semibold" style={{ color }}>{label}</Text>
           </View>
         </View>
       </View>
@@ -432,9 +442,9 @@ function HistorySection({ history }: { history: FriendHistoryItem[] }) {
   }
 
   return (
-    <Animated.View entering={FadeInDown.delay(350).duration(300)} style={styles.section}>
-      <Text style={styles.sectionTitle}>RECENT HISTORY</Text>
-      <View style={styles.historyList}>
+    <Animated.View entering={FadeInDown.delay(350).duration(300)} className="gap-md">
+      <Text className="text-label text-text-muted ml-xs uppercase tracking-wide">RECENT HISTORY</Text>
+      <View className="gap-sm">
         {history.map((item, index) => (
           <HistoryCard key={item.id} item={item} index={index} />
         ))}
@@ -452,446 +462,21 @@ function HistoryCard({ item, index }: { item: FriendHistoryItem; index: number }
   return (
     <Animated.View
       entering={FadeInDown.delay(400 + index * 40).duration(200)}
-      style={styles.historyCard}
+      className="flex-row items-center bg-card rounded-lg border border-border p-md gap-md"
     >
-      <View style={[styles.historyIcon, { backgroundColor: color + '20' }]}>
-        <Text style={[styles.historyIconText, { color }]}>{icon}</Text>
+      <View
+        className="w-8 h-8 rounded-full items-center justify-center"
+        style={{ backgroundColor: color + '20' }}
+      >
+        <Text className="text-[14px] font-bold" style={{ color }}>{icon}</Text>
       </View>
-      <View style={styles.historyContent}>
-        <Text style={styles.historyText} numberOfLines={1}>{item.text}</Text>
-        <View style={styles.historyMeta}>
-          <Text style={styles.historyStake}>${item.stake}</Text>
-          {date && <Text style={styles.historyDate}>{date}</Text>}
+      <View className="flex-1 gap-0.5">
+        <Text className="text-body text-white" numberOfLines={1}>{item.text}</Text>
+        <View className="flex-row items-center gap-sm">
+          <Text className="text-caption text-text-secondary font-mono">${item.stake}</Text>
+          {date && <Text className="text-caption text-text-muted">{date}</Text>}
         </View>
       </View>
     </Animated.View>
   );
 }
-
-// ─────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: Colors.text,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: Spacing.md,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-
-  // Scroll
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.xl,
-  },
-
-  // Center content (loading/error)
-  centerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.md,
-  },
-  loadingText: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    marginTop: Spacing.sm,
-  },
-  errorEmoji: {
-    fontSize: 48,
-    marginBottom: Spacing.sm,
-  },
-  errorTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  errorSubtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  retryButton: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.lg,
-  },
-  retryButtonText: {
-    ...Typography.bodySemibold,
-    color: Colors.text,
-  },
-
-  // Profile Card
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.lg,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  profileInfo: {
-    flex: 1,
-    gap: Spacing.xs,
-  },
-  displayName: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  username: {
-    ...Typography.caption,
-    color: Colors.accent,
-    fontFamily: Fonts.mono,
-  },
-
-  // Section
-  section: {
-    gap: Spacing.md,
-  },
-  sectionTitle: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    marginLeft: Spacing.xs,
-  },
-
-  // Streak Card
-  streakCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  streakGlow: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  streakGlowCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.warning,
-  },
-  streakContent: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  streakLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-  },
-  streakNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  streakNumber: {
-    ...Typography.displayMedium,
-    color: Colors.textTertiary,
-    fontFamily: Fonts.rounded,
-  },
-  streakNumberActive: {
-    color: Colors.warning,
-  },
-  streakEmoji: {
-    fontSize: 32,
-  },
-
-  // Stats Grid
-  statsGrid: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  statLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    fontSize: 9,
-  },
-  statValue: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-
-  // Money Grid
-  moneyGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  moneyCard: {
-    flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    alignItems: 'center',
-    gap: 4,
-  },
-  moneyLabel: {
-    ...Typography.label,
-    color: Colors.textMuted,
-    fontSize: 9,
-  },
-  moneyValue: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontFamily: Fonts.mono,
-  },
-  moneyValueGreen: {
-    color: Colors.success,
-  },
-  moneyValueRed: {
-    color: Colors.danger,
-  },
-
-  // Breakdown Row
-  breakdownRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  breakdownItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  breakdownValue: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontFamily: Fonts.rounded,
-  },
-  breakdownLabel: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  breakdownDivider: {
-    width: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-  },
-
-  // Empty Card
-  emptyCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  emptyEmoji: {
-    fontSize: 36,
-  },
-  emptyText: {
-    ...Typography.body,
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  emptyHint: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
-  // Promises List
-  promisesList: {
-    gap: Spacing.sm,
-  },
-  promiseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  promiseAccent: {
-    width: 4,
-    alignSelf: 'stretch',
-  },
-  promiseBody: {
-    flex: 1,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  promiseText: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-  },
-  promiseMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  promiseStakeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  promiseStake: {
-    ...Typography.bodySemibold,
-    color: Colors.danger,
-    fontFamily: Fonts.mono,
-  },
-  sponsorBadge: {
-    backgroundColor: Colors.successDim,
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
-  },
-  sponsorText: {
-    ...Typography.caption,
-    color: Colors.success,
-    fontFamily: Fonts.mono,
-    fontSize: 11,
-  },
-  roastEmoji: {
-    fontSize: 14,
-  },
-  timeBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-  },
-  timeText: {
-    ...Typography.caption,
-    fontWeight: '600',
-  },
-
-  // History List
-  historyList: {
-    gap: Spacing.sm,
-  },
-  historyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.md,
-  },
-  historyIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyIconText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  historyContent: {
-    flex: 1,
-    gap: 2,
-  },
-  historyText: {
-    ...Typography.body,
-    color: Colors.text,
-  },
-  historyMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  historyStake: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontFamily: Fonts.mono,
-  },
-  historyDate: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-
-  // Footer
-  footer: {
-    alignItems: 'center',
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  footerText: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-});
