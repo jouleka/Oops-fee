@@ -8,6 +8,7 @@ import {
   PanResponder,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -239,6 +240,7 @@ function ConfirmActionModal({
  * FailConfirmModal - The guilt-trip modal
  * If there's a voice recording, makes the user listen before they can confirm failure.
  * Shows "I Told You So" message reveal with dramatic animation.
+ * Now includes free pass option when user has passes available.
  */
 function FailConfirmModal({
   visible,
@@ -246,6 +248,11 @@ function FailConfirmModal({
   iToldYouSoMessages,
   sponsorAmount,
   stake,
+  freePasses,
+  useFreePass,
+  onUseFreePassChange,
+  moneyDestination,
+  friendName,
   onCancel,
   onConfirm,
   working,
@@ -255,8 +262,13 @@ function FailConfirmModal({
   iToldYouSoMessages?: { message: string; from: string }[];
   sponsorAmount?: number;
   stake: number;
+  freePasses: number;
+  useFreePass: boolean;
+  onUseFreePassChange: (value: boolean) => void;
+  moneyDestination?: string;
+  friendName?: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (useFreePass: boolean) => void;
   working: boolean;
 }) {
   const [hasListened, setHasListened] = useState(false);
@@ -320,6 +332,8 @@ function FailConfirmModal({
   const hasSponsor = (sponsorAmount ?? 0) > 0;
   const hasStake = stake > 0;
   const totalLoss = stake + (sponsorAmount ?? 0);
+  const canUseFreePass = freePasses > 0 && hasStake;
+  const isFriendDestination = moneyDestination === "friend";
 
   return (
     <Modal
@@ -430,8 +444,54 @@ function FailConfirmModal({
               </Animated.View>
             )}
 
-            {/* Charge warning - the real talk */}
-            {hasStake && (
+            {/* Free Pass Toggle */}
+            {canUseFreePass && (
+              <Animated.View
+                entering={FadeIn.delay(180).duration(200)}
+                className="flex-row items-center gap-md bg-imessage-dim border border-imessage/25 p-lg rounded-lg"
+              >
+                <View className="w-10 h-10 rounded-full bg-imessage/15 items-center justify-center">
+                  <Text className="text-xl">🎟️</Text>
+                </View>
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-body-semibold text-imessage">
+                    Use free pass ({freePasses} left)
+                  </Text>
+                  <Text className="text-caption text-text-secondary">
+                    {isFriendDestination && friendName
+                      ? `Skip the charge. ${friendName} won't receive anything.`
+                      : "Skip the charge this time."}
+                  </Text>
+                </View>
+                <Switch
+                  value={useFreePass}
+                  onValueChange={onUseFreePassChange}
+                  trackColor={{
+                    false: "#3A3A3C",
+                    true: "rgba(11, 147, 246, 0.4)",
+                  }}
+                  thumbColor={useFreePass ? "#0B93F6" : "#636366"}
+                  ios_backgroundColor="#3A3A3C"
+                />
+              </Animated.View>
+            )}
+
+            {/* Friend warning when using free pass */}
+            {useFreePass && isFriendDestination && (
+              <Animated.View
+                entering={FadeIn.duration(180)}
+                className="flex-row items-center gap-sm bg-warning/[0.08] border border-warning/20 rounded-lg p-md"
+              >
+                <Text className="text-base">⚠️</Text>
+                <Text className="text-caption text-warning flex-1">
+                  {friendName || "Your friend"} will be notified that you used a
+                  free pass and won&apos;t receive the ${totalLoss}.
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Charge warning - the real talk (hidden when using free pass) */}
+            {hasStake && !useFreePass && (
               <Animated.View
                 entering={FadeIn.delay(200).duration(250)}
                 className="bg-danger/[0.08] rounded-lg border border-danger/25 p-lg gap-sm"
@@ -452,16 +512,36 @@ function FailConfirmModal({
               </Animated.View>
             )}
 
+            {/* Free pass confirmation message */}
+            {useFreePass && hasStake && (
+              <Animated.View
+                entering={FadeIn.duration(180)}
+                className="bg-success-dim border border-success/25 rounded-lg p-lg gap-sm items-center"
+              >
+                <Text className="text-h3 text-success font-rounded">
+                  🎟️ No charge this time
+                </Text>
+                <Text className="text-caption text-text-secondary text-center">
+                  Your free pass will be consumed. You&apos;ll have{" "}
+                  {freePasses - 1} left.
+                </Text>
+              </Animated.View>
+            )}
+
             {/* Action buttons - stacked vertically for better layout */}
             <View className="gap-md mt-sm">
               <Pressable
                 disabled={working || !canConfirm}
-                onPress={onConfirm}
+                onPress={() => onConfirm(useFreePass)}
                 className={`h-14 rounded-[28px] overflow-hidden active:opacity-90 ${working || !canConfirm ? "opacity-70" : ""}`}
               >
                 <LinearGradient
                   colors={
-                    canConfirm ? ["#FF453A", "#FF6B35"] : ["#3A3A3C", "#2C2C2E"]
+                    canConfirm
+                      ? useFreePass
+                        ? ["#0B93F6", "#0A84FF"]
+                        : ["#FF453A", "#FF6B35"]
+                      : ["#3A3A3C", "#2C2C2E"]
                   }
                   style={{
                     flex: 1,
@@ -477,9 +557,11 @@ function FailConfirmModal({
                       ? "Processing…"
                       : !canConfirm
                         ? "Listen first"
-                        : hasStake
-                          ? `💳 Pay $${totalLoss} & admit defeat`
-                          : "Yes, I failed"}
+                        : useFreePass
+                          ? "🎟️ Use free pass & admit defeat"
+                          : hasStake
+                            ? `💳 Pay $${totalLoss} & admit defeat`
+                            : "Yes, I failed"}
                   </Text>
                 </LinearGradient>
               </Pressable>
@@ -539,7 +621,7 @@ export default function PromiseDetailScreen() {
     isWorking,
     isHydrated,
   } = usePromiseStore();
-  const { session, refreshProfile } = useAuth();
+  const { session, refreshProfile, freePasses } = useAuth();
 
   const promise: UserPromise | null = useMemo(() => {
     if (!id) return null;
@@ -712,8 +794,11 @@ export default function PromiseDetailScreen() {
 
   // Track if we're processing a failure to prevent double charges
   const [isProcessingFail, setIsProcessingFail] = useState(false);
+  
+  // Free pass state for fail modal
+  const [useFreePass, setUseFreePass] = useState(false);
 
-  const handleFail = useCallback(async () => {
+  const handleFail = useCallback(async (useFreePassOverride?: boolean) => {
     if (!promise) return;
 
     // CRITICAL: Prevent double-click charges
@@ -724,14 +809,16 @@ export default function PromiseDetailScreen() {
     setIsProcessingFail(true);
 
     hapticMedium();
+    
+    const shouldUseFreePass = useFreePassOverride ?? useFreePass;
 
-    // If there's a stake and user is authenticated, charge immediately
+    // If there's a stake and user is authenticated, charge immediately (unless using free pass)
     if (promise.stake > 0 && session?.access_token) {
       try {
         const { data, error } = await supabase.functions.invoke(
           "charge-promise",
           {
-            body: { promiseId: promise.id },
+            body: { promiseId: promise.id, useFreePass: shouldUseFreePass },
           },
         );
 
@@ -740,12 +827,10 @@ export default function PromiseDetailScreen() {
           // No alert - the fail banner will show appropriate status
         } else if (data) {
           console.log("[handleFail] Charge result:", data);
-          // Refresh profile to update wallet balance if wallet was used
-          if (data.walletUsed && data.walletUsed > 0) {
-            refreshProfile().catch(() => {});
-          }
+          // Refresh profile to update wallet balance and free passes
+          refreshProfile().catch(() => {});
           // No alerts - the updated fail banner shows accurate payment status
-          // User will see "💸 $X charged" or "🔐 Bank confirmation needed" etc.
+          // User will see "💸 $X charged" or "🔐 Bank confirmation needed" or "🎟️ Free pass used" etc.
         }
       } catch (err) {
         console.error("[handleFail] Error calling charge-promise:", err);
@@ -756,8 +841,9 @@ export default function PromiseDetailScreen() {
     // Update local state
     await setPromiseStatus(promise.id, "failed");
     setConfirmFail(false);
+    setUseFreePass(false); // Reset free pass state
     setIsProcessingFail(false);
-  }, [promise, setPromiseStatus, session, isProcessingFail, refreshProfile]);
+  }, [promise, setPromiseStatus, session, isProcessingFail, refreshProfile, useFreePass]);
 
   const handleDelete = useCallback(async () => {
     if (!promise) return;
@@ -1229,7 +1315,15 @@ export default function PromiseDetailScreen() {
         iToldYouSoMessages={promise.iToldYouSoMessages}
         sponsorAmount={promise.sponsorAmount}
         stake={promise.stake}
-        onCancel={() => setConfirmFail(false)}
+        freePasses={freePasses}
+        useFreePass={useFreePass}
+        onUseFreePassChange={setUseFreePass}
+        moneyDestination={promise.moneyDestination}
+        friendName={promise.friendName}
+        onCancel={() => {
+          setConfirmFail(false);
+          setUseFreePass(false); // Reset when canceling
+        }}
         onConfirm={handleFail}
         working={isWorking || isProcessingFail}
       />

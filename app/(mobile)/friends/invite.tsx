@@ -5,11 +5,11 @@
  * When they sign up via the link, they automatically become friends.
  */
 
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -17,12 +17,19 @@ import {
   Share,
   Text,
   View,
-} from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAuth } from '@/context/auth';
-import { createFriendInvite, type CreateFriendInviteResponse } from '@/lib/friends';
+import { useAuth } from "@/context/auth";
+import {
+  createFriendInvite,
+  type CreateFriendInviteResponse,
+} from "@/lib/friends";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -37,19 +44,23 @@ function hapticMedium() {
 }
 
 function hapticSuccess() {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+    () => {},
+  );
 }
 
 function hapticError() {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+    () => {},
+  );
 }
 
 function formatExpiryDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
@@ -89,7 +100,7 @@ export default function FriendInviteScreen() {
       setInvite(result);
       hapticSuccess();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to create invite';
+      const msg = e instanceof Error ? e.message : "Failed to create invite";
       setError(msg);
       hapticError();
     } finally {
@@ -113,8 +124,8 @@ export default function FriendInviteScreen() {
 
     hapticMedium();
 
-    const displayName = profile?.display_name || profile?.username || 'I';
-    const message = `${displayName === 'I' ? 'I want' : `${displayName} wants`} you as an accountability partner on OopsFee! When you sign up, we'll automatically be connected.\n\n${invite.invite_url}`;
+    const displayName = profile?.display_name || profile?.username || "I";
+    const message = `${displayName === "I" ? "I want" : `${displayName} wants`} you as an accountability partner on OopsFee! When you sign up, we'll automatically be connected.\n\n${invite.invite_url}`;
 
     try {
       const result = await Share.share({
@@ -127,7 +138,7 @@ export default function FriendInviteScreen() {
         hapticSuccess();
       }
     } catch (e) {
-      console.error('[Invite] Share failed:', e);
+      console.error("[Invite] Share failed:", e);
     }
   }, [invite?.invite_url, profile]);
 
@@ -138,7 +149,7 @@ export default function FriendInviteScreen() {
 
   const handleSetupUsername = () => {
     hapticMedium();
-    router.push('/(mobile)/setup-username');
+    router.push("/(mobile)/setup-username");
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -151,18 +162,20 @@ export default function FriendInviteScreen() {
         <Header onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-xl gap-md">
           <Text className="text-[48px] mb-sm">🔒</Text>
-          <Text className="text-h3 text-white text-center">Sign in required</Text>
+          <Text className="text-h3 text-white text-center">
+            Sign in required
+          </Text>
           <Text className="text-body text-text-secondary text-center max-w-[280px]">
             Sign in to invite friends to OopsFee
           </Text>
           <Pressable
             onPress={() => {
               hapticMedium();
-              router.push('/auth/sign-in');
+              router.push("/auth/sign-in");
             }}
-            className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80 active:scale-[0.98]"
+            className="mt-md bg-white px-8 py-4 rounded-lg active:opacity-90 active:scale-[0.98]"
           >
-            <Text className="text-body-semibold text-white">Sign In</Text>
+            <Text className="text-base font-semibold text-black">Sign In</Text>
           </Pressable>
         </View>
       </View>
@@ -179,7 +192,9 @@ export default function FriendInviteScreen() {
         <Header onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-xl gap-md">
           <Text className="text-[48px] mb-sm">👤</Text>
-          <Text className="text-h3 text-white text-center">Set up your username first</Text>
+          <Text className="text-h3 text-white text-center">
+            Set up your username first
+          </Text>
           <Text className="text-body text-text-secondary text-center max-w-[280px]">
             You need a username so friends can find you when they join.
           </Text>
@@ -204,7 +219,9 @@ export default function FriendInviteScreen() {
         <Header onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-xl gap-md">
           <ActivityIndicator size="large" color="#0B93F6" />
-          <Text className="text-body text-text-secondary mt-md">Creating invite link...</Text>
+          <Text className="text-body text-text-secondary mt-md">
+            Creating invite link...
+          </Text>
         </View>
       </View>
     );
@@ -220,8 +237,12 @@ export default function FriendInviteScreen() {
         <Header onBack={handleBack} />
         <View className="flex-1 items-center justify-center px-xl gap-md">
           <Text className="text-[48px] mb-sm">😕</Text>
-          <Text className="text-h3 text-white text-center">Something went wrong</Text>
-          <Text className="text-body text-text-secondary text-center max-w-[280px]">{error}</Text>
+          <Text className="text-h3 text-white text-center">
+            Something went wrong
+          </Text>
+          <Text className="text-body text-text-secondary text-center max-w-[280px]">
+            {error}
+          </Text>
           <Pressable
             onPress={generateInvite}
             className="mt-md bg-imessage px-xl py-md rounded-lg active:opacity-80 active:scale-[0.98]"
@@ -243,13 +264,22 @@ export default function FriendInviteScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 24, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          gap: 24,
+          paddingBottom: insets.bottom + 32,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(300)} className="items-center gap-sm py-lg">
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          className="items-center gap-sm py-lg"
+        >
           <Text className="text-[56px]">🎉</Text>
-          <Text className="text-h1 text-white text-center">Invite a friend</Text>
+          <Text className="text-h1 text-white text-center">
+            Invite a friend
+          </Text>
           <Text className="text-body text-text-secondary text-center max-w-[300px] leading-6">
             Share this link with anyone you want as an accountability partner.
             When they sign up, you&apos;ll automatically be connected!
@@ -262,7 +292,9 @@ export default function FriendInviteScreen() {
           className="bg-card rounded-xl border border-border p-xl gap-lg"
         >
           <View className="flex-row justify-between items-center">
-            <Text className="text-label text-text-tertiary uppercase tracking-wide">YOUR INVITE LINK</Text>
+            <Text className="text-label text-text-tertiary uppercase tracking-wide">
+              YOUR INVITE LINK
+            </Text>
             {invite?.expires_at && (
               <Text className="text-caption text-text-muted">
                 Expires {formatExpiryDate(invite.expires_at)}
@@ -271,7 +303,10 @@ export default function FriendInviteScreen() {
           </View>
 
           <View className="bg-black rounded-md border border-border p-md">
-            <Text className="text-body text-imessage font-mono" numberOfLines={1}>
+            <Text
+              className="text-body text-imessage font-mono"
+              numberOfLines={1}
+            >
               {invite?.invite_url}
             </Text>
           </View>
@@ -282,13 +317,15 @@ export default function FriendInviteScreen() {
               onPress={handleCopyLink}
               className={`flex-1 flex-row items-center justify-center gap-sm py-md rounded-lg border ${
                 copied
-                  ? 'bg-success-dim border-success'
-                  : 'bg-card-hover border-border'
+                  ? "bg-success-dim border-success"
+                  : "bg-card-hover border-border"
               } active:opacity-80 active:scale-[0.98]`}
             >
-              <Text className="text-[18px]">{copied ? '✓' : '📋'}</Text>
-              <Text className={`text-body-semibold ${copied ? 'text-success' : 'text-white'}`}>
-                {copied ? 'Copied!' : 'Copy'}
+              <Text className="text-[18px]">{copied ? "✓" : "📋"}</Text>
+              <Text
+                className={`text-body-semibold ${copied ? "text-success" : "text-white"}`}
+              >
+                {copied ? "Copied!" : "Copy"}
               </Text>
             </Pressable>
 
@@ -297,7 +334,7 @@ export default function FriendInviteScreen() {
               className="flex-[2] rounded-lg overflow-hidden shadow-md active:opacity-80 active:scale-[0.98]"
             >
               <LinearGradient
-                colors={['#0B93F6', '#0A84FF']}
+                colors={["#0B93F6", "#0A84FF"]}
                 className="flex-row items-center justify-center gap-sm py-md"
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -332,10 +369,14 @@ export default function FriendInviteScreen() {
           <View className="gap-md">
             <View className="flex-row items-start gap-md">
               <View className="w-7 h-7 rounded-full bg-imessage-dim items-center justify-center">
-                <Text className="text-body-semibold text-imessage text-[14px]">1</Text>
+                <Text className="text-body-semibold text-imessage text-[14px]">
+                  1
+                </Text>
               </View>
               <View className="flex-1 gap-0.5">
-                <Text className="text-body-semibold text-white">Share your link</Text>
+                <Text className="text-body-semibold text-white">
+                  Share your link
+                </Text>
                 <Text className="text-caption text-text-secondary">
                   Send to anyone via text, email, or social media
                 </Text>
@@ -346,10 +387,14 @@ export default function FriendInviteScreen() {
 
             <View className="flex-row items-start gap-md">
               <View className="w-7 h-7 rounded-full bg-imessage-dim items-center justify-center">
-                <Text className="text-body-semibold text-imessage text-[14px]">2</Text>
+                <Text className="text-body-semibold text-imessage text-[14px]">
+                  2
+                </Text>
               </View>
               <View className="flex-1 gap-0.5">
-                <Text className="text-body-semibold text-white">They sign up</Text>
+                <Text className="text-body-semibold text-white">
+                  They sign up
+                </Text>
                 <Text className="text-caption text-text-secondary">
                   They open the link and create an account
                 </Text>
@@ -360,10 +405,14 @@ export default function FriendInviteScreen() {
 
             <View className="flex-row items-start gap-md">
               <View className="w-7 h-7 rounded-full bg-imessage-dim items-center justify-center">
-                <Text className="text-body-semibold text-imessage text-[14px]">3</Text>
+                <Text className="text-body-semibold text-imessage text-[14px]">
+                  3
+                </Text>
               </View>
               <View className="flex-1 gap-0.5">
-                <Text className="text-body-semibold text-white">Instant connection</Text>
+                <Text className="text-body-semibold text-white">
+                  Instant connection
+                </Text>
                 <Text className="text-caption text-text-secondary">
                   You become friends automatically—no extra steps
                 </Text>
@@ -377,12 +426,14 @@ export default function FriendInviteScreen() {
           <Pressable
             onPress={generateInvite}
             disabled={isLoading}
-            className={`items-center justify-center py-md ${isLoading ? 'opacity-60' : ''} active:opacity-80 active:scale-[0.98]`}
+            className={`items-center justify-center py-md ${isLoading ? "opacity-60" : ""} active:opacity-80 active:scale-[0.98]`}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
             ) : (
-              <Text className="text-body text-text-secondary">🔄 Generate new link</Text>
+              <Text className="text-body text-text-secondary">
+                🔄 Generate new link
+              </Text>
             )}
           </Pressable>
         </Animated.View>

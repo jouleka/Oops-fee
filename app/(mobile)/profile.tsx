@@ -1,14 +1,12 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { PulsingDot } from "@/components/home/PulsingDot";
 import { TopUpModal, WithdrawModal } from "@/components/wallet";
-import { getLiveBettorCount } from "@/constants/content";
 import { useAuth } from "@/context/auth";
 import { fetchFriendsLeaderboard } from "@/lib/leaderboard/api";
 import { isStripeConfigured } from "@/lib/stripe";
@@ -136,8 +134,8 @@ export default function ProfileScreen() {
     router.push("/auth/sign-in");
   };
 
-  const displayName =
-    profile?.display_name || user?.email?.split("@")[0] || "User";
+  // Show username as primary identifier, fallback to email prefix
+  const displayName = extendedProfile?.username || user?.email?.split("@")[0] || "User";
   const email = user?.email || "No email";
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -188,13 +186,19 @@ export default function ProfileScreen() {
                 </Text>
               </LinearGradient>
               <View className="flex-1 gap-xs">
-                <Text className="text-h3 text-white font-rounded">
-                  {displayName}
-                </Text>
+                {/* Username as primary display */}
                 {hasUsername ? (
-                  <Text className="text-caption text-imessage font-mono">
-                    @{extendedProfile?.username}
-                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      hapticMedium();
+                      router.push("/(mobile)/setup-username");
+                    }}
+                    className="active:opacity-70"
+                  >
+                    <Text className="text-h3 text-imessage font-mono">
+                      @{extendedProfile?.username}
+                    </Text>
+                  </Pressable>
                 ) : (
                   <Pressable
                     onPress={() => {
@@ -203,7 +207,7 @@ export default function ProfileScreen() {
                     }}
                     className="active:opacity-70"
                   >
-                    <Text className="text-caption text-imessage font-semibold">
+                    <Text className="text-h3 text-imessage font-semibold">
                       + Set username
                     </Text>
                   </Pressable>
@@ -495,124 +499,100 @@ export default function ProfileScreen() {
 
 const BENEFITS = [
   {
-    emoji: "💰",
-    title: "Real stakes",
-    subtitle: "Put money where your mouth is",
+    emoji: "💸",
+    title: "Real consequences",
+    subtitle: "Lose money when you fail. Keep it when you don't.",
   },
   {
-    emoji: "🔗",
-    title: "Share links",
-    subtitle: "Let friends hold you accountable",
+    emoji: "👥",
+    title: "Friend accountability",
+    subtitle: "They win your money if you flake.",
   },
   {
-    emoji: "📱",
-    title: "Sync devices",
-    subtitle: "Your promises, everywhere",
-  },
-  {
-    emoji: "📊",
-    title: "Track stats",
-    subtitle: "See your accountability score",
+    emoji: "📈",
+    title: "Track your word",
+    subtitle: "See how often you actually follow through.",
   },
 ];
 
 function GuestState({ onSignIn }: { onSignIn: () => void }) {
-  const bettorCount = useMemo(() => getLiveBettorCount(), []);
-
   return (
     <>
       {/* Hero Card */}
       <Animated.View
         entering={FadeInDown.delay(50).duration(300)}
-        className="items-center bg-card rounded-xl border border-border p-xl gap-md"
+        className="items-center bg-card rounded-xl border border-border p-xl gap-lg"
       >
         <View className="mb-xs">
-          <LinearGradient
-            colors={["rgba(255, 255, 255, 0.06)", "rgba(255, 255, 255, 0.04)"]}
-            className="w-14 h-14 rounded-full items-center justify-center border border-border-subtle"
-          >
-            <Text className="text-[26px] opacity-60">👤</Text>
-          </LinearGradient>
+          <View className="w-16 h-16 rounded-full items-center justify-center bg-white/5 border border-white/10">
+            <Text className="text-[32px]">🎯</Text>
+          </View>
         </View>
-        <Text className="text-h3 text-white font-rounded">Not Signed In</Text>
-        <Text className="text-caption text-text-secondary text-center leading-5 px-md">
-          Free mode is cool, but you&apos;re leaving money on the table.
-          Literally.
-        </Text>
+        <View className="items-center gap-sm">
+          <Text className="text-h3 text-white font-rounded">
+            Accountability costs money
+          </Text>
+          <Text className="text-body text-text-secondary text-center leading-6 px-sm">
+            Make promises. Put cash on them.{"\n"}
+            Break them, and you pay.
+          </Text>
+        </View>
 
-        {/* Sign In CTA */}
+        {/* Sign In CTA - Clean white button */}
         <Pressable
           onPress={onSignIn}
-          className="flex-row items-center mt-sm rounded-lg overflow-hidden active:opacity-90 active:scale-[0.99]"
+          className="mt-md bg-white px-8 py-4 rounded-lg active:opacity-90 active:scale-[0.98]"
         >
-          <LinearGradient
-            colors={["#0B93F6", "#0A7FD4"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="px-xl py-md rounded-lg"
-          >
-            <Text className="text-body-semibold text-white font-rounded">
-              Sign In
-            </Text>
-          </LinearGradient>
-          <Text className="text-[22px] text-imessage font-light ml-xs">›</Text>
+          <Text className="text-base font-semibold text-black">
+            Get Started
+          </Text>
         </Pressable>
-      </Animated.View>
 
-      {/* Social Proof */}
-      <Animated.View
-        entering={FadeIn.delay(100).duration(400)}
-        className="flex-row items-center justify-center gap-sm py-md"
-      >
-        <PulsingDot />
-        <Text className="text-caption text-text-tertiary">
-          <Text className="text-white font-semibold font-mono">
-            {bettorCount.toLocaleString()}
-          </Text>{" "}
-          people betting on themselves right now
+        <Text className="text-[12px] text-text-muted mt-xs">
+          Free to try. Costs money to quit.
         </Text>
       </Animated.View>
 
-      {/* Benefits Grid */}
+      {/* Benefits List */}
       <Animated.View
         entering={FadeInDown.delay(150).duration(300)}
-        className="gap-md"
+        className="gap-sm mt-md"
       >
-        <Text className="text-label text-text-muted ml-xs">WHY SIGN IN?</Text>
-        <View className="flex-row flex-wrap gap-md">
-          {BENEFITS.map((benefit, i) => (
-            <Animated.View
-              key={i}
-              entering={FadeInDown.delay(180 + i * 40).duration(280)}
-              className="flex-row items-start gap-sm bg-card rounded-lg border border-border p-md"
-              style={{ flexBasis: "47%", flexGrow: 1 }}
-            >
-              <Text className="text-lg mt-px">{benefit.emoji}</Text>
-              <View className="flex-1 gap-0.5">
-                <Text className="text-caption text-white font-semibold">
-                  {benefit.title}
-                </Text>
-                <Text className="text-[11px] leading-[14px] text-text-tertiary">
-                  {benefit.subtitle}
-                </Text>
-              </View>
-            </Animated.View>
-          ))}
-        </View>
+        <Text className="text-label text-text-muted ml-xs uppercase tracking-wide">
+          How it works
+        </Text>
+        {BENEFITS.map((benefit, i) => (
+          <Animated.View
+            key={i}
+            entering={FadeInDown.delay(180 + i * 50).duration(280)}
+            className="flex-row items-center gap-md bg-card rounded-lg border border-border p-md"
+          >
+            <View className="w-10 h-10 rounded-full bg-white/5 items-center justify-center">
+              <Text className="text-xl">{benefit.emoji}</Text>
+            </View>
+            <View className="flex-1 gap-0.5">
+              <Text className="text-body text-white font-medium">
+                {benefit.title}
+              </Text>
+              <Text className="text-caption text-text-tertiary leading-5">
+                {benefit.subtitle}
+              </Text>
+            </View>
+          </Animated.View>
+        ))}
       </Animated.View>
 
-      {/* Snarky Footer */}
+      {/* Bottom nudge */}
       <Animated.View
         entering={FadeIn.delay(400).duration(300)}
-        className="items-center pt-lg pb-md gap-xs"
+        className="items-center pt-xl pb-md"
       >
-        <Text className="text-caption text-text-tertiary italic">
-          Still here? Just sign in already.
-        </Text>
-        <Text className="text-[11px] leading-[14px] text-text-muted text-center px-lg">
-          (Your future self will thank you. Or blame you. Either way,
-          memorable.)
-        </Text>
+        <Pressable onPress={onSignIn} className="active:opacity-70">
+          <Text className="text-caption text-text-tertiary">
+            Already have an account?{" "}
+            <Text className="text-white underline">Sign in</Text>
+          </Text>
+        </Pressable>
       </Animated.View>
     </>
   );

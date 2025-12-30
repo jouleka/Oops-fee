@@ -10,7 +10,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -56,18 +55,21 @@ const DESTINATIONS: {
   title: string;
   subtitle: string;
   emoji: string;
+  comingSoon?: boolean;
 }[] = [
   {
     id: "charity",
     title: "Charity",
     subtitle: "Failing, but make it philanthropic.",
     emoji: "💛",
+    comingSoon: true,
   },
   {
     id: "anti_charity",
     title: "Anti-charity",
     subtitle: "Spite is a motivational strategy.",
     emoji: "🧨",
+    comingSoon: true,
   },
   {
     id: "friend",
@@ -965,7 +967,7 @@ export default function NewPromiseScreen() {
   const params = useLocalSearchParams<{ templateId?: string }>();
   const { createPromise, isWorking, promises } = usePromiseStore();
   const { requireAuth } = useRequireAuth();
-  const { paymentState, walletState, freePasses, isAuthenticated } = useAuth();
+  const { paymentState, walletState, isAuthenticated } = useAuth();
 
   const templateId = useMemo(() => {
     const raw = params.templateId;
@@ -1004,7 +1006,6 @@ export default function NewPromiseScreen() {
   const [verificationType, setVerificationType] = useState<VerificationType>(
     () => initialTemplate?.defaultVerification ?? "photo",
   );
-  const [useFreePass, setUseFreePass] = useState(false);
   const [deadlineAt, setDeadlineAt] = useState<number>(() => {
     if (initialTemplate)
       return defaultDeadlineForTemplate(initialTemplate, nowMs);
@@ -1052,12 +1053,14 @@ export default function NewPromiseScreen() {
     }
   }, [effectiveStake, verificationType]);
 
-  // Reset free pass toggle if conditions change (no passes left or stake becomes 0)
+  // Friend destination requires a stake - reset to oopsfee if stake becomes 0
   useEffect(() => {
-    if (useFreePass && (freePasses <= 0 || effectiveStake <= 0)) {
-      setUseFreePass(false);
+    if (moneyDestination === "friend" && effectiveStake <= 0) {
+      setMoneyDestination("oopsfee");
     }
-  }, [useFreePass, freePasses, effectiveStake]);
+  }, [effectiveStake, moneyDestination]);
+
+
 
   // Friend validation: either in-app friend selected OR external with name + email
   const friendOk =
@@ -1152,7 +1155,6 @@ export default function NewPromiseScreen() {
         friendEmail: finalFriendEmail,
         voiceNoteUri,
         verificationType,
-        usesFreePass: useFreePass && freePasses > 0,
       });
       hapticMedium();
       setConfirmOpen(false);
@@ -1168,14 +1170,12 @@ export default function NewPromiseScreen() {
     createPromise,
     deadlineAt,
     effectiveStake,
-    freePasses,
     friendEmail,
     friendName,
     moneyDestination,
     selectedFriend,
     text,
     useExternalFriend,
-    useFreePass,
     verificationType,
     voiceNoteUri,
   ]);
@@ -1544,39 +1544,7 @@ export default function NewPromiseScreen() {
                 </Animated.View>
               )}
 
-              {/* Free Pass Toggle */}
-              {freePasses > 0 && effectiveStake > 0 && (
-                <Animated.View
-                  entering={FadeIn.duration(180)}
-                  layout={Layout.springify()}
-                  className="flex-row items-center gap-3 bg-imessage-dim border border-imessage/25 p-3 rounded-lg"
-                >
-                  <View className="w-7 h-7 rounded-[14px] bg-imessage/15 items-center justify-center">
-                    <Text className="text-sm">🎟️</Text>
-                  </View>
-                  <View className="flex-1 gap-0.5">
-                    <Text className="text-caption text-imessage font-semibold">
-                      Use free pass ({freePasses} left)
-                    </Text>
-                    <Text className="text-caption text-white/70">
-                      If you fail, no charge. Pass consumed either way.
-                    </Text>
-                  </View>
-                  <Switch
-                    value={useFreePass}
-                    onValueChange={(val) => {
-                      hapticLight();
-                      setUseFreePass(val);
-                    }}
-                    trackColor={{
-                      false: "#3A3A3C",
-                      true: "rgba(11, 147, 246, 0.4)",
-                    }}
-                    thumbColor={useFreePass ? "#0B93F6" : "#636366"}
-                    ios_backgroundColor="#3A3A3C"
-                  />
-                </Animated.View>
-              )}
+
             </View>
           </Animated.View>
 
@@ -1612,33 +1580,53 @@ export default function NewPromiseScreen() {
             </Text>
 
             <View className="gap-2">
-              {DESTINATIONS.map((d) => {
+              {DESTINATIONS.filter(
+                // Hide "friend" option when stake is $0 (nothing to give)
+                (d) => d.id !== "friend" || effectiveStake > 0,
+              ).map((d) => {
                 const active = d.id === moneyDestination;
+                const isDisabled = d.comingSoon;
                 return (
                   <Pressable
                     key={d.id}
+                    disabled={isDisabled}
                     onPress={() => {
                       hapticLight();
                       setMoneyDestination(d.id);
                     }}
                     className={`flex-row items-center gap-3 rounded-xl border p-4 ${
-                      active
-                        ? "border-imessage bg-imessage-dim"
-                        : "bg-card border-white/8 active:bg-card-hover"
+                      isDisabled
+                        ? "bg-card/50 border-white/5 opacity-60"
+                        : active
+                          ? "border-imessage bg-imessage-dim"
+                          : "bg-card border-white/8 active:bg-card-hover"
                     }`}
                   >
                     <View className="w-[34px] h-[34px] rounded-[17px] bg-[#0A0A0C] border border-white/5 items-center justify-center">
                       <Text className="text-base">{d.emoji}</Text>
                     </View>
                     <View className="flex-1 gap-0.5">
-                      <Text className="text-body-semibold text-white font-rounded">
-                        {d.title}
-                      </Text>
-                      <Text className="text-caption text-white/45">
+                      <View className="flex-row items-center gap-2">
+                        <Text
+                          className={`text-body-semibold font-rounded ${isDisabled ? "text-white/50" : "text-white"}`}
+                        >
+                          {d.title}
+                        </Text>
+                        {isDisabled && (
+                          <View className="bg-white/10 px-1.5 py-0.5 rounded">
+                            <Text className="text-[10px] text-white/40 font-medium">
+                              SOON
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        className={`text-caption ${isDisabled ? "text-white/30" : "text-white/45"}`}
+                      >
                         {d.subtitle}
                       </Text>
                     </View>
-                    {active && (
+                    {active && !isDisabled && (
                       <Text className="text-imessage font-bold text-base">
                         ✓
                       </Text>

@@ -403,18 +403,23 @@ export async function createPromise(input: CreatePromiseInput, userId: string): 
     }
   } else if (input.moneyDestination === 'friend' && input.friendUserId) {
     // In-app friend: send notification that they've been named as beneficiary
-    console.log('[repo.remote] In-app friend selected:', input.friendUserId, '- sending notification');
-    try {
-      const notifyResult = await notifyFriendNamed({
-        promiseId: id,
-        friendUserId: input.friendUserId,
-        stakeAmount: localPromise.stake,
-        promiseText: localPromise.text,
-      });
-      console.log('[repo.remote] Friend named notification result:', notifyResult);
-    } catch (notifyError) {
-      // Log error but don't fail promise creation
-      console.error('[repo.remote] Failed to notify friend:', notifyError);
+    // Only notify if there's an actual stake (no point notifying for $0)
+    if (localPromise.stake > 0) {
+      console.log('[repo.remote] In-app friend selected:', input.friendUserId, '- sending notification');
+      try {
+        const notifyResult = await notifyFriendNamed({
+          promiseId: id,
+          friendUserId: input.friendUserId,
+          stakeAmount: localPromise.stake,
+          promiseText: localPromise.text,
+        });
+        console.log('[repo.remote] Friend named notification result:', notifyResult);
+      } catch (notifyError) {
+        // Log error but don't fail promise creation
+        console.error('[repo.remote] Failed to notify friend:', notifyError);
+      }
+    } else {
+      console.log('[repo.remote] Skipping friend notification - $0 stake');
     }
   } else {
     console.log('[repo.remote] Skipping friend claim - moneyDestination:', input.moneyDestination, 'friendEmail:', input.friendEmail);
@@ -525,18 +530,23 @@ export async function syncPromiseToRemote(local: UserPromise, userId: string): P
     }
   } else if (local.moneyDestination === 'friend' && local.friendUserId) {
     // In-app friend: send notification that they've been named as beneficiary
-    console.log('[repo.remote] In-app friend selected for synced promise:', local.friendUserId, '- sending notification');
-    try {
-      const notifyResult = await notifyFriendNamed({
-        promiseId: local.id,
-        friendUserId: local.friendUserId,
-        stakeAmount: local.stake,
-        promiseText: local.text,
-      });
-      console.log('[repo.remote] Friend named notification result:', notifyResult);
-    } catch (notifyError) {
-      // Log error but don't fail sync
-      console.error('[repo.remote] Failed to notify friend:', notifyError);
+    // Only notify if there's an actual stake (no point notifying for $0)
+    if (local.stake > 0) {
+      console.log('[repo.remote] In-app friend selected for synced promise:', local.friendUserId, '- sending notification');
+      try {
+        const notifyResult = await notifyFriendNamed({
+          promiseId: local.id,
+          friendUserId: local.friendUserId,
+          stakeAmount: local.stake,
+          promiseText: local.text,
+        });
+        console.log('[repo.remote] Friend named notification result:', notifyResult);
+      } catch (notifyError) {
+        // Log error but don't fail sync
+        console.error('[repo.remote] Failed to notify friend:', notifyError);
+      }
+    } else {
+      console.log('[repo.remote] Skipping friend notification for synced promise - $0 stake');
     }
   } else if (local.moneyDestination === 'friend') {
     console.log('[repo.remote] Skipping friend claim for synced promise - no friendEmail');

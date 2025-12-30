@@ -187,15 +187,18 @@ export default function SetupUsernameScreen() {
     }
   }, [isAuthenticated]);
 
-  // Redirect if username already set
   // Cast to access username column (added in migration 014)
   const extendedProfile = profile as typeof profile & {
     username?: string | null;
   };
+  
+  // Pre-fill with current username if editing
+  const isEditing = Boolean(extendedProfile?.username);
   useEffect(() => {
-    if (extendedProfile?.username) {
-      router.replace("/(mobile)/home");
+    if (extendedProfile?.username && !username) {
+      setUsername(extendedProfile.username);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only run when profile loads, not when username changes
   }, [extendedProfile?.username]);
 
   // Real-time format validation
@@ -382,6 +385,19 @@ export default function SetupUsernameScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Back button for editing mode */}
+          {isEditing && (
+            <Animated.View entering={FadeIn.duration(200)}>
+              <Pressable
+                onPress={() => router.back()}
+                className="flex-row items-center gap-xs active:opacity-70"
+              >
+                <Text className="text-lg text-text-muted">←</Text>
+                <Text className="text-body text-text-muted">Back</Text>
+              </Pressable>
+            </Animated.View>
+          )}
+          
           {/* Header */}
           <Animated.View
             entering={FadeInDown.duration(300)}
@@ -389,11 +405,12 @@ export default function SetupUsernameScreen() {
           >
             <Text className="text-5xl mb-sm">👋</Text>
             <Text className="text-display-sm text-white font-rounded text-center">
-              Pick a username
+              {isEditing ? "Change username" : "Pick a username"}
             </Text>
             <Text className="text-body text-text-secondary text-center leading-[22px]">
-              This is how friends will find you. Choose wisely—or don&apos;t.
-              You can always change it later.
+              {isEditing 
+                ? "Your username is how friends find you. Make sure it's still available."
+                : "This is how friends will find you. Choose wisely—or don't. You can always change it later."}
             </Text>
           </Animated.View>
 
@@ -457,8 +474,8 @@ export default function SetupUsernameScreen() {
             </View>
           </Animated.View>
 
-          {/* Suggestions */}
-          {suggestions.length > 0 && !username && (
+          {/* Suggestions - only show for new username setup */}
+          {suggestions.length > 0 && !username && !isEditing && (
             <Animated.View
               entering={FadeInDown.delay(150).duration(300)}
               className="gap-md"
@@ -511,15 +528,15 @@ export default function SetupUsernameScreen() {
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text className="text-body-semibold text-white font-rounded">
-                    Claim @{username || "username"}
+                    {isEditing ? `Update to @${username || "username"}` : `Claim @${username || "username"}`}
                   </Text>
                 )}
               </LinearGradient>
             </Pressable>
           </Animated.View>
 
-          {/* Skip option - only show if no pending invite */}
-          {!isCheckingInvite && !hasPendingInvite && (
+          {/* Skip option - only show if no pending invite AND not editing */}
+          {!isCheckingInvite && !hasPendingInvite && !isEditing && (
             <Animated.View
               entering={FadeIn.delay(300).duration(300)}
               className="items-center gap-xs"
@@ -535,6 +552,23 @@ export default function SetupUsernameScreen() {
               <Text className="text-caption text-text-muted">
                 You can set this later in your profile
               </Text>
+            </Animated.View>
+          )}
+          
+          {/* Cancel button for editing mode */}
+          {isEditing && (
+            <Animated.View
+              entering={FadeIn.delay(300).duration(300)}
+              className="items-center"
+            >
+              <Pressable
+                onPress={() => router.back()}
+                className="py-md px-lg active:opacity-80"
+              >
+                <Text className="text-body text-text-tertiary">
+                  Cancel
+                </Text>
+              </Pressable>
             </Animated.View>
           )}
 

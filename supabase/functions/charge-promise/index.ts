@@ -21,6 +21,7 @@ const CLAIM_EXPIRY_DAYS = 7;
 
 interface ChargeRequest {
   promiseId: string;
+  useFreePass?: boolean;
 }
 
 interface ChargeResponse {
@@ -33,6 +34,7 @@ interface ChargeResponse {
   paymentIntentId?: string;
   walletUsed?: number; // Amount debited from wallet (in dollars)
   cardCharged?: number; // Amount charged to card (in dollars)
+  freePassUsed?: boolean; // Whether a free pass was consumed
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -191,6 +193,143 @@ Claim it here: ${claimUrl}
   }
 }
 
+/**
+ * Send email notification to external friend when user uses a free pass
+ * Lets them know they won't be receiving the expected payout
+ */
+interface FreePassEmailParams {
+  to: string;
+  friendName: string;
+  userName: string;
+  amountCents: number;
+  promiseText: string;
+}
+
+async function sendFreePassNotificationEmail(
+  params: FreePassEmailParams,
+): Promise<boolean> {
+  if (!RESEND_API_KEY) {
+    console.log(
+      "[charge-promise] Resend API key not configured, skipping free pass email",
+    );
+    return false;
+  }
+
+  const { to, friendName, userName, amountCents, promiseText } = params;
+  const amountDisplay = `$${(amountCents / 100).toFixed(amountCents % 100 === 0 ? 0 : 2)}`;
+
+  const subject = `${userName} used a free pass — no payout this time`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Free Pass Used</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #111111; color: #e5e5e5;">
+  <div style="max-width: 520px; margin: 0 auto; padding: 48px 24px;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-size: 14px; color: #737373; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">
+        OopsFee
+      </p>
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0; color: #ffffff; line-height: 1.3;">
+        🎟️ Free Pass Used
+      </h1>
+    </div>
+
+    <!-- Main Message -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 32px; margin-bottom: 32px; border: 1px solid #262626; text-align: center;">
+      <p style="font-size: 16px; color: #e5e5e5; margin: 0 0 16px 0; line-height: 1.5;">
+        Hey ${friendName},
+      </p>
+      <p style="font-size: 15px; color: #a3a3a3; margin: 0 0 16px 0; line-height: 1.5;">
+        ${userName} failed their promise but used a free pass to skip the penalty.
+      </p>
+      <p style="font-size: 24px; font-weight: 600; margin: 0; color: #737373; text-decoration: line-through;">
+        ${amountDisplay}
+      </p>
+      <p style="font-size: 13px; color: #525252; margin: 8px 0 0 0;">
+        No payout this time
+      </p>
+    </div>
+
+    <!-- Promise Context -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 32px; border: 1px solid #262626;">
+      <p style="font-size: 11px; color: #737373; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        The broken promise
+      </p>
+      <p style="font-size: 15px; margin: 0; color: #e5e5e5; line-height: 1.5;">
+        "${promiseText}"
+      </p>
+    </div>
+
+    <!-- Reassurance -->
+    <p style="font-size: 13px; color: #525252; text-align: center; margin: 0 0 40px 0;">
+      Free passes are limited — they can't dodge accountability forever.
+    </p>
+
+    <!-- Footer -->
+    <div style="border-top: 1px solid #262626; padding-top: 24px;">
+      <p style="font-size: 12px; color: #525252; text-align: center; margin: 0;">
+        <a href="${APP_URL}" style="color: #737373; text-decoration: none;">OopsFee</a> — accountability with stakes
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const textBody = `Hey ${friendName},
+
+${userName} failed their promise: "${promiseText}"
+
+However, they used a free pass to skip the penalty.
+
+${amountDisplay} — No payout this time.
+
+Free passes are limited — they can't dodge accountability forever.
+
+— OopsFee`;
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "OopsFee <hello@oopsfee.app>",
+        to: [to],
+        subject,
+        html: htmlBody,
+        text: textBody,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "[charge-promise] Resend API error (free pass):",
+        response.status,
+        errorText,
+      );
+      return false;
+    }
+
+    const result = await response.json();
+    console.log("[charge-promise] Free pass notification email sent:", result.id);
+    return true;
+  } catch (error) {
+    console.error("[charge-promise] Free pass email send error:", error);
+    return false;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Friend payout notification copy
 // ─────────────────────────────────────────────────────────────
@@ -199,6 +338,23 @@ const FRIEND_PAYOUT_NOTIFICATIONS = {
     "💸 ${userName} broke their promise! ${amount} is yours",
     "🎉 Cha-ching! ${amount} added to your wallet",
     "💰 ${userName} failed — ${amount} just hit your wallet",
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Free pass notification copy
+// ─────────────────────────────────────────────────────────────
+const FREE_PASS_NOTIFICATIONS = {
+  saved: [
+    "🎟️ Free pass saved you! No charge this time.",
+    "🎟️ Promise failed, but your free pass covered it.",
+    "🎟️ Oops forgiven! Free pass consumed.",
+    "🎟️ You got lucky — free pass absorbed the loss.",
+  ],
+  friendNoPayment: [
+    "🎟️ ${userName} used a free pass — no payout this time",
+    "${userName} failed but used a free pass. No ${amount} for you.",
+    "🎟️ Free pass played! ${userName} isn't paying this time.",
   ],
 };
 
@@ -475,7 +631,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse request
-    const { promiseId } = (await req.json()) as ChargeRequest;
+    const { promiseId, useFreePass } = (await req.json()) as ChargeRequest;
     if (!promiseId) {
       return new Response(
         JSON.stringify({
@@ -588,6 +744,119 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // FREE PASS: Handle if user wants to use a free pass
+    // ─────────────────────────────────────────────────────────────
+    if (useFreePass) {
+      console.log(
+        `[charge-promise] User requested free pass for promise ${promiseId}`,
+      );
+
+      // Try to consume a free pass
+      const { data: consumed, error: consumeError } = await supabase.rpc(
+        "consume_free_pass",
+        { user_uuid: user.id },
+      );
+
+      if (consumeError || !consumed) {
+        console.log(
+          `[charge-promise] Free pass not consumed (none available or error):`,
+          consumeError,
+        );
+        // Fall through to normal charge flow
+      } else {
+        console.log(`[charge-promise] Free pass consumed for user ${user.id}`);
+
+        // Get user's push token and profile for notification
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("expo_push_token, display_name, username")
+          .eq("id", user.id)
+          .single();
+
+        const userName = userProfile?.username
+          ? `@${userProfile.username}`
+          : userProfile?.display_name || "Someone";
+        const totalAmountCents = (promise.stake * 100) + (promise.sponsor_total ?? 0);
+
+        // Update promise - mark as failed with free pass used
+        await supabase
+          .from("promises")
+          .update({
+            status: "failed",
+            failed_at: new Date().toISOString(),
+            payment_status: "succeeded", // No charge, but settled
+            uses_free_pass: true,
+          })
+          .eq("id", promiseId);
+
+        // Send notification to user
+        const body = pickRandom(FREE_PASS_NOTIFICATIONS.saved);
+        await sendPushNotification(
+          userProfile?.expo_push_token ?? null,
+          "🎟️ Free Pass Used",
+          body,
+          { promiseId, type: "free_pass_used" },
+        );
+
+        // Notify friend if money was supposed to go to them
+        if (promise.money_destination === "friend") {
+          if (promise.friend_user_id) {
+            // In-app friend: send push notification that they won't receive money
+            const { data: friendProfile } = await supabase
+              .from("profiles")
+              .select("expo_push_token")
+              .eq("id", promise.friend_user_id)
+              .single();
+
+            if (friendProfile?.expo_push_token) {
+              const friendBody = pickRandom(FREE_PASS_NOTIFICATIONS.friendNoPayment)
+                .replace("${userName}", userName)
+                .replace("${amount}", formatAmount(totalAmountCents));
+              await sendPushNotification(
+                friendProfile.expo_push_token,
+                "🎟️ Free Pass Used",
+                friendBody,
+                { promiseId, type: "free_pass_no_payout", fromUserId: user.id },
+              );
+            }
+          } else if (promise.friend_claim_id) {
+            // External friend: send email notification
+            const { data: claim } = await supabase
+              .from("friend_claims")
+              .select("friend_email, friend_name")
+              .eq("id", promise.friend_claim_id)
+              .single();
+
+            if (claim?.friend_email) {
+              // Send email notification about free pass
+              await sendFreePassNotificationEmail({
+                to: claim.friend_email,
+                friendName: claim.friend_name,
+                userName,
+                amountCents: totalAmountCents,
+                promiseText: promise.text.substring(0, 100),
+              });
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            charged: false,
+            amount: promise.stake,
+            message: "🎟️ Free pass used! No charge this time.",
+            freePassUsed: true,
+          } as ChargeResponse),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // Get user's payment method and wallet balance
