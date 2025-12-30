@@ -3,7 +3,7 @@
  * Dry humor, self-aware, not trying too hard
  */
 
-import type { VerificationType } from '@/lib/promises/types';
+import type { VerificationType } from "@/lib/promises/types";
 
 // ─────────────────────────────────────────────────────────────
 // ROTATING QUOTES
@@ -35,12 +35,48 @@ export const PROMISE_TEMPLATES: readonly {
   emoji: string;
   defaultVerification: VerificationType;
 }[] = [
-  { id: "gym", text: "Hit the gym 3x this week", stake: 25, emoji: "💪", defaultVerification: "photo" },
-  { id: "alcohol", text: "No drinks for 7 days", stake: 20, emoji: "🍷", defaultVerification: "honor" },
-  { id: "morning", text: "Up before 7am tomorrow", stake: 10, emoji: "☀️", defaultVerification: "photo" },
-  { id: "social", text: "No doomscrolling until 6pm", stake: 15, emoji: "📵", defaultVerification: "honor" },
-  { id: "meditate", text: "10 min meditation daily", stake: 15, emoji: "🧘", defaultVerification: "honor" },
-  { id: "project", text: "Ship that thing by Friday", stake: 50, emoji: "🚀", defaultVerification: "photo" },
+  {
+    id: "text",
+    text: "Reply to that text I'm avoiding",
+    stake: 5,
+    emoji: "💬",
+    defaultVerification: "photo",
+  },
+  {
+    id: "gym",
+    text: "Actually go to the gym (not just think about it)",
+    stake: 25,
+    emoji: "💪",
+    defaultVerification: "photo",
+  },
+  {
+    id: "morning",
+    text: "Out of bed before the third alarm",
+    stake: 10,
+    emoji: "⏰",
+    defaultVerification: "photo",
+  },
+  {
+    id: "email",
+    text: "Send that email rotting in my drafts",
+    stake: 10,
+    emoji: "📧",
+    defaultVerification: "photo",
+  },
+  {
+    id: "sleep",
+    text: "In bed by midnight (the real one, not 'one more episode')",
+    stake: 15,
+    emoji: "🛏️",
+    defaultVerification: "honor",
+  },
+  {
+    id: "project",
+    text: "Stop 'researching' and actually start",
+    stake: 20,
+    emoji: "🚀",
+    defaultVerification: "photo",
+  },
 ];
 
 export type PromiseTemplate = (typeof PROMISE_TEMPLATES)[number];
@@ -212,19 +248,19 @@ export const SUCCESS_COPY = {
 export const CHECKIN_COPY = {
   title: "Still committed?",
   subtitle: "Daily sanity check. Tap honestly.",
-  
+
   // Button labels
   yesButton: "Yes, I'm on it",
   noButton: "Actually, I failed",
-  
+
   // After check-in
   confirmed: "Noted. Don't make us look foolish.",
   failed: "Honesty. Rare but appreciated.",
-  
+
   // Streak messages
   streakPrefix: "Check-in streak:",
   streakSuffix: "days",
-  
+
   // Missed check-in warnings
   missedYesterday: "You didn't check in yesterday. Avoiding something?",
   missedMultiple: "You've missed {n} check-ins. That's concerning.",
@@ -240,20 +276,20 @@ export const GRAVEYARD_COPY = {
   // Page header
   title: "The Graveyard",
   subtitle: "Where promises come to die.",
-  
+
   // Empty state (clean record)
   emptyTitle: "Nothing here. Yet.",
   emptySubtitle: "Either you're a saint or you haven't started. We know which.",
   emptyHint: "Clean records are suspicious.",
-  
+
   // Tombstone labels
   ripLabel: "RIP",
   lastedLabel: "Lasted",
   lostLabel: "Lost",
-  
+
   // Footer
   footerText: "Every failure is a lesson. A very expensive lesson.",
-  
+
   // Total lost
   totalLostLabel: "TOTAL LOST",
   totalLostEmpty: "Nothing lost. Nothing learned?",
@@ -268,31 +304,33 @@ export const SHARE_COPY = {
   // Share modal
   title: "Share commitment",
   subtitle: "Send this to friends who'll hold you accountable.",
-  
+
   // Share card text
   cardLabel: "I BET",
   cardPromise: "I'll",
   cardDeadline: "by",
   cardCta: "HOLD ME TO IT",
-  
+
   // Sponsor section
   sponsorTitle: "ADD FRIEND'S PLEDGE",
   sponsorSubtitle: "Did a friend pledge extra $ if you fail? Track it here.",
   sponsorPlaceholder: "0",
-  sponsorNote: "Example: Your friend says 'I'll add $20 if you fail' — enter $20.",
+  sponsorNote:
+    "Example: Your friend says 'I'll add $20 if you fail' — enter $20.",
   sponsorTotal: "Total at stake",
-  
+
   // I Told You So section
   iToldYouSoTitle: "FRIEND'S MESSAGE",
-  iToldYouSoSubtitle: "Let a friend write a message you'll only see if you fail.",
+  iToldYouSoSubtitle:
+    "Let a friend write a message you'll only see if you fail.",
   iToldYouSoPlaceholder: "Their message to you if you fail...",
   iToldYouSoFromPlaceholder: "Friend's name",
   iToldYouSoHint: "Hand your phone to them. This stays hidden until you lose.",
-  
+
   // Actions
   shareButton: "Share commitment",
   copyLinkButton: "Copy link",
-  
+
   // Toast messages
   shared: "Commitment shared. No backing out now.",
   linkCopied: "Link copied. Accountability incoming.",
@@ -307,11 +345,11 @@ export const FAILURE_COPY = {
   // I Told You So reveal
   iToldYouSoRevealTitle: "A message was left for you...",
   iToldYouSoFromLabel: "From",
-  
+
   // Sponsor reveal
   sponsorLossTitle: "Plus {amount} from sponsors",
   sponsorLossSubtitle: "They saw it coming.",
-  
+
   // General failure messages
   failureMessages: [
     "It happens. To you, specifically.",
@@ -344,7 +382,8 @@ export const VERIFICATION_COPY = {
       emoji: "👥",
       title: "Friend",
       subtitle: "A friend confirms you did it.",
-      description: "Hand your phone to someone who enjoys saying 'I told you so.'",
+      description:
+        "Hand your phone to someone who enjoys saying 'I told you so.'",
     },
     honor: {
       emoji: "🤞",
@@ -401,11 +440,11 @@ export const VERIFICATION_COPY = {
 
 // Verification type display order
 export const VERIFICATION_ORDER: readonly VerificationType[] = [
-  'photo',
-  'partner', 
-  'honor',
-  'healthkit',
-  'location',
+  "photo",
+  "partner",
+  "honor",
+  "healthkit",
+  "location",
 ];
 
 // Stakes thresholds for honor system gating

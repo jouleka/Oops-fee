@@ -4,7 +4,7 @@
  * expire-claims Edge Function (Cron)
  *
  * Runs daily to expire unclaimed friend claims after 7 days.
- * 
+ *
  * When a user fails a promise with money_destination='friend', the friend has
  * 7 days to claim the funds. If they don't claim within that window, this
  * function marks the claim as expired and the funds stay with OopsFee.
@@ -13,11 +13,11 @@
  * It uses the service role key to bypass RLS.
  */
 
-import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { createAdminClient } from '../_shared/supabase.ts';
+import { corsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { createAdminClient } from "../_shared/supabase.ts";
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const APP_URL = Deno.env.get('APP_URL') || 'https://oopsfee.app';
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const APP_URL = Deno.env.get("APP_URL") || "https://oopsfee.app";
 
 // Batch size for processing (avoid timeouts)
 const BATCH_SIZE = 100;
@@ -36,7 +36,7 @@ interface FriendClaim {
 
 interface ExpirationResult {
   claimId: string;
-  action: 'expired' | 'skipped';
+  action: "expired" | "skipped";
   message: string;
 }
 
@@ -49,7 +49,9 @@ async function sendClaimExpiredEmail(
   amountCents: number,
 ): Promise<boolean> {
   if (!RESEND_API_KEY) {
-    console.log('[expire-claims] Resend API key not configured, skipping expiration email');
+    console.log(
+      "[expire-claims] Resend API key not configured, skipping expiration email",
+    );
     return false;
   }
 
@@ -64,42 +66,47 @@ async function sendClaimExpiredEmail(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Claim Expired</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #ffffff;">
-  <div style="max-width: 480px; margin: 0 auto; padding: 40px 24px;">
-    <div style="text-align: center; margin-bottom: 32px;">
-      <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 8px 0; color: #ef4444;">
-        ⏰ Time's Up
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #111111; color: #e5e5e5;">
+  <div style="max-width: 520px; margin: 0 auto; padding: 48px 24px;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-size: 14px; color: #737373; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">
+        OopsFee
+      </p>
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0; color: #ffffff; line-height: 1.3;">
+        Your claim window closed.
       </h1>
-      <p style="font-size: 18px; color: #ffffff; margin: 0;">
-        Your claim window has closed
-      </p>
     </div>
-    
-    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; border: 1px solid #ef4444; text-align: center;">
-      <p style="font-size: 14px; color: #fca5a5; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
-        Expired Amount
+
+    <!-- Amount Card -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 32px; margin-bottom: 32px; border: 1px solid #262626; text-align: center;">
+      <p style="font-size: 12px; color: #737373; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        Expired
       </p>
-      <p style="font-size: 48px; font-weight: 700; margin: 0; color: #ef4444; text-decoration: line-through;">
+      <p style="font-size: 40px; font-weight: 600; margin: 0; color: #525252; text-decoration: line-through;">
         ${amountDisplay}
       </p>
     </div>
-    
-    <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #333;">
-      <p style="font-size: 14px; color: #888888; margin: 0;">
-        Hey ${friendName}, the 7-day window to claim your payout has passed. 
-        The funds have been forfeited.
+
+    <!-- Explanation -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 32px; border: 1px solid #262626;">
+      <p style="font-size: 15px; color: #a3a3a3; margin: 0; line-height: 1.6;">
+        Hey ${friendName}, the 7-day window to claim your payout has passed. The funds have been forfeited.
       </p>
     </div>
-    
-    <p style="font-size: 14px; color: #888888; text-align: center; margin: 0;">
-      Next time, claim your winnings faster! 💨
+
+    <!-- Note -->
+    <p style="font-size: 14px; color: #525252; text-align: center; margin: 0 0 40px 0;">
+      Next time, check your email sooner.
     </p>
-    
-    <hr style="border: none; border-top: 1px solid #333; margin: 40px 0 24px 0;">
-    
-    <p style="font-size: 12px; color: #666666; text-align: center; margin: 0;">
-      Sent by <a href="${APP_URL}" style="color: #7c3aed;">OopsFee</a> — accountability with stakes
-    </p>
+
+    <!-- Footer -->
+    <div style="border-top: 1px solid #262626; padding-top: 24px;">
+      <p style="font-size: 12px; color: #525252; text-align: center; margin: 0;">
+        <a href="${APP_URL}" style="color: #737373; text-decoration: none;">OopsFee</a> — accountability with stakes
+      </p>
+    </div>
   </div>
 </body>
 </html>
@@ -116,14 +123,14 @@ Next time, claim your winnings faster! 💨
 — OopsFee`;
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'OopsFee <hello@oopsfee.app>',
+        from: "OopsFee <hello@oopsfee.app>",
         to: [to],
         subject,
         html: htmlBody,
@@ -133,36 +140,40 @@ Next time, claim your winnings faster! 💨
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[expire-claims] Resend API error:', response.status, errorText);
+      console.error(
+        "[expire-claims] Resend API error:",
+        response.status,
+        errorText,
+      );
       return false;
     }
 
     const result = await response.json();
-    console.log('[expire-claims] Claim expired email sent:', result.id);
+    console.log("[expire-claims] Claim expired email sent:", result.id);
     return true;
   } catch (error) {
-    console.error('[expire-claims] Claim expired email send error:', error);
+    console.error("[expire-claims] Claim expired email send error:", error);
     return false;
   }
 }
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return handleCorsOptions();
   }
 
   // Accept both GET (for cron) and POST (for manual trigger)
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
   }
 
   // Optional: Verify cron secret for security (reuses same secret as settle-promises)
-  const cronSecret = Deno.env.get('SETTLEMENT_CRON_SECRET');
+  const cronSecret = Deno.env.get("SETTLEMENT_CRON_SECRET");
   if (cronSecret) {
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get("Authorization");
     if (authHeader !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 });
+      return new Response("Unauthorized", { status: 401 });
     }
   }
 
@@ -179,18 +190,25 @@ Deno.serve(async (req: Request) => {
     // - claim_status = 'notified' (friend was told but hasn't claimed)
     // - claim_expires_at < now (7-day window has passed)
     const { data: expiredClaims, error: fetchError } = await supabase
-      .from('friend_claims')
-      .select('id, promise_id, friend_email, friend_phone, friend_name, claim_token, claim_status, claim_expires_at, amount_cents')
-      .eq('claim_status', 'notified')
-      .lt('claim_expires_at', now.toISOString())
+      .from("friend_claims")
+      .select(
+        "id, promise_id, friend_email, friend_phone, friend_name, claim_token, claim_status, claim_expires_at, amount_cents",
+      )
+      .eq("claim_status", "notified")
+      .lt("claim_expires_at", now.toISOString())
       .limit(BATCH_SIZE);
 
     if (fetchError) {
-      console.error('[expire-claims] Error fetching expired claims:', fetchError);
+      console.error(
+        "[expire-claims] Error fetching expired claims:",
+        fetchError,
+      );
       throw fetchError;
     }
 
-    console.log(`[expire-claims] Found ${expiredClaims?.length ?? 0} claims to expire`);
+    console.log(
+      `[expire-claims] Found ${expiredClaims?.length ?? 0} claims to expire`,
+    );
 
     // =========================================================================
     // Process each expired claim
@@ -203,24 +221,28 @@ Deno.serve(async (req: Request) => {
     // Summary
     const summary = {
       timestamp: now.toISOString(),
-      claimsExpired: results.filter((r) => r.action === 'expired').length,
-      claimsSkipped: results.filter((r) => r.action === 'skipped').length,
+      claimsExpired: results.filter((r) => r.action === "expired").length,
+      claimsSkipped: results.filter((r) => r.action === "skipped").length,
       results,
     };
 
-    console.log('[expire-claims] Expiration complete:', JSON.stringify(summary, null, 2));
+    console.log(
+      "[expire-claims] Expiration complete:",
+      JSON.stringify(summary, null, 2),
+    );
 
     return new Response(JSON.stringify(summary), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    console.error('[expire-claims] Error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    console.error("[expire-claims] Error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
@@ -235,17 +257,20 @@ async function processExpiredClaim(
 
   // Update claim status to expired
   const { error: updateError } = await supabase
-    .from('friend_claims')
+    .from("friend_claims")
     .update({
-      claim_status: 'expired',
+      claim_status: "expired",
     })
-    .eq('id', claim.id);
+    .eq("id", claim.id);
 
   if (updateError) {
-    console.error(`[expire-claims] Error updating claim ${claim.id}:`, updateError);
+    console.error(
+      `[expire-claims] Error updating claim ${claim.id}:`,
+      updateError,
+    );
     return {
       claimId: claim.id,
-      action: 'skipped',
+      action: "skipped",
       message: `Failed to update: ${updateError.message}`,
     };
   }
@@ -259,7 +284,9 @@ async function processExpiredClaim(
       claim.friend_name,
       claim.amount_cents,
     );
-    console.log(`[expire-claims] Expiration email sent to ${claim.friend_email}: ${emailSent}`);
+    console.log(
+      `[expire-claims] Expiration email sent to ${claim.friend_email}: ${emailSent}`,
+    );
   }
 
   // Note: Funds already stay with OopsFee since they were never transferred.
@@ -267,8 +294,7 @@ async function processExpiredClaim(
 
   return {
     claimId: claim.id,
-    action: 'expired',
-    message: 'Claim expired, friend did not claim within 7 days',
+    action: "expired",
+    message: "Claim expired, friend did not claim within 7 days",
   };
 }
-

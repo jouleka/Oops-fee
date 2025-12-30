@@ -1,7 +1,7 @@
-import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -11,15 +11,15 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LoadingState } from '@/components/ui/loading-state';
-import { STATS_COPY, STREAK_BADGES } from '@/constants/content';
-import { Colors, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
-import { usePromiseStore } from '@/context/promise-store';
-import type { UserStats } from '@/lib/promises/types';
-import { computeStats } from '@/lib/stats/store';
+import { LoadingState } from "@/components/ui/loading-state";
+import { STATS_COPY, STREAK_BADGES } from "@/constants/content";
+import { Colors, Fonts, Radius, Spacing, Typography } from "@/constants/theme";
+import { usePromiseStore } from "@/context/promise-store";
+import type { UserStats } from "@/lib/promises/types";
+import { computeStats } from "@/lib/stats/store";
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -38,10 +38,10 @@ function GlowingStreak({ count }: { count: number }) {
     glow.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 2000 }),
-        withTiming(0, { duration: 2000 })
+        withTiming(0, { duration: 2000 }),
       ),
       -1,
-      true
+      true,
     );
   }, [glow, shouldGlow]);
 
@@ -51,11 +51,11 @@ function GlowingStreak({ count }: { count: number }) {
   }));
 
   const getStreakEmoji = () => {
-    if (count >= 100) return '👑';
-    if (count >= 30) return '⚡';
-    if (count >= 7) return '🔥';
-    if (count >= 3) return '✨';
-    return '';
+    if (count >= 100) return "👑";
+    if (count >= 30) return "⚡";
+    if (count >= 7) return "🔥";
+    if (count >= 3) return "✨";
+    return "";
   };
 
   return (
@@ -68,10 +68,17 @@ function GlowingStreak({ count }: { count: number }) {
       <View style={styles.streakContent}>
         <Text style={styles.streakLabel}>{STATS_COPY.streakTitle}</Text>
         <View style={styles.streakNumberRow}>
-          <Text style={[styles.streakNumber, count > 0 && styles.streakNumberActive]}>
+          <Text
+            style={[
+              styles.streakNumber,
+              count > 0 && styles.streakNumberActive,
+            ]}
+          >
             {count}
           </Text>
-          {count > 0 && <Text style={styles.streakEmoji}>{getStreakEmoji()}</Text>}
+          {count > 0 && (
+            <Text style={styles.streakEmoji}>{getStreakEmoji()}</Text>
+          )}
         </View>
         <Text style={styles.streakHint}>
           {count === 0 ? STATS_COPY.streakEmpty : STATS_COPY.streakActive}
@@ -95,7 +102,10 @@ function StatCard({
   delay?: number;
 }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(280)} style={styles.statCard}>
+    <Animated.View
+      entering={FadeInDown.delay(delay).duration(280)}
+      style={styles.statCard}
+    >
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={[styles.statValue, color ? { color } : null]}>
         {value}
@@ -125,9 +135,13 @@ function StreakBadge({
       entering={FadeInDown.delay(delay).duration(280)}
       style={[styles.badgeCard, !unlocked && styles.badgeCardLocked]}
     >
-      <Text style={[styles.badgeEmoji, !unlocked && styles.badgeEmojiLocked]}>{emoji}</Text>
+      <Text style={[styles.badgeEmoji, !unlocked && styles.badgeEmojiLocked]}>
+        {emoji}
+      </Text>
       <View style={styles.badgeContent}>
-        <Text style={[styles.badgeLabel, !unlocked && styles.badgeLabelLocked]}>{label}</Text>
+        <Text style={[styles.badgeLabel, !unlocked && styles.badgeLabelLocked]}>
+          {label}
+        </Text>
         <Text style={[styles.badgeDesc, !unlocked && styles.badgeDescLocked]}>
           {unlocked ? description : lockedHint}
         </Text>
@@ -143,9 +157,14 @@ function MultiplierCard({ stats }: { stats: UserStats }) {
 
   if (actualMultiplier <= 1) {
     return (
-      <Animated.View entering={FadeInDown.delay(350).duration(280)} style={styles.multiplierCard}>
+      <Animated.View
+        entering={FadeInDown.delay(350).duration(280)}
+        style={styles.multiplierCard}
+      >
         <View style={styles.multiplierHeader}>
-          <Text style={styles.multiplierLabel}>{STATS_COPY.multiplierTitle}</Text>
+          <Text style={styles.multiplierLabel}>
+            {STATS_COPY.multiplierTitle}
+          </Text>
           <Text style={styles.multiplierValue}>1×</Text>
         </View>
         <Text style={styles.multiplierHint}>{STATS_COPY.multiplier1x}</Text>
@@ -170,7 +189,9 @@ function MultiplierCard({ stats }: { stats: UserStats }) {
           {actualMultiplier}×
         </Text>
       </View>
-      <Text style={[styles.multiplierHint, styles.multiplierHintDanger]}>{getMessage()}</Text>
+      <Text style={[styles.multiplierHint, styles.multiplierHintDanger]}>
+        {getMessage()}
+      </Text>
       {completionsNeeded > 0 && (
         <View style={styles.multiplierProgress}>
           <Text style={styles.multiplierProgressText}>
@@ -182,7 +203,8 @@ function MultiplierCard({ stats }: { stats: UserStats }) {
                 key={i}
                 style={[
                   styles.multiplierProgressDot,
-                  i < stats.consecutiveCompletions && styles.multiplierProgressDotFilled,
+                  i < stats.consecutiveCompletions &&
+                    styles.multiplierProgressDotFilled,
                 ]}
               />
             ))}
@@ -193,13 +215,27 @@ function MultiplierCard({ stats }: { stats: UserStats }) {
   );
 }
 
-function CheckInStreakCard({ streak, missed }: { streak: number; missed: number }) {
+function CheckInStreakCard({
+  streak,
+  missed,
+}: {
+  streak: number;
+  missed: number;
+}) {
   return (
-    <Animated.View entering={FadeInDown.delay(400).duration(280)} style={styles.checkInCard}>
+    <Animated.View
+      entering={FadeInDown.delay(400).duration(280)}
+      style={styles.checkInCard}
+    >
       <View style={styles.checkInHeader}>
         <Text style={styles.checkInLabel}>{STATS_COPY.checkInTitle}</Text>
         <View style={styles.checkInValueRow}>
-          <Text style={[styles.checkInValue, streak > 0 && styles.checkInValueActive]}>
+          <Text
+            style={[
+              styles.checkInValue,
+              streak > 0 && styles.checkInValueActive,
+            ]}
+          >
             {streak}
           </Text>
           <Text style={styles.checkInDays}>days</Text>
@@ -212,7 +248,7 @@ function CheckInStreakCard({ streak, missed }: { streak: number; missed: number 
         <View style={styles.missedWarning}>
           <Text style={styles.missedWarningIcon}>⚠️</Text>
           <Text style={styles.missedWarningText}>
-            {missed} missed check-in{missed > 1 ? 's' : ''}
+            {missed} missed check-in{missed > 1 ? "s" : ""}
           </Text>
         </View>
       )}
@@ -264,19 +300,32 @@ export default function StatsScreen() {
   const unlockedBadges = useMemo(() => {
     if (!stats) return new Set<number>();
     return new Set(
-      STREAK_BADGES.filter((b) => stats.longestStreak >= b.level).map((b) => b.level)
+      STREAK_BADGES.filter((b) => stats.longestStreak >= b.level).map(
+        (b) => b.level,
+      ),
     );
   }, [stats]);
 
   if (!isHydrated || loading) {
-    return <LoadingState title="Crunching numbers…" subtitle="Quantifying your commitment." />;
+    return (
+      <LoadingState
+        title="Crunching numbers…"
+        subtitle="Quantifying your commitment."
+      />
+    );
   }
 
   if (!stats || stats.totalPromises === 0) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+          <Pressable
+            onPress={handleBack}
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && styles.pressed,
+            ]}
+          >
             <Text style={styles.backButtonText}>‹</Text>
           </Pressable>
           <View style={styles.headerCenter}>
@@ -299,7 +348,13 @@ export default function StatsScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={handleBack} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+        <Pressable
+          onPress={handleBack}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+        >
           <Text style={styles.backButtonText}>‹</Text>
         </Pressable>
         <View style={styles.headerCenter}>
@@ -311,7 +366,10 @@ export default function StatsScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 32 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Streak Hero */}
@@ -337,21 +395,33 @@ export default function StatsScreen() {
         </View>
 
         {/* Success message */}
-        <Animated.View entering={FadeInDown.delay(200).duration(280)} style={styles.messageCard}>
-          <Text style={styles.messageText}>{getSuccessMessage(stats.successRate)}</Text>
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(280)}
+          style={styles.messageCard}
+        >
+          <Text style={styles.messageText}>
+            {getSuccessMessage(stats.successRate)}
+          </Text>
         </Animated.View>
 
         {/* Money Stats */}
-        <Animated.View entering={FadeInDown.delay(250).duration(280)} style={styles.moneySection}>
+        <Animated.View
+          entering={FadeInDown.delay(250).duration(280)}
+          style={styles.moneySection}
+        >
           <Text style={styles.sectionLabel}>THE MONEY</Text>
           <View style={styles.moneyGrid}>
             <View style={styles.moneyCard}>
               <Text style={styles.moneyLabel}>SAVED</Text>
-              <Text style={[styles.moneyValue, styles.moneyValueGreen]}>${stats.totalSaved}</Text>
+              <Text style={[styles.moneyValue, styles.moneyValueGreen]}>
+                ${stats.totalSaved}
+              </Text>
             </View>
             <View style={styles.moneyCard}>
               <Text style={styles.moneyLabel}>LOST</Text>
-              <Text style={[styles.moneyValue, styles.moneyValueRed]}>${stats.totalLost}</Text>
+              <Text style={[styles.moneyValue, styles.moneyValueRed]}>
+                ${stats.totalLost}
+              </Text>
             </View>
             <View style={styles.moneyCard}>
               <Text style={styles.moneyLabel}>TOTAL BET</Text>
@@ -361,7 +431,10 @@ export default function StatsScreen() {
         </Animated.View>
 
         {/* Promise Breakdown */}
-        <Animated.View entering={FadeInDown.delay(300).duration(280)} style={styles.breakdownSection}>
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(280)}
+          style={styles.breakdownSection}
+        >
           <Text style={styles.sectionLabel}>PROMISES</Text>
           <View style={styles.breakdownRow}>
             <View style={styles.breakdownItem}>
@@ -370,12 +443,16 @@ export default function StatsScreen() {
             </View>
             <View style={styles.breakdownDivider} />
             <View style={styles.breakdownItem}>
-              <Text style={[styles.breakdownValue, { color: Colors.success }]}>{stats.completed}</Text>
+              <Text style={[styles.breakdownValue, { color: Colors.success }]}>
+                {stats.completed}
+              </Text>
               <Text style={styles.breakdownLabel}>Kept</Text>
             </View>
             <View style={styles.breakdownDivider} />
             <View style={styles.breakdownItem}>
-              <Text style={[styles.breakdownValue, { color: Colors.danger }]}>{stats.failed + stats.expired}</Text>
+              <Text style={[styles.breakdownValue, { color: Colors.danger }]}>
+                {stats.failed + stats.expired}
+              </Text>
               <Text style={styles.breakdownLabel}>Broken</Text>
             </View>
           </View>
@@ -385,12 +462,17 @@ export default function StatsScreen() {
         <MultiplierCard stats={stats} />
 
         {/* Check-in Streak */}
-        <CheckInStreakCard streak={stats.checkInStreak} missed={stats.missedCheckIns} />
+        <CheckInStreakCard
+          streak={stats.checkInStreak}
+          missed={stats.missedCheckIns}
+        />
 
         {/* Badges */}
         <View style={styles.badgesSection}>
           <Text style={styles.sectionLabel}>{STATS_COPY.badgesTitle}</Text>
-          <Text style={styles.sectionSubtitle}>{STATS_COPY.badgesSubtitle}</Text>
+          <Text style={styles.sectionSubtitle}>
+            {STATS_COPY.badgesSubtitle}
+          </Text>
 
           {STREAK_BADGES.map((badge, i) => (
             <StreakBadge
@@ -410,23 +492,31 @@ export default function StatsScreen() {
           <Pressable
             onPress={() => {
               hapticLight();
-              router.push('/(mobile)/leaderboard');
+              router.push("/(mobile)/leaderboard");
             }}
-            style={({ pressed }) => [styles.leaderboardCard, pressed && styles.leaderboardCardPressed]}
+            style={({ pressed }) => [
+              styles.leaderboardCard,
+              pressed && styles.leaderboardCardPressed,
+            ]}
           >
-            <View style={styles.leaderboardContent}>
+            <View style={styles.leaderboardRow}>
               <Text style={styles.leaderboardEmoji}>🏆</Text>
               <View style={styles.leaderboardInfo}>
                 <Text style={styles.leaderboardTitle}>Leaderboard</Text>
-                <Text style={styles.leaderboardSubtitle}>See how you stack up against friends</Text>
+                <Text style={styles.leaderboardSubtitle}>
+                  See how you stack up against friends
+                </Text>
               </View>
+              <Text style={styles.leaderboardChevron}>›</Text>
             </View>
-            <Text style={styles.leaderboardChevron}>›</Text>
           </Pressable>
         </Animated.View>
 
         {/* Footer */}
-        <Animated.View entering={FadeIn.delay(600).duration(400)} style={styles.footer}>
+        <Animated.View
+          entering={FadeIn.delay(600).duration(400)}
+          style={styles.footer}
+        >
           <Text style={styles.footerText}>
             Numbers don&apos;t lie. But they do judge silently.
           </Text>
@@ -450,14 +540,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
   headerCenter: { flex: 1, gap: 2 },
-  headerTitle: { ...Typography.h2, color: Colors.text, fontFamily: Fonts.rounded },
+  headerTitle: {
+    ...Typography.h2,
+    color: Colors.text,
+    fontFamily: Fonts.rounded,
+  },
   headerSubtitle: { ...Typography.caption, color: Colors.textTertiary },
   backButton: {
     width: 36,
@@ -466,8 +560,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   backButtonText: {
     fontSize: 28,
@@ -486,14 +580,14 @@ const styles = StyleSheet.create({
 
   // Streak hero
   streakContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xxl,
-    position: 'relative',
+    position: "relative",
   },
   streakGlow: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   streakGlowCircle: {
     width: 180,
@@ -502,7 +596,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
   },
   streakContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   streakLabel: {
     ...Typography.label,
@@ -510,8 +604,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   streakNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   streakNumber: {
@@ -528,12 +622,12 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.textTertiary,
     marginTop: Spacing.sm,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
 
   // Stats row
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
   },
   statCard: {
@@ -543,7 +637,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.xs,
   },
   statLabel: {
@@ -567,13 +661,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   messageText: {
     ...Typography.body,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
-    textAlign: 'center',
+    fontStyle: "italic",
+    textAlign: "center",
   },
 
   // Money section
@@ -592,7 +686,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   moneyGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
   moneyCard: {
@@ -602,7 +696,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   moneyLabel: {
@@ -627,7 +721,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   breakdownRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
@@ -636,7 +730,7 @@ const styles = StyleSheet.create({
   },
   breakdownItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   breakdownValue: {
@@ -665,12 +759,12 @@ const styles = StyleSheet.create({
   },
   multiplierCardDanger: {
     backgroundColor: Colors.dangerDim,
-    borderColor: Colors.danger + '44',
+    borderColor: Colors.danger + "44",
   },
   multiplierHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   multiplierLabel: {
     ...Typography.label,
@@ -687,15 +781,15 @@ const styles = StyleSheet.create({
   multiplierHint: {
     ...Typography.caption,
     color: Colors.textTertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   multiplierHintDanger: {
     color: Colors.danger,
   },
   multiplierProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: Spacing.sm,
   },
   multiplierProgressText: {
@@ -703,7 +797,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   multiplierProgressBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.xs,
   },
   multiplierProgressDot: {
@@ -729,17 +823,17 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   checkInHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   checkInLabel: {
     ...Typography.label,
     color: Colors.textMuted,
   },
   checkInValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     gap: Spacing.xs,
   },
   checkInValue: {
@@ -757,15 +851,15 @@ const styles = StyleSheet.create({
   checkInHint: {
     ...Typography.caption,
     color: Colors.textTertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   missedWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     backgroundColor: Colors.warningDim,
     borderWidth: 1,
-    borderColor: Colors.warning + '44',
+    borderColor: Colors.warning + "44",
     borderRadius: Radius.md,
     padding: Spacing.sm,
     marginTop: Spacing.xs,
@@ -776,7 +870,7 @@ const styles = StyleSheet.create({
   missedWarningText: {
     ...Typography.caption,
     color: Colors.warning,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   // Badges section
@@ -784,8 +878,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   badgeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
@@ -819,19 +913,19 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   badgeDescLocked: {
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   badgeCheck: {
     color: Colors.success,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // Empty state
   emptyState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.xl,
     gap: Spacing.md,
   },
@@ -847,29 +941,25 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...Typography.body,
     color: Colors.textTertiary,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   // Leaderboard CTA
   leaderboardCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.accent + '44',
+    borderColor: Colors.accent + "44",
     padding: Spacing.lg,
   },
   leaderboardCardPressed: {
     backgroundColor: Colors.bgCardHover,
     borderColor: Colors.accent,
   },
-  leaderboardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  leaderboardRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
-    flex: 1,
   },
   leaderboardEmoji: {
     fontSize: 28,
@@ -890,20 +980,19 @@ const styles = StyleSheet.create({
   leaderboardChevron: {
     fontSize: 22,
     color: Colors.accent,
-    fontWeight: '300',
+    fontWeight: "300",
   },
 
   // Footer
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.md,
   },
   footerText: {
     ...Typography.caption,
     color: Colors.textMuted,
-    fontStyle: 'italic',
-    textAlign: 'center',
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });
-

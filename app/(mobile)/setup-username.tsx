@@ -4,11 +4,11 @@
  * Allows users to pick a unique username for friend discovery.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,44 +18,40 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeOut,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAuth } from '@/context/auth';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase";
 
 // Storage key for pending invite token (must match invite/[token].tsx)
-const PENDING_INVITE_TOKEN_KEY = 'oopsfee_pending_invite_token';
+const PENDING_INVITE_TOKEN_KEY = "oopsfee_pending_invite_token";
 
 // Username validation regex: 3-20 chars, alphanumeric + underscores, must start with letter
 const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
 
 // Reserved usernames that cannot be used
 const RESERVED_USERNAMES = new Set([
-  'admin',
-  'administrator',
-  'support',
-  'help',
-  'oopsfee',
-  'system',
-  'root',
-  'mod',
-  'moderator',
-  'official',
-  'staff',
-  'team',
-  'null',
-  'undefined',
-  'api',
-  'www',
+  "admin",
+  "administrator",
+  "support",
+  "help",
+  "oopsfee",
+  "system",
+  "root",
+  "mod",
+  "moderator",
+  "official",
+  "staff",
+  "team",
+  "null",
+  "undefined",
+  "api",
+  "www",
 ]);
 
-type ValidationState = 'idle' | 'validating' | 'valid' | 'invalid' | 'taken';
+type ValidationState = "idle" | "validating" | "valid" | "invalid" | "taken";
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -65,30 +61,33 @@ function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 }
 
-function validateUsernameFormat(username: string): { valid: boolean; error?: string } {
-  if (!username || typeof username !== 'string') {
-    return { valid: false, error: 'Username is required' };
+function validateUsernameFormat(username: string): {
+  valid: boolean;
+  error?: string;
+} {
+  if (!username || typeof username !== "string") {
+    return { valid: false, error: "Username is required" };
   }
 
   const trimmed = username.trim();
 
   if (trimmed.length < 3) {
-    return { valid: false, error: 'At least 3 characters' };
+    return { valid: false, error: "At least 3 characters" };
   }
 
   if (trimmed.length > 20) {
-    return { valid: false, error: '20 characters max' };
+    return { valid: false, error: "20 characters max" };
   }
 
   if (!USERNAME_REGEX.test(trimmed)) {
     if (!/^[a-zA-Z]/.test(trimmed)) {
-      return { valid: false, error: 'Must start with a letter' };
+      return { valid: false, error: "Must start with a letter" };
     }
-    return { valid: false, error: 'Letters, numbers, and underscores only' };
+    return { valid: false, error: "Letters, numbers, and underscores only" };
   }
 
   if (RESERVED_USERNAMES.has(trimmed.toLowerCase())) {
-    return { valid: false, error: 'This username is reserved' };
+    return { valid: false, error: "This username is reserved" };
   }
 
   return { valid: true };
@@ -100,7 +99,7 @@ function generateSuggestions(displayName: string | null | undefined): string[] {
   // Clean up the display name
   const clean = displayName
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/[^a-z0-9\s]/g, "")
     .trim();
 
   if (!clean) return [];
@@ -129,7 +128,7 @@ function generateSuggestions(displayName: string | null | undefined): string[] {
 
   // Full name combined (no spaces)
   if (parts.length > 1) {
-    const full = parts.join('');
+    const full = parts.join("");
     if (full.length >= 3 && full.length <= 20) {
       suggestions.push(full);
     }
@@ -142,17 +141,16 @@ function generateSuggestions(displayName: string | null | undefined): string[] {
   }
 
   // Filter valid suggestions
-  return suggestions
-    .filter((s) => validateUsernameFormat(s).valid)
-    .slice(0, 4);
+  return suggestions.filter((s) => validateUsernameFormat(s).valid).slice(0, 4);
 }
 
 export default function SetupUsernameScreen() {
   const insets = useSafeAreaInsets();
   const { profile, refreshProfile, isAuthenticated } = useAuth();
 
-  const [username, setUsername] = useState('');
-  const [validationState, setValidationState] = useState<ValidationState>('idle');
+  const [username, setUsername] = useState("");
+  const [validationState, setValidationState] =
+    useState<ValidationState>("idle");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +160,7 @@ export default function SetupUsernameScreen() {
   // Generate suggestions based on display name
   const suggestions = useMemo(
     () => generateSuggestions(profile?.display_name),
-    [profile?.display_name]
+    [profile?.display_name],
   );
 
   // Check if user has a pending invite token (from invite link signup)
@@ -185,34 +183,36 @@ export default function SetupUsernameScreen() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      router.replace('/auth/sign-in');
+      router.replace("/auth/sign-in");
     }
   }, [isAuthenticated]);
 
   // Redirect if username already set
   // Cast to access username column (added in migration 014)
-  const extendedProfile = profile as typeof profile & { username?: string | null };
+  const extendedProfile = profile as typeof profile & {
+    username?: string | null;
+  };
   useEffect(() => {
     if (extendedProfile?.username) {
-      router.replace('/(mobile)/home');
+      router.replace("/(mobile)/home");
     }
   }, [extendedProfile?.username]);
 
   // Real-time format validation
   useEffect(() => {
     if (!username.trim()) {
-      setValidationState('idle');
+      setValidationState("idle");
       setValidationError(null);
       return;
     }
 
     const result = validateUsernameFormat(username);
     if (!result.valid) {
-      setValidationState('invalid');
-      setValidationError(result.error || 'Invalid username');
+      setValidationState("invalid");
+      setValidationError(result.error || "Invalid username");
     } else {
       // Format is valid, mark as needing availability check
-      setValidationState('idle');
+      setValidationState("idle");
       setValidationError(null);
     }
   }, [username]);
@@ -224,46 +224,46 @@ export default function SetupUsernameScreen() {
 
     const result = validateUsernameFormat(trimmed);
     if (!result.valid) {
-      setValidationState('invalid');
-      setValidationError(result.error || 'Invalid username');
+      setValidationState("invalid");
+      setValidationError(result.error || "Invalid username");
       return;
     }
 
-    setValidationState('validating');
+    setValidationState("validating");
     setValidationError(null);
 
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
-        setValidationState('invalid');
-        setValidationError('Please sign in first');
+        setValidationState("invalid");
+        setValidationError("Please sign in first");
         return;
       }
 
-      const response = await supabase.functions.invoke('validate-username', {
+      const response = await supabase.functions.invoke("validate-username", {
         body: { username: trimmed },
       });
 
       if (response.error) {
-        setValidationState('invalid');
-        setValidationError('Failed to check availability');
+        setValidationState("invalid");
+        setValidationError("Failed to check availability");
         return;
       }
 
       const data = response.data;
       if (data.valid && data.available) {
-        setValidationState('valid');
+        setValidationState("valid");
         setValidationError(null);
       } else if (data.valid && !data.available) {
-        setValidationState('taken');
-        setValidationError('Already taken');
+        setValidationState("taken");
+        setValidationError("Already taken");
       } else {
-        setValidationState('invalid');
-        setValidationError(data.error || 'Invalid username');
+        setValidationState("invalid");
+        setValidationError(data.error || "Invalid username");
       }
     } catch {
-      setValidationState('invalid');
-      setValidationError('Failed to check availability');
+      setValidationState("invalid");
+      setValidationError("Failed to check availability");
     }
   }, [username]);
 
@@ -279,13 +279,13 @@ export default function SetupUsernameScreen() {
   const handleSubmit = useCallback(async () => {
     const trimmed = username.trim();
     if (!trimmed) {
-      setError('Enter a username');
+      setError("Enter a username");
       return;
     }
 
     const result = validateUsernameFormat(trimmed);
     if (!result.valid) {
-      setError(result.error || 'Invalid username');
+      setError(result.error || "Invalid username");
       return;
     }
 
@@ -294,12 +294,12 @@ export default function SetupUsernameScreen() {
     hapticMedium();
 
     try {
-      const response = await supabase.functions.invoke('set-username', {
+      const response = await supabase.functions.invoke("set-username", {
         body: { username: trimmed },
       });
 
       if (response.error) {
-        setError(response.error.message || 'Failed to set username');
+        setError(response.error.message || "Failed to set username");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         return;
       }
@@ -314,11 +314,11 @@ export default function SetupUsernameScreen() {
       if (data.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await refreshProfile();
-        router.replace('/(mobile)/home');
+        router.replace("/(mobile)/home");
       }
     } catch (e) {
       const err = e as { message?: string };
-      setError(err.message || 'Something went wrong');
+      setError(err.message || "Something went wrong");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSubmitting(false);
@@ -327,7 +327,7 @@ export default function SetupUsernameScreen() {
 
   const handleSkip = useCallback(() => {
     hapticLight();
-    router.replace('/(mobile)/home');
+    router.replace("/(mobile)/home");
   }, []);
 
   const handleSuggestionPress = useCallback((suggestion: string) => {
@@ -337,12 +337,14 @@ export default function SetupUsernameScreen() {
 
   const getValidationIcon = () => {
     switch (validationState) {
-      case 'validating':
-        return <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.30)" />;
-      case 'valid':
+      case "validating":
+        return (
+          <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.30)" />
+        );
+      case "valid":
         return <Text className="text-lg text-success font-bold">✓</Text>;
-      case 'invalid':
-      case 'taken':
+      case "invalid":
+      case "taken":
         return <Text className="text-lg text-danger font-bold">✕</Text>;
       default:
         return null;
@@ -351,22 +353,22 @@ export default function SetupUsernameScreen() {
 
   const getInputBorderColor = () => {
     switch (validationState) {
-      case 'valid':
-        return 'border-success/60';
-      case 'invalid':
-      case 'taken':
-        return 'border-danger/60';
+      case "valid":
+        return "border-success/60";
+      case "invalid":
+      case "taken":
+        return "border-danger/60";
       default:
-        return 'border-border';
+        return "border-border";
     }
   };
 
-  const canSubmit = validationState === 'valid' && !isSubmitting;
+  const canSubmit = validationState === "valid" && !isSubmitting;
 
   return (
     <View className="flex-1 bg-black">
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         <ScrollView
@@ -381,11 +383,17 @@ export default function SetupUsernameScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <Animated.View entering={FadeInDown.duration(300)} className="items-center gap-sm pt-xl">
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            className="items-center gap-sm pt-xl"
+          >
             <Text className="text-5xl mb-sm">👋</Text>
-            <Text className="text-display-sm text-white font-rounded text-center">Pick a username</Text>
+            <Text className="text-display-sm text-white font-rounded text-center">
+              Pick a username
+            </Text>
             <Text className="text-body text-text-secondary text-center leading-[22px]">
-              This is how friends will find you. Choose wisely—or don&apos;t. You can always change it later.
+              This is how friends will find you. Choose wisely—or don&apos;t.
+              You can always change it later.
             </Text>
           </Animated.View>
 
@@ -407,14 +415,18 @@ export default function SetupUsernameScreen() {
             className="gap-md"
           >
             <Text className="text-label text-text-muted ml-xs">USERNAME</Text>
-            
-            <View className={`bg-card rounded-xl border p-lg ${getInputBorderColor()}`}>
+
+            <View
+              className={`bg-card rounded-xl border p-lg ${getInputBorderColor()}`}
+            >
               <View className="flex-row items-center">
                 <Text className="text-h2 text-text-muted mr-xs">@</Text>
                 <TextInput
                   className="flex-1 text-h2 text-white py-sm"
                   value={username}
-                  onChangeText={(text) => setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  onChangeText={(text) =>
+                    setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ""))
+                  }
                   placeholder="yourname"
                   placeholderTextColor="rgba(255, 255, 255, 0.30)"
                   autoFocus
@@ -432,11 +444,15 @@ export default function SetupUsernameScreen() {
             {/* Validation hint */}
             <View className="-mt-sm ml-xs">
               {validationError ? (
-                <Text className="text-caption text-danger">{validationError}</Text>
-              ) : validationState === 'valid' ? (
+                <Text className="text-caption text-danger">
+                  {validationError}
+                </Text>
+              ) : validationState === "valid" ? (
                 <Text className="text-caption text-success">Available!</Text>
               ) : (
-                <Text className="text-caption text-text-tertiary">3-20 characters, letters, numbers, underscores</Text>
+                <Text className="text-caption text-text-tertiary">
+                  3-20 characters, letters, numbers, underscores
+                </Text>
               )}
             </View>
           </Animated.View>
@@ -447,7 +463,9 @@ export default function SetupUsernameScreen() {
               entering={FadeInDown.delay(150).duration(300)}
               className="gap-md"
             >
-              <Text className="text-label text-text-muted ml-xs">SUGGESTIONS</Text>
+              <Text className="text-label text-text-muted ml-xs">
+                SUGGESTIONS
+              </Text>
               <View className="flex-row flex-wrap gap-sm">
                 {suggestions.map((suggestion) => (
                   <Pressable
@@ -455,7 +473,9 @@ export default function SetupUsernameScreen() {
                     onPress={() => handleSuggestionPress(suggestion)}
                     className="bg-card rounded-full border border-border px-md py-sm active:bg-card-hover active:border-imessage/60"
                   >
-                    <Text className="text-caption text-text-secondary font-mono">@{suggestion}</Text>
+                    <Text className="text-caption text-text-secondary font-mono">
+                      @{suggestion}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -471,19 +491,28 @@ export default function SetupUsernameScreen() {
               onPress={handleSubmit}
               disabled={!canSubmit}
               className={`h-14 rounded-full overflow-hidden shadow-lg active:scale-[0.99] ${
-                !canSubmit ? 'opacity-60' : ''
+                !canSubmit ? "opacity-60" : ""
               }`}
             >
               <LinearGradient
-                colors={canSubmit ? ['#0B93F6', '#0A7FD4'] : ['#3A3A3C', '#2C2C2E']}
-                className="flex-1 items-center justify-center"
+                colors={
+                  canSubmit ? ["#0B93F6", "#0A7FD4"] : ["#3A3A3C", "#2C2C2E"]
+                }
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 24,
+                }}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text className="text-body-semibold text-white font-rounded">Claim @{username || 'username'}</Text>
+                  <Text className="text-body-semibold text-white font-rounded">
+                    Claim @{username || "username"}
+                  </Text>
                 )}
               </LinearGradient>
             </Pressable>
@@ -499,7 +528,9 @@ export default function SetupUsernameScreen() {
                 onPress={handleSkip}
                 className="py-md px-lg active:opacity-80"
               >
-                <Text className="text-body text-text-tertiary">Skip for now</Text>
+                <Text className="text-body text-text-tertiary">
+                  Skip for now
+                </Text>
               </Pressable>
               <Text className="text-caption text-text-muted">
                 You can set this later in your profile
@@ -514,7 +545,8 @@ export default function SetupUsernameScreen() {
               className="items-center py-md px-lg bg-imessage/15 rounded-lg border border-imessage/30"
             >
               <Text className="text-caption text-imessage text-center leading-[18px]">
-                Your friend is waiting to connect! Pick a username so they can find you.
+                Your friend is waiting to connect! Pick a username so they can
+                find you.
               </Text>
             </Animated.View>
           )}
@@ -522,7 +554,8 @@ export default function SetupUsernameScreen() {
           {/* Footer */}
           <View className="mt-auto pt-xl">
             <Text className="text-caption text-text-muted text-center leading-[18px]">
-              Your username is public. Friends can find you by searching @{username || 'yourname'}.
+              Your username is public. Friends can find you by searching @
+              {username || "yourname"}.
             </Text>
           </View>
         </ScrollView>

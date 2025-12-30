@@ -1,8 +1,16 @@
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, Modal, PanResponder, Pressable, ScrollView, Text, View } from 'react-native';
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Keyboard,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -12,19 +20,23 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ShareModal } from '@/components/share';
-import { LoadingState } from '@/components/ui/loading-state';
-import { PhotoCaptureModal } from '@/components/verification';
-import { VoicePlayback } from '@/components/voice';
-import { FAILURE_COPY, VERIFICATION_COPY } from '@/constants/content';
-import { useAuth } from '@/context/auth';
-import { usePromiseStore } from '@/context/promise-store';
-import { formatShortDateTime, getTimeRemaining, type Urgency } from '@/lib/promises/time';
-import type { PromiseStatus, UserPromise } from '@/lib/promises/types';
-import { supabase } from '@/lib/supabase';
+import { ShareModal } from "@/components/share";
+import { LoadingState } from "@/components/ui/loading-state";
+import { PhotoCaptureModal } from "@/components/verification";
+import { VoicePlayback } from "@/components/voice";
+import { FAILURE_COPY, VERIFICATION_COPY } from "@/constants/content";
+import { useAuth } from "@/context/auth";
+import { usePromiseStore } from "@/context/promise-store";
+import {
+  formatShortDateTime,
+  getTimeRemaining,
+  type Urgency,
+} from "@/lib/promises/time";
+import type { PromiseStatus, UserPromise } from "@/lib/promises/types";
+import { supabase } from "@/lib/supabase";
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -35,23 +47,39 @@ function hapticMedium() {
 }
 
 const URGENCY_COLORS: Record<Urgency, string> = {
-  low: '#34C759',
-  medium: '#FF9F0A',
-  high: '#FF453A',
-  critical: '#FF453A',
+  low: "#34C759",
+  medium: "#FF9F0A",
+  high: "#FF453A",
+  critical: "#FF453A",
 };
 
 function StatusPill({ status }: { status: PromiseStatus }) {
   const { label, colorClass, bgClass } = useMemo(() => {
     switch (status) {
-      case 'completed':
-        return { label: 'COMPLETED', colorClass: 'text-success', bgClass: 'bg-success-dim border-success/[0.33]' };
-      case 'failed':
-        return { label: 'FAILED', colorClass: 'text-danger', bgClass: 'bg-danger-dim border-danger/[0.33]' };
-      case 'expired':
-        return { label: 'EXPIRED', colorClass: 'text-danger', bgClass: 'bg-danger-dim border-danger/[0.33]' };
+      case "completed":
+        return {
+          label: "COMPLETED",
+          colorClass: "text-success",
+          bgClass: "bg-success-dim border-success/[0.33]",
+        };
+      case "failed":
+        return {
+          label: "FAILED",
+          colorClass: "text-danger",
+          bgClass: "bg-danger-dim border-danger/[0.33]",
+        };
+      case "expired":
+        return {
+          label: "EXPIRED",
+          colorClass: "text-danger",
+          bgClass: "bg-danger-dim border-danger/[0.33]",
+        };
       default:
-        return { label: 'ACTIVE', colorClass: 'text-imessage', bgClass: 'bg-imessage-dim border-imessage/[0.33]' };
+        return {
+          label: "ACTIVE",
+          colorClass: "text-imessage",
+          bgClass: "bg-imessage-dim border-imessage/[0.33]",
+        };
     }
   }, [status]);
 
@@ -64,14 +92,16 @@ function StatusPill({ status }: { status: PromiseStatus }) {
 
 function formatDestination(p: UserPromise): string {
   switch (p.moneyDestination) {
-    case 'charity':
-      return '💛 Charity';
-    case 'anti_charity':
-      return '🧨 Anti-charity';
-    case 'friend':
-      return p.friendName?.trim() ? `🤝 Friend · ${p.friendName.trim()}` : '🤝 Friend';
+    case "charity":
+      return "💛 Charity";
+    case "anti_charity":
+      return "🧨 Anti-charity";
+    case "friend":
+      return p.friendName?.trim()
+        ? `🤝 Friend · ${p.friendName.trim()}`
+        : "🤝 Friend";
     default:
-      return '☕️ OopsFee (us)';
+      return "☕️ OopsFee (us)";
   }
 }
 
@@ -121,7 +151,8 @@ function ConfirmActionModal({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_evt, g) => g.dy > 4 && Math.abs(g.dx) < 18,
+        onMoveShouldSetPanResponder: (_evt, g) =>
+          g.dy > 4 && Math.abs(g.dx) < 18,
         onPanResponderMove: (_evt, g) => {
           if (g.dy <= 0) return;
           translateY.value = g.dy;
@@ -138,43 +169,62 @@ function ConfirmActionModal({
           translateY.value = withSpring(0, { damping: 16, stiffness: 180 });
         },
       }),
-    [dismiss, translateY]
+    [dismiss, translateY],
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={dismiss}
+    >
       <View className="flex-1 bg-black/65 items-center justify-end p-lg">
         <Pressable className="absolute inset-0" onPress={dismiss} />
         <Animated.View
           style={sheetAnimStyle}
           className="w-full max-h-[88%] bg-abyss-700 rounded-xxl border border-border p-xl gap-lg"
         >
-          <View className="w-full items-center pt-0.5 pb-md -mt-1.5" {...panResponder.panHandlers}>
+          <View
+            className="w-full items-center pt-0.5 pb-md -mt-1.5"
+            {...panResponder.panHandlers}
+          >
             <View className="w-11 h-[5px] rounded-sm bg-system-gray-4" />
           </View>
-          <Text className="text-h3 text-white font-rounded text-center">{title}</Text>
-          <Text className="text-caption text-text-tertiary text-center -mt-2">{subtitle}</Text>
+          <Text className="text-h3 text-white font-rounded text-center">
+            {title}
+          </Text>
+          <Text className="text-caption text-text-tertiary text-center -mt-2">
+            {subtitle}
+          </Text>
 
           <View className="flex-row gap-md">
             <Pressable
               onPress={dismiss}
               className="flex-1 h-[52px] rounded-[26px] bg-card border border-border items-center justify-center active:opacity-90"
             >
-              <Text className="text-body-semibold text-text-secondary">Cancel</Text>
+              <Text className="text-body-semibold text-text-secondary">
+                Cancel
+              </Text>
             </Pressable>
             <Pressable
               disabled={working}
               onPress={onConfirm}
-              className={`flex-1 h-[52px] rounded-[26px] overflow-hidden active:opacity-90 ${working ? 'opacity-70' : ''}`}
+              className={`flex-1 h-[52px] rounded-[26px] overflow-hidden active:opacity-90 ${working ? "opacity-70" : ""}`}
             >
               <LinearGradient
                 colors={confirmColors}
-                className="flex-1 items-center justify-center"
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 16,
+                }}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 <Text className="text-body-semibold text-white font-rounded">
-                  {working ? 'Processing feelings…' : confirmText}
+                  {working ? "Processing feelings…" : confirmText}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -242,7 +292,8 @@ function FailConfirmModal({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_evt, g) => g.dy > 4 && Math.abs(g.dx) < 18,
+        onMoveShouldSetPanResponder: (_evt, g) =>
+          g.dy > 4 && Math.abs(g.dx) < 18,
         onPanResponderMove: (_evt, g) => {
           if (g.dy <= 0) return;
           translateY.value = g.dy;
@@ -259,7 +310,7 @@ function FailConfirmModal({
           translateY.value = withSpring(0, { damping: 16, stiffness: 180 });
         },
       }),
-    [dismiss, translateY]
+    [dismiss, translateY],
   );
 
   // Allow confirmation if: no voice note, already listened, or voice failed to load
@@ -271,21 +322,41 @@ function FailConfirmModal({
   const totalLoss = stake + (sponsorAmount ?? 0);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={dismiss}
+    >
       <View className="flex-1 bg-black/65 items-center justify-end p-lg">
         <Pressable className="absolute inset-0" onPress={dismiss} />
-        <Animated.View style={sheetAnimStyle} className="w-full max-h-[85%] bg-abyss-700 rounded-xxl border border-border">
-          <View className="w-full items-center pt-md pb-sm -mt-1" {...panResponder.panHandlers}>
+        <Animated.View
+          style={sheetAnimStyle}
+          className="w-full max-h-[85%] bg-abyss-700 rounded-xxl border border-border"
+        >
+          <View
+            className="w-full items-center pt-md pb-sm -mt-1"
+            {...panResponder.panHandlers}
+          >
             <View className="w-11 h-[5px] rounded-sm bg-system-gray-4" />
           </View>
 
-          <ScrollView className="flex-grow-0" contentContainerStyle={{ padding: 24, paddingBottom: 32, gap: 16 }} showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView
+            className="flex-grow-0"
+            contentContainerStyle={{ padding: 24, paddingBottom: 32, gap: 16 }}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             {/* Header with emoji */}
             <View className="items-center gap-sm">
               <Text className="text-[48px] mb-sm">💸</Text>
-              <Text className="text-h3 text-white font-rounded text-center">Mark as failed?</Text>
+              <Text className="text-h3 text-white font-rounded text-center">
+                Mark as failed?
+              </Text>
               <Text className="text-caption text-text-tertiary text-center -mt-2">
-                {hasVoice ? "Wait. Before you quit, listen to yourself." : "Pressing this builds character. Allegedly."}
+                {hasVoice
+                  ? "Wait. Before you quit, listen to yourself."
+                  : "Pressing this builds character. Allegedly."}
               </Text>
             </View>
 
@@ -303,7 +374,10 @@ function FailConfirmModal({
                   message="This is what you said when you still believed."
                 />
                 {!hasListened && (
-                  <Animated.View entering={FadeIn.duration(200)} className="bg-warning-dim border border-warning/[0.27] rounded-lg p-md items-center">
+                  <Animated.View
+                    entering={FadeIn.duration(200)}
+                    className="bg-warning-dim border border-warning/[0.27] rounded-lg p-md items-center"
+                  >
                     <Text className="text-caption text-warning font-semibold text-center">
                       Listen to your voice commitment before confirming.
                     </Text>
@@ -316,21 +390,28 @@ function FailConfirmModal({
             {!hasVoice && !voiceNoteUri && (
               <View className="bg-card rounded-lg border border-border p-lg items-center">
                 <Text className="text-caption text-text-tertiary text-center italic">
-                  No voice commitment recorded. (Next time, guilt-trip yourself.)
+                  No voice commitment recorded. (Next time, guilt-trip
+                  yourself.)
                 </Text>
               </View>
             )}
 
             {/* I Told You So preview - show sealed envelope before confirming */}
             {hasIToldYouSo && (
-              <Animated.View entering={FadeInDown.delay(100).duration(250)} className="flex-row gap-md bg-warning/[0.08] rounded-lg border border-dashed border-warning/20 p-lg">
+              <Animated.View
+                entering={FadeInDown.delay(100).duration(250)}
+                className="flex-row gap-md bg-warning/[0.08] rounded-lg border border-dashed border-warning/20 p-lg"
+              >
                 <View className="w-10 h-10 rounded-full bg-warning-dim items-center justify-center">
                   <Text className="text-xl">💌</Text>
                 </View>
                 <View className="flex-1 gap-0.5">
-                  <Text className="text-body-semibold text-warning">A message awaits...</Text>
+                  <Text className="text-body-semibold text-warning">
+                    A message awaits...
+                  </Text>
                   <Text className="text-caption text-text-secondary italic">
-                    Someone left you a note. It will be revealed after you confirm.
+                    Someone left you a note. It will be revealed after you
+                    confirm.
                   </Text>
                 </View>
               </Animated.View>
@@ -338,7 +419,10 @@ function FailConfirmModal({
 
             {/* Sponsor warning */}
             {hasSponsor && (
-              <Animated.View entering={FadeIn.delay(150).duration(200)} className="flex-row items-center gap-sm bg-card rounded-lg border border-border p-md">
+              <Animated.View
+                entering={FadeIn.delay(150).duration(200)}
+                className="flex-row items-center gap-sm bg-card rounded-lg border border-border p-md"
+              >
                 <Text className="text-base">👀</Text>
                 <Text className="text-caption text-text-secondary flex-1">
                   +${sponsorAmount} from sponsors is also on the line.
@@ -348,14 +432,22 @@ function FailConfirmModal({
 
             {/* Charge warning - the real talk */}
             {hasStake && (
-              <Animated.View entering={FadeIn.delay(200).duration(250)} className="bg-danger/[0.08] rounded-lg border border-danger/25 p-lg gap-sm">
+              <Animated.View
+                entering={FadeIn.delay(200).duration(250)}
+                className="bg-danger/[0.08] rounded-lg border border-danger/25 p-lg gap-sm"
+              >
                 <View className="flex-row items-center gap-sm">
                   <Text className="text-xl">💳</Text>
-                  <Text className="text-body-semibold text-danger">Real money. Real consequences.</Text>
+                  <Text className="text-body-semibold text-danger">
+                    Real money. Real consequences.
+                  </Text>
                 </View>
-                <Text className="text-h2 text-white font-mono text-center my-xs">${totalLoss} will be charged</Text>
+                <Text className="text-h2 text-white font-mono text-center my-xs">
+                  ${totalLoss} will be charged
+                </Text>
                 <Text className="text-caption text-text-tertiary text-center leading-[18px]">
-                  No refunds. No excuses. No &quot;my dog ate my gym shoes.&quot;
+                  No refunds. No excuses. No &quot;my dog ate my gym
+                  shoes.&quot;
                 </Text>
               </Animated.View>
             )}
@@ -365,27 +457,39 @@ function FailConfirmModal({
               <Pressable
                 disabled={working || !canConfirm}
                 onPress={onConfirm}
-                className={`h-14 rounded-[28px] overflow-hidden active:opacity-90 ${working || !canConfirm ? 'opacity-70' : ''}`}
+                className={`h-14 rounded-[28px] overflow-hidden active:opacity-90 ${working || !canConfirm ? "opacity-70" : ""}`}
               >
                 <LinearGradient
-                  colors={canConfirm ? ['#FF453A', '#FF6B35'] : ['#3A3A3C', '#2C2C2E']}
-                  className="flex-1 items-center justify-center px-lg"
+                  colors={
+                    canConfirm ? ["#FF453A", "#FF6B35"] : ["#3A3A3C", "#2C2C2E"]
+                  }
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 24,
+                  }}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
                   <Text className="text-body-semibold text-white font-rounded text-center">
                     {working
-                      ? 'Processing…'
+                      ? "Processing…"
                       : !canConfirm
-                        ? 'Listen first'
+                        ? "Listen first"
                         : hasStake
                           ? `💳 Pay $${totalLoss} & admit defeat`
-                          : 'Yes, I failed'}
+                          : "Yes, I failed"}
                   </Text>
                 </LinearGradient>
               </Pressable>
-              <Pressable onPress={dismiss} className="h-12 items-center justify-center active:opacity-90">
-                <Text className="text-body text-text-secondary">Wait, I changed my mind</Text>
+              <Pressable
+                onPress={dismiss}
+                className="h-12 items-center justify-center active:opacity-90"
+              >
+                <Text className="text-body text-text-secondary">
+                  Wait, I changed my mind
+                </Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -407,11 +511,13 @@ function NotFound() {
         <Pressable
           onPress={() => {
             hapticLight();
-            router.replace('/(mobile)/home');
+            router.replace("/(mobile)/home");
           }}
           className="h-[52px] px-xl rounded-[26px] bg-card border border-border items-center justify-center active:opacity-90"
         >
-          <Text className="text-body-semibold text-text-secondary">Back to reality</Text>
+          <Text className="text-body-semibold text-text-secondary">
+            Back to reality
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -425,7 +531,14 @@ export default function PromiseDetailScreen() {
     const raw = params.id;
     return Array.isArray(raw) ? raw[0] : raw;
   }, [params.id]);
-  const { promises, setPromiseStatus, updatePromise, deletePromise, isWorking, isHydrated } = usePromiseStore();
+  const {
+    promises,
+    setPromiseStatus,
+    updatePromise,
+    deletePromise,
+    isWorking,
+    isHydrated,
+  } = usePromiseStore();
   const { session, refreshProfile } = useAuth();
 
   const promise: UserPromise | null = useMemo(() => {
@@ -440,7 +553,9 @@ export default function PromiseDetailScreen() {
   }, []);
 
   const remaining = promise ? getTimeRemaining(promise.deadlineAt, now) : null;
-  const urgencyColor = remaining ? URGENCY_COLORS[remaining.urgency] : 'rgba(255, 255, 255, 0.30)';
+  const urgencyColor = remaining
+    ? URGENCY_COLORS[remaining.urgency]
+    : "rgba(255, 255, 255, 0.30)";
 
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmFail, setConfirmFail] = useState(false);
@@ -452,20 +567,24 @@ export default function PromiseDetailScreen() {
   // Calculate total stake including sponsors
   const totalStake = promise ? promise.stake + (promise.sponsorAmount ?? 0) : 0;
   const hasSponsor = promise && (promise.sponsorAmount ?? 0) > 0;
-  const needsPhotoProof = promise?.verificationType === 'photo';
-  const needsPartnerVerification = promise?.verificationType === 'partner';
-  const isAwaitingPartner = promise?.partnerState === 'awaiting';
+  const needsPhotoProof = promise?.verificationType === "photo";
+  const needsPartnerVerification = promise?.verificationType === "partner";
+  const isAwaitingPartner = promise?.partnerState === "awaiting";
 
   // Fetch roast messages directly for failed promises
-  const [roastMessages, setRoastMessages] = useState<{ message: string; from: string }[]>([]);
+  const [roastMessages, setRoastMessages] = useState<
+    { message: string; from: string }[]
+  >([]);
   const [loadingRoasts, setLoadingRoasts] = useState(false);
 
   useEffect(() => {
-    if (!promise || promise.status !== 'failed') return;
+    if (!promise || promise.status !== "failed") return;
 
     const promiseId = promise.id;
     const existingMessages = promise.iToldYouSoMessages ?? [];
-    const hasPlaceholder = existingMessages.some((m) => m.message === '(from server)');
+    const hasPlaceholder = existingMessages.some(
+      (m) => m.message === "(from server)",
+    );
 
     // If we already have valid messages (not placeholders), use them
     if (existingMessages.length > 0 && !hasPlaceholder) {
@@ -478,16 +597,20 @@ export default function PromiseDetailScreen() {
       setLoadingRoasts(true);
       try {
         const { data, error } = await supabase
-          .from('roast_messages')
-          .select('message, from_name')
-          .eq('promise_id', promiseId)
-          .order('created_at', { ascending: false });
+          .from("roast_messages")
+          .select("message, from_name")
+          .eq("promise_id", promiseId)
+          .order("created_at", { ascending: false });
 
         if (!error && data && data.length > 0) {
-          setRoastMessages(data.map((r) => ({ message: r.message, from: r.from_name })));
+          setRoastMessages(
+            data.map((r) => ({ message: r.message, from: r.from_name })),
+          );
         } else {
           // Fallback to existing messages if fetch fails
-          const filtered = existingMessages.filter((m) => m.message !== '(from server)');
+          const filtered = existingMessages.filter(
+            (m) => m.message !== "(from server)",
+          );
           setRoastMessages(filtered);
         }
       } catch {
@@ -507,7 +630,8 @@ export default function PromiseDetailScreen() {
     router.back();
   }, []);
 
-  const canChangeStatus = promise?.status !== 'completed' && promise?.status !== 'failed';
+  const canChangeStatus =
+    promise?.status !== "completed" && promise?.status !== "failed";
 
   // Handler for initiating completion - checks if verification is needed
   const handleInitiateComplete = useCallback(() => {
@@ -540,7 +664,7 @@ export default function PromiseDetailScreen() {
 
       // Store photo proof and mark as completed
       await updatePromise(promise.id, {
-        status: 'completed',
+        status: "completed",
         completedAt: Date.now(),
         verificationProof: photoUri,
         verificationTimestamp: Date.now(),
@@ -548,19 +672,25 @@ export default function PromiseDetailScreen() {
 
       setShowPhotoCapture(false);
       // Navigate to success celebration screen
-      router.replace({ pathname: '/(mobile)/promise/success', params: { promiseId: promise.id } });
+      router.replace({
+        pathname: "/(mobile)/promise/success",
+        params: { promiseId: promise.id },
+      });
     },
-    [promise, updatePromise]
+    [promise, updatePromise],
   );
 
   // Handler for completing without photo (honor system)
   const handleComplete = useCallback(async () => {
     if (!promise) return;
     hapticMedium();
-    await setPromiseStatus(promise.id, 'completed');
+    await setPromiseStatus(promise.id, "completed");
     setConfirmComplete(false);
     // Navigate to success celebration screen
-    router.replace({ pathname: '/(mobile)/promise/success', params: { promiseId: promise.id } });
+    router.replace({
+      pathname: "/(mobile)/promise/success",
+      params: { promiseId: promise.id },
+    });
   }, [promise, setPromiseStatus]);
 
   // Handler for initiating partner verification - sets awaiting state and opens share modal
@@ -571,7 +701,7 @@ export default function PromiseDetailScreen() {
     // Set partner state to awaiting with 24h deadline
     const partnerDeadlineAt = Date.now() + 24 * 60 * 60 * 1000;
     await updatePromise(promise.id, {
-      partnerState: 'awaiting',
+      partnerState: "awaiting",
       partnerDeadlineAt,
     });
 
@@ -588,7 +718,7 @@ export default function PromiseDetailScreen() {
 
     // CRITICAL: Prevent double-click charges
     if (isProcessingFail) {
-      console.log('[handleFail] Already processing, ignoring duplicate click');
+      console.log("[handleFail] Already processing, ignoring duplicate click");
       return;
     }
     setIsProcessingFail(true);
@@ -598,15 +728,18 @@ export default function PromiseDetailScreen() {
     // If there's a stake and user is authenticated, charge immediately
     if (promise.stake > 0 && session?.access_token) {
       try {
-        const { data, error } = await supabase.functions.invoke('charge-promise', {
-          body: { promiseId: promise.id },
-        });
+        const { data, error } = await supabase.functions.invoke(
+          "charge-promise",
+          {
+            body: { promiseId: promise.id },
+          },
+        );
 
         if (error) {
-          console.error('[handleFail] Edge function error:', error);
+          console.error("[handleFail] Edge function error:", error);
           // No alert - the fail banner will show appropriate status
         } else if (data) {
-          console.log('[handleFail] Charge result:', data);
+          console.log("[handleFail] Charge result:", data);
           // Refresh profile to update wallet balance if wallet was used
           if (data.walletUsed && data.walletUsed > 0) {
             refreshProfile().catch(() => {});
@@ -615,13 +748,13 @@ export default function PromiseDetailScreen() {
           // User will see "💸 $X charged" or "🔐 Bank confirmation needed" etc.
         }
       } catch (err) {
-        console.error('[handleFail] Error calling charge-promise:', err);
+        console.error("[handleFail] Error calling charge-promise:", err);
         // Still mark as failed locally even if charge call fails
       }
     }
 
     // Update local state
-    await setPromiseStatus(promise.id, 'failed');
+    await setPromiseStatus(promise.id, "failed");
     setConfirmFail(false);
     setIsProcessingFail(false);
   }, [promise, setPromiseStatus, session, isProcessingFail, refreshProfile]);
@@ -631,26 +764,39 @@ export default function PromiseDetailScreen() {
     hapticMedium();
     await deletePromise(promise.id);
     setConfirmDelete(false);
-    router.replace('/(mobile)/home');
+    router.replace("/(mobile)/home");
   }, [deletePromise, promise]);
 
   if (!isHydrated) {
-    return <LoadingState title="Loading promise…" subtitle="Locating the thing you swore you'd do." />;
+    return (
+      <LoadingState
+        title="Loading promise…"
+        subtitle="Locating the thing you swore you'd do."
+      />
+    );
   }
 
   if (!promise) return <NotFound />;
 
-  const isExpiredView = promise.status === 'expired' || (promise.status === 'active' && promise.deadlineAt <= now);
-  const showCountdown = promise.status === 'active' || promise.status === 'expired';
+  const isExpiredView =
+    promise.status === "expired" ||
+    (promise.status === "active" && promise.deadlineAt <= now);
+  const showCountdown =
+    promise.status === "active" || promise.status === "expired";
 
   return (
     <View className="flex-1 bg-black">
-      <View className="px-xl pb-lg flex-row items-center gap-md border-b border-border-subtle" style={{ paddingTop: insets.top + 16 }}>
+      <View
+        className="px-xl pb-lg flex-row items-center gap-md border-b border-border-subtle"
+        style={{ paddingTop: insets.top + 16 }}
+      >
         <Pressable
           onPress={handleBack}
           className="w-9 h-9 rounded-full bg-card border border-border items-center justify-center active:opacity-90"
         >
-          <Text className="text-[28px] leading-7 text-text-secondary -mt-0.5">‹</Text>
+          <Text className="text-[28px] leading-7 text-text-secondary -mt-0.5">
+            ‹
+          </Text>
         </Pressable>
 
         <View className="flex-1 gap-0.5">
@@ -667,7 +813,9 @@ export default function PromiseDetailScreen() {
               }}
               className="w-9 h-9 rounded-full bg-card border border-border items-center justify-center active:opacity-90"
             >
-              <Text className="text-text-secondary text-lg font-bold -mt-0.5">↗</Text>
+              <Text className="text-text-secondary text-lg font-bold -mt-0.5">
+                ↗
+              </Text>
             </Pressable>
           )}
           <Pressable
@@ -677,14 +825,21 @@ export default function PromiseDetailScreen() {
             }}
             className="w-9 h-9 rounded-full bg-card border border-border items-center justify-center active:opacity-90"
           >
-            <Text className="text-text-secondary text-lg font-bold -mt-0.5">⋯</Text>
+            <Text className="text-text-secondary text-lg font-bold -mt-0.5">
+              ⋯
+            </Text>
           </Pressable>
         </View>
       </View>
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, gap: 24, paddingBottom: insets.bottom + 28 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 24,
+          gap: 24,
+          paddingBottom: insets.bottom + 28,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(220)} className="gap-lg">
@@ -693,16 +848,22 @@ export default function PromiseDetailScreen() {
             <View className="flex-row items-center gap-sm">
               {hasSponsor && (
                 <View className="py-1 px-2.5 rounded-full border bg-warning-dim border-warning/[0.27]">
-                  <Text className="text-caption text-warning font-semibold">+${promise.sponsorAmount} sponsored</Text>
+                  <Text className="text-caption text-warning font-semibold">
+                    +${promise.sponsorAmount} sponsored
+                  </Text>
                 </View>
               )}
               <View className="py-1.5 px-3 rounded-full border bg-danger-dim border-danger/[0.33]">
-                <Text className="text-body-semibold text-danger font-mono">${promise.stake}</Text>
+                <Text className="text-body-semibold text-danger font-mono">
+                  ${promise.stake}
+                </Text>
               </View>
             </View>
           </View>
 
-          <Text className="text-h2 text-white font-rounded leading-7">{promise.text}</Text>
+          <Text className="text-h2 text-white font-rounded leading-7">
+            {promise.text}
+          </Text>
 
           <View className="bg-card rounded-xl border border-border p-lg gap-md">
             <View className="flex-row items-center justify-between gap-md">
@@ -713,22 +874,37 @@ export default function PromiseDetailScreen() {
             </View>
             <View className="h-px bg-border-subtle" />
             <View className="flex-row items-center justify-between gap-md">
-              <Text className="text-label text-text-muted">{showCountdown ? 'TIME LEFT' : 'WHEN'}</Text>
-              <Text className="text-body-semibold font-rounded" style={showCountdown ? { color: urgencyColor } : { color: 'rgba(255,255,255,0.7)' }}>
-                {showCountdown ? remaining?.label : formatShortDateTime(promise.updatedAt)}
+              <Text className="text-label text-text-muted">
+                {showCountdown ? "TIME LEFT" : "WHEN"}
+              </Text>
+              <Text
+                className="text-body-semibold font-rounded"
+                style={
+                  showCountdown
+                    ? { color: urgencyColor }
+                    : { color: "rgba(255,255,255,0.7)" }
+                }
+              >
+                {showCountdown
+                  ? remaining?.label
+                  : formatShortDateTime(promise.updatedAt)}
               </Text>
             </View>
             <View className="h-px bg-border-subtle" />
             <View className="flex-row items-center justify-between gap-md">
               <Text className="text-label text-text-muted">GOES TO</Text>
-              <Text className="text-body-semibold text-text-secondary font-rounded">{formatDestination(promise)}</Text>
+              <Text className="text-body-semibold text-text-secondary font-rounded">
+                {formatDestination(promise)}
+              </Text>
             </View>
             {promise.voiceNoteUri && (
               <>
                 <View className="h-px bg-border-subtle" />
                 <View className="flex-row items-center justify-between gap-md">
                   <Text className="text-label text-text-muted">VOICE</Text>
-                  <Text className="text-body-semibold text-text-secondary font-rounded">🎙️ Recorded</Text>
+                  <Text className="text-body-semibold text-text-secondary font-rounded">
+                    🎙️ Recorded
+                  </Text>
                 </View>
               </>
             )}
@@ -737,51 +913,61 @@ export default function PromiseDetailScreen() {
               <Text className="text-label text-text-muted">VERIFICATION</Text>
               <Text
                 className={`text-body-semibold font-rounded ${
-                  promise.partnerState === 'approved'
-                    ? 'text-success'
-                    : promise.partnerState === 'rejected'
-                      ? 'text-danger'
-                      : promise.partnerState === 'awaiting'
-                        ? 'text-imessage'
-                        : 'text-text-secondary'
+                  promise.partnerState === "approved"
+                    ? "text-success"
+                    : promise.partnerState === "rejected"
+                      ? "text-danger"
+                      : promise.partnerState === "awaiting"
+                        ? "text-imessage"
+                        : "text-text-secondary"
                 }`}
               >
-                {promise.verificationType === 'photo' && '📷 Photo proof'}
-                {promise.verificationType === 'partner' &&
-                  (promise.partnerState === 'approved'
-                    ? '✅ Partner approved'
-                    : promise.partnerState === 'rejected'
-                      ? '❌ Partner rejected'
-                      : promise.partnerState === 'awaiting'
-                        ? '👀 Awaiting partner'
-                        : promise.partnerState === 'expired'
-                          ? '⏳ Partner timed out'
-                          : '👥 Friend confirms')}
-                {promise.verificationType === 'honor' && '🤞 Honor system'}
-                {promise.verificationType === 'healthkit' && '⌚ Health data'}
-                {promise.verificationType === 'location' && '📍 Location check'}
+                {promise.verificationType === "photo" && "📷 Photo proof"}
+                {promise.verificationType === "partner" &&
+                  (promise.partnerState === "approved"
+                    ? "✅ Partner approved"
+                    : promise.partnerState === "rejected"
+                      ? "❌ Partner rejected"
+                      : promise.partnerState === "awaiting"
+                        ? "👀 Awaiting partner"
+                        : promise.partnerState === "expired"
+                          ? "⏳ Partner timed out"
+                          : "👥 Friend confirms")}
+                {promise.verificationType === "honor" && "🤞 Honor system"}
+                {promise.verificationType === "healthkit" && "⌚ Health data"}
+                {promise.verificationType === "location" && "📍 Location check"}
               </Text>
             </View>
-            {promise.verificationProof && promise.status === 'completed' && (
+            {promise.verificationProof && promise.status === "completed" && (
               <>
                 <View className="h-px bg-border-subtle" />
                 <View className="flex-row items-center justify-between gap-md">
                   <Text className="text-label text-text-muted">PROOF</Text>
-                  <Text className="text-body-semibold text-success font-rounded">✓ {VERIFICATION_COPY.verifiedBadge}</Text>
+                  <Text className="text-body-semibold text-success font-rounded">
+                    ✓ {VERIFICATION_COPY.verifiedBadge}
+                  </Text>
                 </View>
               </>
             )}
           </View>
 
           {/* Awaiting partner verification banner */}
-          {isAwaitingPartner && promise.status === 'active' && (
-            <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} className="flex-row gap-md bg-imessage-dim border border-imessage/[0.27] p-lg rounded-lg">
+          {isAwaitingPartner && promise.status === "active" && (
+            <Animated.View
+              entering={FadeIn.duration(180)}
+              layout={Layout.springify()}
+              className="flex-row gap-md bg-imessage-dim border border-imessage/[0.27] p-lg rounded-lg"
+            >
               <Text className="text-[24px]">👀</Text>
               <View className="flex-1 gap-sm">
-                <Text className="text-body-semibold text-imessage">Waiting for partner</Text>
+                <Text className="text-body-semibold text-imessage">
+                  Waiting for partner
+                </Text>
                 <Text className="text-caption text-text-secondary leading-[18px]">
-                  Your accountability partner needs to confirm you completed this.
-                  {promise.partnerDeadlineAt && ` They have until ${formatShortDateTime(promise.partnerDeadlineAt)}.`}
+                  Your accountability partner needs to confirm you completed
+                  this.
+                  {promise.partnerDeadlineAt &&
+                    ` They have until ${formatShortDateTime(promise.partnerDeadlineAt)}.`}
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -790,60 +976,80 @@ export default function PromiseDetailScreen() {
                   }}
                   className="self-start py-sm px-md bg-imessage/[0.13] rounded-md mt-xs active:opacity-90"
                 >
-                  <Text className="text-caption text-imessage font-semibold">Send reminder ↗</Text>
+                  <Text className="text-caption text-imessage font-semibold">
+                    Send reminder ↗
+                  </Text>
                 </Pressable>
               </View>
             </Animated.View>
           )}
 
           {isExpiredView && !isAwaitingPartner && (
-            <Animated.View entering={FadeIn.duration(180)} layout={Layout.springify()} className="flex-row gap-sm bg-danger/[0.08] border border-danger/[0.18] p-md rounded-lg">
+            <Animated.View
+              entering={FadeIn.duration(180)}
+              layout={Layout.springify()}
+              className="flex-row gap-sm bg-danger/[0.08] border border-danger/[0.18] p-md rounded-lg"
+            >
               <Text className="text-sm mt-0.5">⏰</Text>
               <Text className="text-caption text-danger flex-1">
-                Deadline passed. This is the part where you either own it or rewrite history.
+                Deadline passed. This is the part where you either own it or
+                rewrite history.
               </Text>
             </Animated.View>
           )}
 
-          {promise.status === 'completed' && (
-            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} className="flex-row gap-sm bg-success-dim border border-success/[0.33] p-md rounded-lg">
+          {promise.status === "completed" && (
+            <Animated.View
+              entering={FadeIn.duration(180)}
+              exiting={FadeOut.duration(120)}
+              className="flex-row gap-sm bg-success-dim border border-success/[0.33] p-md rounded-lg"
+            >
               <Text className="text-sm mt-0.5">✅</Text>
-              <Text className="text-caption text-success flex-1">You did it. Your wallet lives to see another day.</Text>
+              <Text className="text-caption text-success flex-1">
+                You did it. Your wallet lives to see another day.
+              </Text>
             </Animated.View>
           )}
 
-          {promise.status === 'failed' && (
-            <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} className="flex-row gap-sm bg-danger-dim border border-danger/[0.33] p-md rounded-lg">
+          {promise.status === "failed" && (
+            <Animated.View
+              entering={FadeIn.duration(180)}
+              exiting={FadeOut.duration(120)}
+              className="flex-row gap-sm bg-danger-dim border border-danger/[0.33] p-md rounded-lg"
+            >
               <Text className="text-sm mt-0.5">
-                {promise.paymentStatus === 'succeeded'
-                  ? '💸'
-                  : promise.paymentStatus === 'requires_action'
-                    ? '🔐'
-                    : promise.paymentStatus === 'failed'
-                      ? '⚠️'
+                {promise.paymentStatus === "succeeded"
+                  ? "💸"
+                  : promise.paymentStatus === "requires_action"
+                    ? "🔐"
+                    : promise.paymentStatus === "failed"
+                      ? "⚠️"
                       : promise.stake > 0
-                        ? '💸'
-                        : '😔'}
+                        ? "💸"
+                        : "😔"}
               </Text>
               <Text className="text-caption text-danger flex-1">
-                {promise.paymentStatus === 'succeeded'
+                {promise.paymentStatus === "succeeded"
                   ? `You failed. $${totalStake} charged. The universe collected.`
-                  : promise.paymentStatus === 'requires_action'
-                    ? 'You failed. Your bank needs you to confirm the payment.'
-                    : promise.paymentStatus === 'failed'
+                  : promise.paymentStatus === "requires_action"
+                    ? "You failed. Your bank needs you to confirm the payment."
+                    : promise.paymentStatus === "failed"
                       ? `You failed. Payment of $${totalStake} didn't go through. We'll retry.`
-                      : promise.paymentStatus === 'abandoned'
+                      : promise.paymentStatus === "abandoned"
                         ? "You failed. Payment couldn't be collected after multiple attempts."
                         : totalStake > 0
                           ? `You failed. $${totalStake} will be charged.`
-                          : 'You failed. No stake, no pain. Just disappointment.'}
+                          : "You failed. No stake, no pain. Just disappointment."}
               </Text>
             </Animated.View>
           )}
 
           {/* I Told You So reveal - only shown after failure */}
-          {promise.status === 'failed' && hasIToldYouSo && (
-            <Animated.View entering={FadeInDown.delay(200).duration(300)} className="bg-warning/[0.08] rounded-xl border border-warning/20 p-lg gap-md">
+          {promise.status === "failed" && hasIToldYouSo && (
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(300)}
+              className="bg-warning/[0.08] rounded-xl border border-warning/20 p-lg gap-md"
+            >
               <View className="flex-row items-center gap-sm">
                 <Text className="text-xl">💌</Text>
                 <Text className="text-label text-warning flex-1">
@@ -854,12 +1060,23 @@ export default function PromiseDetailScreen() {
               </View>
               <View className="gap-sm">
                 {loadingRoasts ? (
-                  <Text className="text-h3 text-white italic leading-6">Loading messages...</Text>
+                  <Text className="text-h3 text-white italic leading-6">
+                    Loading messages...
+                  </Text>
                 ) : (
                   roastMessages.map((msg, index) => (
-                    <View key={index} className="py-sm border-b border-border gap-xs">
-                      <Text className="text-h3 text-white italic leading-6">&quot;{msg.message}&quot;</Text>
-                      {msg.from && <Text className="text-caption text-text-secondary text-right">— {msg.from}</Text>}
+                    <View
+                      key={index}
+                      className="py-sm border-b border-border gap-xs"
+                    >
+                      <Text className="text-h3 text-white italic leading-6">
+                        &quot;{msg.message}&quot;
+                      </Text>
+                      {msg.from && (
+                        <Text className="text-caption text-text-secondary text-right">
+                          — {msg.from}
+                        </Text>
+                      )}
                     </View>
                   ))
                 )}
@@ -868,21 +1085,32 @@ export default function PromiseDetailScreen() {
           )}
 
           {/* Sponsor loss notification */}
-          {promise.status === 'failed' && hasSponsor && (
-            <Animated.View entering={FadeIn.delay(350).duration(250)} className="flex-row gap-md bg-card rounded-lg border border-border p-md">
+          {promise.status === "failed" && hasSponsor && (
+            <Animated.View
+              entering={FadeIn.delay(350).duration(250)}
+              className="flex-row gap-md bg-card rounded-lg border border-border p-md"
+            >
               <Text className="text-xl">👀</Text>
               <View className="flex-1 gap-0.5">
                 <Text className="text-body-semibold text-white">
-                  {FAILURE_COPY.sponsorLossTitle.replace('{amount}', `$${promise.sponsorAmount}`)}
+                  {FAILURE_COPY.sponsorLossTitle.replace(
+                    "{amount}",
+                    `$${promise.sponsorAmount}`,
+                  )}
                 </Text>
-                <Text className="text-caption text-text-tertiary italic">{FAILURE_COPY.sponsorLossSubtitle}</Text>
+                <Text className="text-caption text-text-tertiary italic">
+                  {FAILURE_COPY.sponsorLossSubtitle}
+                </Text>
               </View>
             </Animated.View>
           )}
         </Animated.View>
 
         {canChangeStatus && (
-          <Animated.View entering={FadeInDown.delay(100).duration(220)} className="gap-md pt-md">
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(220)}
+            className="gap-md pt-md"
+          >
             {/* For awaiting partner state, show different action */}
             {isAwaitingPartner ? (
               <Pressable
@@ -890,17 +1118,58 @@ export default function PromiseDetailScreen() {
                   hapticLight();
                   setShowShareModal(true);
                 }}
-                className="h-14 rounded-[28px] overflow-hidden shadow-lg active:opacity-90"
+                style={{ height: 56, borderRadius: 28, overflow: "hidden" }}
               >
-                <LinearGradient colors={['#0B93F6', '#0A84FF']} className="flex-1 items-center justify-center" start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Text className="text-body-semibold text-white font-rounded">Send to partner 👀</Text>
+                <LinearGradient
+                  colors={["#0B93F6", "#0A84FF"]}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 24,
+                  }}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    Send to partner 👀
+                  </Text>
                 </LinearGradient>
               </Pressable>
             ) : (
-              <Pressable onPress={handleInitiateComplete} className="h-14 rounded-[28px] overflow-hidden shadow-lg active:opacity-90">
-                <LinearGradient colors={['#34C759', '#2EC44F']} className="flex-1 items-center justify-center" start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Text className="text-body-semibold text-white font-rounded">
-                    {needsPhotoProof ? 'I did it 📷' : needsPartnerVerification ? 'I did it 👥' : 'I did it ✓'}
+              <Pressable
+                onPress={handleInitiateComplete}
+                style={{ height: 56, borderRadius: 28, overflow: "hidden" }}
+              >
+                <LinearGradient
+                  colors={["#34C759", "#2EC44F"]}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 24,
+                  }}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {needsPhotoProof
+                      ? "I did it 📷"
+                      : needsPartnerVerification
+                        ? "I did it 👥"
+                        : "I did it ✓"}
                   </Text>
                 </LinearGradient>
               </Pressable>
@@ -911,10 +1180,24 @@ export default function PromiseDetailScreen() {
                 hapticLight();
                 setConfirmFail(true);
               }}
-              className="h-14 rounded-[28px] overflow-hidden shadow-lg active:opacity-90"
+              style={{ height: 56, borderRadius: 28, overflow: "hidden" }}
             >
-              <LinearGradient colors={['#FF453A', '#FF6B35']} className="flex-1 items-center justify-center" start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Text className="text-body-semibold text-white font-rounded">I failed 💸</Text>
+              <LinearGradient
+                colors={["#FF453A", "#FF6B35"]}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 24,
+                }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text
+                  style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}
+                >
+                  I failed 💸
+                </Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
@@ -922,9 +1205,9 @@ export default function PromiseDetailScreen() {
 
         <View className="pt-xl">
           <Text className="text-caption text-text-muted text-center italic">
-            {promise.status === 'active'
+            {promise.status === "active"
               ? "Reminder: lying to the app is easier than lying to yourself. But not by much."
-              : 'No further actions required. (Unless you enjoy consequences.)'}
+              : "No further actions required. (Unless you enjoy consequences.)"}
           </Text>
         </View>
       </ScrollView>
@@ -934,7 +1217,7 @@ export default function PromiseDetailScreen() {
         title="Mark as completed?"
         subtitle="This is the part where the app trusts you. Weird."
         confirmText="Yes, I did it"
-        confirmColors={['#34C759', '#2EC44F']}
+        confirmColors={["#34C759", "#2EC44F"]}
         onCancel={() => setConfirmComplete(false)}
         onConfirm={handleComplete}
         working={isWorking}
@@ -956,14 +1239,20 @@ export default function PromiseDetailScreen() {
         title="Delete this promise?"
         subtitle="Sure. Delete the evidence. Very healthy."
         confirmText="Delete"
-        confirmColors={['#636366', '#3A3A3C']}
+        confirmColors={["#636366", "#3A3A3C"]}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={handleDelete}
         working={isWorking}
       />
 
       {/* Share Modal */}
-      {promise && <ShareModal visible={showShareModal} promise={promise} onClose={() => setShowShareModal(false)} />}
+      {promise && (
+        <ShareModal
+          visible={showShareModal}
+          promise={promise}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
 
       {/* Photo Capture Modal for verification */}
       {promise && (
@@ -981,7 +1270,7 @@ export default function PromiseDetailScreen() {
         title="Get verified by your partner"
         subtitle="You're claiming you did it. Now your accountability partner needs to confirm. They'll have 24 hours to respond."
         confirmText="Send to partner 👀"
-        confirmColors={['#0B93F6', '#0A84FF']}
+        confirmColors={["#0B93F6", "#0A84FF"]}
         onCancel={() => setShowPartnerSendPrompt(false)}
         onConfirm={handlePartnerVerificationStart}
         working={isWorking}

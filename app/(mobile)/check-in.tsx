@@ -1,8 +1,8 @@
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -12,19 +12,19 @@ import Animated, {
   withRepeat,
   withSequence,
   withSpring,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LoadingState } from '@/components/ui/loading-state';
-import { CHECKIN_COPY } from '@/constants/content';
-import { usePromiseStore } from '@/context/promise-store';
-import type { CheckInRecord, UserStats } from '@/lib/promises/types';
+import { LoadingState } from "@/components/ui/loading-state";
+import { CHECKIN_COPY } from "@/constants/content";
+import { usePromiseStore } from "@/context/promise-store";
+import type { CheckInRecord, UserStats } from "@/lib/promises/types";
 import {
   computeStats,
   getTodaysCheckIn,
   hasCheckedInToday,
   recordCheckIn,
-} from '@/lib/stats/store';
+} from "@/lib/stats/store";
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -35,7 +35,9 @@ function hapticMedium() {
 }
 
 function hapticSuccess() {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+    () => {},
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -60,7 +62,9 @@ function PromisePreview({
         {text}
       </Text>
       <View className="bg-danger-dim py-1 px-2.5 rounded-sm">
-        <Text className="text-caption text-danger font-mono font-semibold">${stake}</Text>
+        <Text className="text-caption text-danger font-mono font-semibold">
+          ${stake}
+        </Text>
       </View>
     </Animated.View>
   );
@@ -76,9 +80,12 @@ function StreakBadge({ streak }: { streak: number }) {
   useEffect(() => {
     if (streak > 0) {
       scale.value = withRepeat(
-        withSequence(withSpring(1.05, { damping: 8 }), withSpring(1, { damping: 8 })),
+        withSequence(
+          withSpring(1.05, { damping: 8 }),
+          withSpring(1, { damping: 8 }),
+        ),
         -1,
-        true
+        true,
       );
     }
   }, [streak, scale]);
@@ -118,9 +125,14 @@ function CheckInConfirmation({
 }) {
   return (
     <View className="flex-1 items-center justify-center px-xl">
-      <Animated.View entering={FadeInUp.duration(400)} className="items-center gap-lg">
-        <Text className="text-[64px] mb-md">{committed ? '✓' : '💀'}</Text>
-        <Text className="text-h1 text-white font-rounded">{committed ? 'Checked in!' : 'Noted.'}</Text>
+      <Animated.View
+        entering={FadeInUp.duration(400)}
+        className="items-center gap-lg"
+      >
+        <Text className="text-[64px] mb-md">{committed ? "✓" : "💀"}</Text>
+        <Text className="text-h1 text-white font-rounded">
+          {committed ? "Checked in!" : "Noted."}
+        </Text>
         <Text className="text-body text-text-tertiary text-center">
           {committed ? CHECKIN_COPY.confirmed : CHECKIN_COPY.failed}
         </Text>
@@ -130,7 +142,9 @@ function CheckInConfirmation({
             entering={FadeIn.delay(200).duration(300)}
             className="bg-warning-dim border border-warning/[0.27] rounded-lg py-md px-xl"
           >
-            <Text className="text-body-semibold text-warning">🔥 {streak}-day check-in streak</Text>
+            <Text className="text-body-semibold text-warning">
+              🔥 {streak}-day check-in streak
+            </Text>
           </Animated.View>
         )}
 
@@ -163,18 +177,25 @@ function AlreadyCheckedIn({
 }) {
   return (
     <View className="flex-1 items-center justify-center px-xl">
-      <Animated.View entering={FadeIn.duration(300)} className="items-center gap-md">
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        className="items-center gap-md"
+      >
         <Text className="text-[48px] text-success mb-sm">✓</Text>
-        <Text className="text-h2 text-white font-rounded">Already checked in today</Text>
+        <Text className="text-h2 text-white font-rounded">
+          Already checked in today
+        </Text>
         <Text className="text-body text-text-tertiary text-center">
           {checkIn.committed
             ? "You confirmed you're on track. Now go prove it."
-            : 'You said you failed. The honesty is noted.'}
+            : "You said you failed. The honesty is noted."}
         </Text>
 
         {stats && stats.checkInStreak > 0 && (
           <View className="mt-sm">
-            <Text className="text-body-semibold text-warning">🔥 {stats.checkInStreak}-day streak</Text>
+            <Text className="text-body-semibold text-warning">
+              🔥 {stats.checkInStreak}-day streak
+            </Text>
           </View>
         )}
 
@@ -203,7 +224,9 @@ export default function CheckInScreen() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
-  const [todaysCheckIn, setTodaysCheckIn] = useState<CheckInRecord | null>(null);
+  const [todaysCheckIn, setTodaysCheckIn] = useState<CheckInRecord | null>(
+    null,
+  );
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [lastCommitted, setLastCommitted] = useState(false);
   const [working, setWorking] = useState(false);
@@ -216,13 +239,16 @@ export default function CheckInScreen() {
 
   // Get active promises
   const activePromises = useMemo(
-    () => promises.filter((p) => p.status === 'active' && p.deadlineAt > Date.now()),
-    [promises]
+    () =>
+      promises.filter(
+        (p) => p.status === "active" && p.deadlineAt > Date.now(),
+      ),
+    [promises],
   );
 
   const totalAtStake = useMemo(
     () => activePromises.reduce((sum, p) => sum + p.stake, 0),
-    [activePromises]
+    [activePromises],
   );
 
   // Load initial state
@@ -253,14 +279,14 @@ export default function CheckInScreen() {
 
       // Use ref to get latest promises and avoid stale closure
       const currentActive = promisesRef.current.filter(
-        (p) => p.status === 'active' && p.deadlineAt > Date.now()
+        (p) => p.status === "active" && p.deadlineAt > Date.now(),
       );
       const activeIds = currentActive.map((p) => p.id);
       await recordCheckIn(committed, activeIds);
 
       // If user says they failed and there's only one active promise, mark it failed
       if (!committed && currentActive.length === 1) {
-        await setPromiseStatus(currentActive[0].id, 'failed');
+        await setPromiseStatus(currentActive[0].id, "failed");
       }
 
       // Refresh stats with latest promises from ref
@@ -275,7 +301,7 @@ export default function CheckInScreen() {
         hapticSuccess();
       }
     },
-    [working, setPromiseStatus]
+    [working, setPromiseStatus],
   );
 
   const handleClose = useCallback(() => {
@@ -283,20 +309,29 @@ export default function CheckInScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(mobile)/home');
+      router.replace("/(mobile)/home");
     }
   }, []);
 
   // Loading state
   if (!isHydrated || loading) {
-    return <LoadingState title="Loading check-in…" subtitle="Preparing your daily moment of truth." />;
+    return (
+      <LoadingState
+        title="Loading check-in…"
+        subtitle="Preparing your daily moment of truth."
+      />
+    );
   }
 
   // Already checked in today
   if (alreadyCheckedIn && todaysCheckIn && !showConfirmation) {
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-        <AlreadyCheckedIn checkIn={todaysCheckIn} stats={stats} onClose={handleClose} />
+        <AlreadyCheckedIn
+          checkIn={todaysCheckIn}
+          stats={stats}
+          onClose={handleClose}
+        />
       </View>
     );
   }
@@ -319,17 +354,25 @@ export default function CheckInScreen() {
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <View className="flex-1 items-center justify-center px-xl">
-          <Animated.View entering={FadeIn.duration(300)} className="items-center gap-md">
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            className="items-center gap-md"
+          >
             <Text className="text-[48px] mb-sm">😴</Text>
-            <Text className="text-h2 text-white font-rounded">Nothing to check in on</Text>
+            <Text className="text-h2 text-white font-rounded">
+              Nothing to check in on
+            </Text>
             <Text className="text-body text-text-tertiary text-center">
-              No active promises. Either you&apos;re crushing it, or you haven&apos;t started.
+              No active promises. Either you&apos;re crushing it, or you
+              haven&apos;t started.
             </Text>
             <Pressable
               onPress={handleClose}
               className="mt-xl py-md px-xxl rounded-full bg-card border border-border active:opacity-80"
             >
-              <Text className="text-body-semibold text-white">Back to home</Text>
+              <Text className="text-body-semibold text-white">
+                Back to home
+              </Text>
             </Pressable>
           </Animated.View>
         </View>
@@ -342,13 +385,25 @@ export default function CheckInScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 48, gap: 24, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 48,
+          gap: 24,
+          paddingBottom: insets.bottom + 32,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <Animated.View entering={FadeIn.duration(300)} className="items-center gap-sm pt-xl">
-          <Text className="text-h1 text-white font-rounded text-center">{CHECKIN_COPY.title}</Text>
-          <Text className="text-body text-text-tertiary text-center">{CHECKIN_COPY.subtitle}</Text>
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          className="items-center gap-sm pt-xl"
+        >
+          <Text className="text-h1 text-white font-rounded text-center">
+            {CHECKIN_COPY.title}
+          </Text>
+          <Text className="text-body text-text-tertiary text-center">
+            {CHECKIN_COPY.subtitle}
+          </Text>
         </Animated.View>
 
         {/* Streak badge */}
@@ -360,20 +415,33 @@ export default function CheckInScreen() {
           className="bg-card rounded-xl border border-border p-xl items-center gap-sm"
         >
           <Text className="text-label text-text-muted">AT STAKE</Text>
-          <Text className="text-display-md text-danger font-rounded">${totalAtStake}</Text>
+          <Text className="text-display-md text-danger font-rounded">
+            ${totalAtStake}
+          </Text>
           <Text className="text-caption text-text-tertiary">
-            {activePromises.length} active promise{activePromises.length > 1 ? 's' : ''}
+            {activePromises.length} active promise
+            {activePromises.length > 1 ? "s" : ""}
           </Text>
         </Animated.View>
 
         {/* Promise list */}
         <View className="gap-sm">
           {activePromises.slice(0, 3).map((p, i) => (
-            <PromisePreview key={p.id} text={p.text} stake={p.stake} index={i} />
+            <PromisePreview
+              key={p.id}
+              text={p.text}
+              stake={p.stake}
+              index={i}
+            />
           ))}
           {activePromises.length > 3 && (
-            <Animated.View entering={FadeIn.delay(250).duration(200)} className="items-center py-sm">
-              <Text className="text-caption text-text-muted">+{activePromises.length - 3} more</Text>
+            <Animated.View
+              entering={FadeIn.delay(250).duration(200)}
+              className="items-center py-sm"
+            >
+              <Text className="text-caption text-text-muted">
+                +{activePromises.length - 3} more
+              </Text>
             </Animated.View>
           )}
         </View>
@@ -389,29 +457,44 @@ export default function CheckInScreen() {
               <Text className="text-body-medium text-danger">
                 {stats.missedCheckIns === 1
                   ? CHECKIN_COPY.missedYesterday
-                  : CHECKIN_COPY.missedMultiple.replace('{n}', String(stats.missedCheckIns))}
+                  : CHECKIN_COPY.missedMultiple.replace(
+                      "{n}",
+                      String(stats.missedCheckIns),
+                    )}
               </Text>
-              <Text className="text-caption text-text-tertiary">{CHECKIN_COPY.autoFailWarning}</Text>
+              <Text className="text-caption text-text-tertiary">
+                {CHECKIN_COPY.autoFailWarning}
+              </Text>
             </View>
           </Animated.View>
         )}
 
         {/* Action buttons */}
-        <Animated.View entering={FadeInDown.delay(350).duration(280)} className="gap-md pt-md">
+        <Animated.View
+          entering={FadeInDown.delay(350).duration(280)}
+          className="gap-md pt-md"
+        >
           <Pressable
             disabled={working}
             onPress={() => handleCommit(true)}
             className={`h-14 rounded-[28px] overflow-hidden shadow-lg active:scale-[0.98] ${
-              working ? 'opacity-60' : ''
+              working ? "opacity-60" : ""
             }`}
           >
             <LinearGradient
-              colors={['#34C759', '#2EC44F']}
-              className="flex-1 items-center justify-center"
+              colors={["#34C759", "#2EC44F"]}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 24,
+              }}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text className="text-body-semibold text-white font-rounded">{CHECKIN_COPY.yesButton}</Text>
+              <Text className="text-body-semibold text-white font-rounded">
+                {CHECKIN_COPY.yesButton}
+              </Text>
             </LinearGradient>
           </Pressable>
 
@@ -419,16 +502,23 @@ export default function CheckInScreen() {
             disabled={working}
             onPress={() => handleCommit(false)}
             className={`h-14 rounded-[28px] bg-card border border-border items-center justify-center active:bg-card-hover ${
-              working ? 'opacity-60' : ''
+              working ? "opacity-60" : ""
             }`}
           >
-            <Text className="text-body-semibold text-text-secondary">{CHECKIN_COPY.noButton}</Text>
+            <Text className="text-body-semibold text-text-secondary">
+              {CHECKIN_COPY.noButton}
+            </Text>
           </Pressable>
         </Animated.View>
 
         {/* Footer hint */}
-        <Animated.View entering={FadeIn.delay(450).duration(300)} className="items-center pt-md">
-          <Text className="text-caption text-text-muted italic">Tap honestly. The app remembers.</Text>
+        <Animated.View
+          entering={FadeIn.delay(450).duration(300)}
+          className="items-center pt-md"
+        >
+          <Text className="text-caption text-text-muted italic">
+            Tap honestly. The app remembers.
+          </Text>
         </Animated.View>
       </ScrollView>
 

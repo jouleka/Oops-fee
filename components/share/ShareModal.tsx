@@ -8,11 +8,11 @@
  * - Generate partner link (for partner verification)
  */
 
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Sharing from 'expo-sharing';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Sharing from "expo-sharing";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -20,26 +20,35 @@ import {
   Share,
   Text,
   View,
-} from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ViewShot from 'react-native-view-shot';
+} from "react-native";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ViewShot from "react-native-view-shot";
 
-import { useRequireAuth } from '@/hooks/use-require-auth';
-import type { UserPromise } from '@/lib/promises/types';
-import { createShareLink, type ShareLinkType } from '@/lib/share';
-import { ShareCommitmentCard } from './ShareCommitmentCard';
+import { useRequireAuth } from "@/hooks/use-require-auth";
+import type { UserPromise } from "@/lib/promises/types";
+import { createShareLink, type ShareLinkType } from "@/lib/share";
+import { ShareCommitmentCard } from "./ShareCommitmentCard";
 
 function hapticMedium() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 }
 
 function hapticSuccess() {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+    () => {},
+  );
 }
 
 function hapticError() {
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+    () => {},
+  );
 }
 
 interface ShareModalProps {
@@ -48,7 +57,7 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-type ShareOption = 'image' | 'friend' | 'partner';
+type ShareOption = "image" | "friend" | "partner";
 
 interface ShareLinkState {
   loading: boolean;
@@ -75,7 +84,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     prevPartnerStateRef.current = curr;
 
     // If partner just approved/rejected, close modal
-    if (prev === 'awaiting' && (curr === 'approved' || curr === 'rejected')) {
+    if (prev === "awaiting" && (curr === "approved" || curr === "rejected")) {
       onClose();
     }
   }, [promise.partnerState, onClose]);
@@ -144,11 +153,11 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
       }
 
       await Sharing.shareAsync(uri, {
-        mimeType: 'image/png',
-        dialogTitle: 'Share your commitment',
+        mimeType: "image/png",
+        dialogTitle: "Share your commitment",
       });
     } catch (error) {
-      console.error('Failed to share:', error);
+      console.error("Failed to share:", error);
     } finally {
       setSharing(false);
     }
@@ -157,26 +166,32 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   // Generate and share link
   const generateShareLink = useCallback(
     async (type: ShareLinkType) => {
-      const setState = type === 'friend' ? setFriendLink : setPartnerLink;
+      const setState = type === "friend" ? setFriendLink : setPartnerLink;
 
       setState((prev) => ({ ...prev, loading: true, error: null }));
       hapticMedium();
 
       try {
         const result = await createShareLink(promise.id, type);
-        setState({ loading: false, url: result.url, error: null, copied: false });
+        setState({
+          loading: false,
+          url: result.url,
+          error: null,
+          copied: false,
+        });
         hapticSuccess();
       } catch (error) {
         setState({
           loading: false,
           url: null,
-          error: error instanceof Error ? error.message : 'Failed to create link',
+          error:
+            error instanceof Error ? error.message : "Failed to create link",
           copied: false,
         });
         hapticError();
       }
     },
-    [promise.id]
+    [promise.id],
   );
 
   // Copy link to clipboard
@@ -184,7 +199,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     await Clipboard.setStringAsync(url);
     hapticSuccess();
 
-    const setState = type === 'friend' ? setFriendLink : setPartnerLink;
+    const setState = type === "friend" ? setFriendLink : setPartnerLink;
 
     setState((prev) => ({ ...prev, copied: true }));
 
@@ -207,7 +222,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
         url,
       });
     } catch (error) {
-      console.error('Failed to share:', error);
+      console.error("Failed to share:", error);
     }
   }, []);
 
@@ -218,7 +233,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
     title: string,
     subtitle: string,
     state?: ShareLinkState,
-    linkType?: ShareLinkType
+    linkType?: ShareLinkType,
   ) => {
     const isActive = activeOption === option;
     const hasLink = state?.url;
@@ -229,7 +244,7 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
         <Pressable
           onPress={() => {
             setActiveOption(isActive ? null : option);
-            if (option === 'image') {
+            if (option === "image") {
               handleShareImage();
             } else if (linkType && !state?.url) {
               generateShareLink(linkType);
@@ -238,8 +253,8 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
           disabled={sharing || isLoading}
           className={`flex-row items-center gap-md rounded-lg border p-md ${
             isActive
-              ? 'border-imessage bg-imessage-dim'
-              : 'border-border bg-card'
+              ? "border-imessage bg-imessage-dim"
+              : "border-border bg-card"
           } active:opacity-90`}
         >
           <Text className="text-[24px]">{emoji}</Text>
@@ -252,17 +267,20 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
 
         {/* Link actions */}
         {isActive && hasLink && linkType && (
-          <Animated.View entering={FadeIn.duration(200)} className="flex-row gap-sm pt-sm px-md">
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            className="flex-row gap-sm pt-sm px-md"
+          >
             <Pressable
               className={`flex-1 items-center justify-center py-sm rounded-md border ${
                 state.copied
-                  ? 'bg-success-dim border-success'
-                  : 'bg-card border-border'
+                  ? "bg-success-dim border-success"
+                  : "bg-card border-border"
               }`}
               onPress={() => copyLink(state.url!, linkType)}
             >
               <Text className="text-caption text-white">
-                {state.copied ? '✓ Copied!' : '📋 Copy link'}
+                {state.copied ? "✓ Copied!" : "📋 Copy link"}
               </Text>
             </Pressable>
             <Pressable
@@ -280,9 +298,16 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
             entering={FadeIn.duration(200)}
             className="flex-row items-center justify-between bg-danger-dim rounded-md p-sm mt-sm mx-md"
           >
-            <Text className="text-caption text-danger flex-1">{state.error}</Text>
-            <Pressable className="px-md py-xs" onPress={() => linkType && generateShareLink(linkType)}>
-              <Text className="text-caption text-imessage font-semibold">Try again</Text>
+            <Text className="text-caption text-danger flex-1">
+              {state.error}
+            </Text>
+            <Pressable
+              className="px-md py-xs"
+              onPress={() => linkType && generateShareLink(linkType)}
+            >
+              <Text className="text-caption text-imessage font-semibold">
+                Try again
+              </Text>
             </Pressable>
           </Animated.View>
         )}
@@ -291,55 +316,76 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={dismiss}
+    >
       <View className="flex-1 bg-black/60 justify-end">
         {/* Tap to dismiss */}
         <Pressable className="flex-1" onPress={dismiss} />
 
         {/* Sheet */}
-        <Animated.View style={sheetAnimStyle} className="bg-abyss-700 rounded-t-xxl max-h-[90%]">
+        <Animated.View
+          style={sheetAnimStyle}
+          className="bg-abyss-700 rounded-t-xxl max-h-[90%]"
+        >
           {/* Handle */}
           <View className="items-center pt-md pb-sm">
             <View className="w-10 h-1 rounded-sm bg-system-gray-4" />
           </View>
 
-          <View className="px-xl gap-lg" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
+          <View
+            className="px-xl gap-lg"
+            style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+          >
             {/* Header */}
             <View className="items-center gap-1">
-              <Text className="text-h3 text-white font-rounded">Share commitment</Text>
+              <Text className="text-h3 text-white font-rounded">
+                Share commitment
+              </Text>
               <Text className="text-caption text-text-tertiary text-center">
                 Get friends involved for extra accountability.
               </Text>
             </View>
 
             {/* Card Preview */}
-            <Animated.View entering={FadeIn.duration(300)} className="items-center scale-75 -my-xxl">
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              className="items-center scale-75 -my-xxl"
+            >
               <ShareCommitmentCard promise={promise} />
             </Animated.View>
 
             {/* Share Options */}
             <View className="gap-sm">
-              {renderShareOption('image', '🖼️', 'Share image', 'Post this card to social media')}
+              {renderShareOption(
+                "image",
+                "🖼️",
+                "Share image",
+                "Post this card to social media",
+              )}
 
               {renderShareOption(
-                'friend',
-                '🔗',
-                'Share with friends',
-                'They can pledge money or write roast messages',
+                "friend",
+                "🔗",
+                "Share with friends",
+                "They can pledge money or write roast messages",
                 friendLink,
-                'friend'
+                "friend",
               )}
 
               {/* Only show partner option if user already clicked "I did it" (partnerState is awaiting) */}
-              {promise.verificationType === 'partner' &&
-                promise.partnerState === 'awaiting' &&
+              {promise.verificationType === "partner" &&
+                promise.partnerState === "awaiting" &&
                 renderShareOption(
-                  'partner',
-                  '👀',
-                  'Get verified',
-                  'Send to your accountability partner',
+                  "partner",
+                  "👀",
+                  "Get verified",
+                  "Send to your accountability partner",
                   partnerLink,
-                  'partner'
+                  "partner",
                 )}
             </View>
 
@@ -348,17 +394,22 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
               disabled={sharing}
               onPress={handleShareImage}
               className={`h-14 rounded-[28px] overflow-hidden shadow-lg active:opacity-90 active:scale-[0.98] ${
-                sharing ? 'opacity-60' : ''
+                sharing ? "opacity-60" : ""
               }`}
             >
               <LinearGradient
-                colors={['#0B93F6', '#0A7FD4']}
-                className="flex-1 items-center justify-center"
+                colors={["#0B93F6", "#0A7FD4"]}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 24,
+                }}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 <Text className="text-body-semibold text-white font-rounded">
-                  {sharing ? 'Sharing...' : 'Share commitment image'}
+                  {sharing ? "Sharing..." : "Share commitment image"}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -366,7 +417,10 @@ export function ShareModal({ visible, promise, onClose }: ShareModalProps) {
 
           {/* Hidden capture card */}
           <View className="absolute -left-[9999px] -top-[9999px]">
-            <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1, result: 'tmpfile' }}>
+            <ViewShot
+              ref={viewShotRef}
+              options={{ format: "png", quality: 1, result: "tmpfile" }}
+            >
               <ShareCommitmentCard promise={promise} />
             </ViewShot>
           </View>

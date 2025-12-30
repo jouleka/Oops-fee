@@ -13,12 +13,12 @@
  * It uses the service role key to bypass RLS.
  */
 
-import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
-import { createStripeClient } from '../_shared/stripe.ts';
-import { createAdminClient } from '../_shared/supabase.ts';
+import { corsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { createStripeClient } from "../_shared/stripe.ts";
+import { createAdminClient } from "../_shared/supabase.ts";
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const APP_URL = Deno.env.get('APP_URL') || 'https://oopsfee.app';
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const APP_URL = Deno.env.get("APP_URL") || "https://oopsfee.app";
 
 // Friend claim expiration: 7 days
 const CLAIM_EXPIRY_DAYS = 7;
@@ -82,31 +82,31 @@ interface Profile {
 // ─────────────────────────────────────────────────────────────
 const SETTLEMENT_NOTIFICATIONS = {
   chargeSuccess: [
-    '💸 You lost ${amount}',
-    '${amount} gone. Promise broken.',
+    "💸 You lost ${amount}",
+    "${amount} gone. Promise broken.",
     "That's ${amount} you won't see again.",
-    'Promise failed. ${amount} charged.',
-    'The wallet remembers: -${amount}.',
+    "Promise failed. ${amount} charged.",
+    "The wallet remembers: -${amount}.",
   ],
   chargeFailed: [
     '⚠️ Payment failed for "${promise}"',
     "We couldn't charge ${amount}. Card issue.",
-    'Payment declined. ${amount} still owed.',
-    'Your card said no to ${amount}.',
-    'Failed charge: ${amount}. Check your card.',
+    "Payment declined. ${amount} still owed.",
+    "Your card said no to ${amount}.",
+    "Failed charge: ${amount}. Check your card.",
   ],
   requiresAction: [
-    '🔐 Action needed: ${amount} charge',
-    'Your bank needs confirmation for ${amount}.',
-    'Authenticate the ${amount} payment in the app.',
-    '${amount} charge pending your approval.',
-    'One more step: confirm ${amount} payment.',
+    "🔐 Action needed: ${amount} charge",
+    "Your bank needs confirmation for ${amount}.",
+    "Authenticate the ${amount} payment in the app.",
+    "${amount} charge pending your approval.",
+    "One more step: confirm ${amount} payment.",
   ],
   paymentAbandoned: [
-    '🚫 ${amount} charge abandoned. Account restricted.',
+    "🚫 ${amount} charge abandoned. Account restricted.",
     "Couldn't collect ${amount}. Your account is blocked.",
-    'Payment failed permanently. New stakes disabled.',
-    '${amount} uncollected. Account frozen.',
+    "Payment failed permanently. New stakes disabled.",
+    "${amount} uncollected. Account frozen.",
   ],
 };
 
@@ -115,9 +115,9 @@ const SETTLEMENT_NOTIFICATIONS = {
 // ─────────────────────────────────────────────────────────────
 const FRIEND_PAYOUT_NOTIFICATIONS = {
   payout: [
-    '💸 ${userName} broke their promise! ${amount} is yours',
-    '🎉 Cha-ching! ${amount} added to your wallet',
-    '💰 ${userName} failed — ${amount} just hit your wallet',
+    "💸 ${userName} broke their promise! ${amount} is yours",
+    "🎉 Cha-ching! ${amount} added to your wallet",
+    "💰 ${userName} failed — ${amount} just hit your wallet",
   ],
 };
 
@@ -126,10 +126,10 @@ const FRIEND_PAYOUT_NOTIFICATIONS = {
 // ─────────────────────────────────────────────────────────────
 const FREE_PASS_NOTIFICATIONS = {
   saved: [
-    '🎟️ Free pass saved you! No charge this time.',
-    '🎟️ Promise failed, but your free pass covered it.',
-    '🎟️ Oops forgiven! Free pass consumed.',
-    '🎟️ You got lucky — free pass absorbed the loss.',
+    "🎟️ Free pass saved you! No charge this time.",
+    "🎟️ Promise failed, but your free pass covered it.",
+    "🎟️ Oops forgiven! Free pass consumed.",
+    "🎟️ You got lucky — free pass absorbed the loss.",
   ],
 };
 
@@ -151,31 +151,34 @@ async function sendPushNotification(
   data: Record<string, unknown> = {},
 ): Promise<void> {
   if (!pushToken) {
-    console.log('[settle-promises] No push token, skipping notification');
+    console.log("[settle-promises] No push token, skipping notification");
     return;
   }
 
   try {
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
       headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         to: pushToken,
         title,
         body,
-        sound: 'default',
+        sound: "default",
         data,
       }),
     });
 
     const result = await response.json();
-    console.log('[settle-promises] Push notification sent:', JSON.stringify(result));
+    console.log(
+      "[settle-promises] Push notification sent:",
+      JSON.stringify(result),
+    );
   } catch (error) {
-    console.error('[settle-promises] Failed to send push notification:', error);
+    console.error("[settle-promises] Failed to send push notification:", error);
     // Don't throw - push failure shouldn't break settlement
   }
 }
@@ -193,21 +196,33 @@ interface ClaimEmailParams {
   expiresAt: Date;
 }
 
-async function sendClaimNotificationEmail(params: ClaimEmailParams): Promise<boolean> {
+async function sendClaimNotificationEmail(
+  params: ClaimEmailParams,
+): Promise<boolean> {
   if (!RESEND_API_KEY) {
-    console.log('[settle-promises] Resend API key not configured, skipping claim email');
+    console.log(
+      "[settle-promises] Resend API key not configured, skipping claim email",
+    );
     return false;
   }
 
-  const { to, friendName, userName, amountCents, promiseText, claimUrl, expiresAt } = params;
+  const {
+    to,
+    friendName,
+    userName,
+    amountCents,
+    promiseText,
+    claimUrl,
+    expiresAt,
+  } = params;
   const amountDisplay = `$${(amountCents / 100).toFixed(amountCents % 100 === 0 ? 0 : 2)}`;
-  const expiryDate = expiresAt.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+  const expiryDate = expiresAt.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
 
-  const subject = `💰 ${userName} failed — claim your ${amountDisplay}!`;
+  const subject = `${userName} failed — claim your ${amountDisplay}`;
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -217,80 +232,86 @@ async function sendClaimNotificationEmail(params: ClaimEmailParams): Promise<boo
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Claim Your Money</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #ffffff;">
-  <div style="max-width: 480px; margin: 0 auto; padding: 40px 24px;">
-    <div style="text-align: center; margin-bottom: 32px;">
-      <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 8px 0; color: #22c55e;">
-        💸 Cha-ching!
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #111111; color: #e5e5e5;">
+  <div style="max-width: 520px; margin: 0 auto; padding: 48px 24px;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-size: 14px; color: #737373; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">
+        OopsFee
+      </p>
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0; color: #ffffff; line-height: 1.3;">
+        ${userName} didn't follow through.<br>As predicted.
       </h1>
-      <p style="font-size: 18px; color: #ffffff; margin: 0;">
-        ${userName} didn't follow through
-      </p>
     </div>
-    
-    <div style="background: linear-gradient(135deg, #134e2a 0%, #166534 100%); border-radius: 16px; padding: 32px; margin-bottom: 24px; border: 1px solid #22c55e; text-align: center;">
-      <p style="font-size: 14px; color: #86efac; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
-        Your Winnings
+
+    <!-- Amount Card -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 32px; margin-bottom: 32px; border: 1px solid #262626; text-align: center;">
+      <p style="font-size: 12px; color: #737373; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        Available to claim
       </p>
-      <p style="font-size: 48px; font-weight: 700; margin: 0; color: #22c55e;">
+      <p style="font-size: 40px; font-weight: 600; margin: 0 0 16px 0; color: #ffffff;">
         ${amountDisplay}
       </p>
-    </div>
-    
-    <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #333;">
-      <p style="font-size: 12px; color: #888888; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
-        The Failed Promise
+      <p style="font-size: 14px; color: #737373; margin: 0;">
+        Expires ${expiryDate}
       </p>
-      <p style="font-size: 16px; margin: 0; color: #ffffff;">
+    </div>
+
+    <!-- Promise Context -->
+    <div style="background: #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 32px; border: 1px solid #262626;">
+      <p style="font-size: 11px; color: #737373; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+        The broken promise
+      </p>
+      <p style="font-size: 15px; margin: 0; color: #e5e5e5; line-height: 1.5;">
         "${promiseText}"
       </p>
     </div>
-    
-    <div style="text-align: center; margin-bottom: 24px;">
-      <a href="${claimUrl}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 12px; font-size: 18px; font-weight: 700;">
-        Claim Your ${amountDisplay}
+
+    <!-- CTA Button -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <a href="${claimUrl}" style="display: inline-block; background: #ffffff; color: #111111; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600;">
+        Claim ${amountDisplay}
       </a>
     </div>
-    
-    <p style="font-size: 14px; color: #ef4444; text-align: center; margin: 0 0 16px 0; font-weight: 500;">
-      ⏰ Claim expires ${expiryDate}
+
+    <!-- Help text -->
+    <p style="font-size: 13px; color: #525252; text-align: center; margin: 0 0 40px 0;">
+      You can claim via PayPal or debit card.
     </p>
-    
-    <p style="font-size: 14px; color: #888888; text-align: center; margin: 0;">
-      Click the button above to claim your payout via debit card or PayPal.
-    </p>
-    
-    <hr style="border: none; border-top: 1px solid #333; margin: 40px 0 24px 0;">
-    
-    <p style="font-size: 12px; color: #666666; text-align: center; margin: 0;">
-      Sent by <a href="${APP_URL}" style="color: #7c3aed;">OopsFee</a> — accountability with stakes
-    </p>
+
+    <!-- Footer -->
+    <div style="border-top: 1px solid #262626; padding-top: 24px;">
+      <p style="font-size: 12px; color: #525252; text-align: center; margin: 0;">
+        <a href="${APP_URL}" style="color: #737373; text-decoration: none;">OopsFee</a> — accountability with stakes
+      </p>
+    </div>
   </div>
 </body>
 </html>
   `.trim();
 
-  const textBody = `Hey ${friendName}!
+  const textBody = `Hey ${friendName},
 
 ${userName} failed to keep their promise: "${promiseText}"
 
-That means ${amountDisplay} is yours!
+${amountDisplay} is yours to claim.
 
 Claim it here: ${claimUrl}
 
-⏰ This offer expires ${expiryDate}.
+Expires ${expiryDate}.
 
 — OopsFee`;
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'OopsFee <hello@oopsfee.app>',
+        from: "OopsFee <hello@oopsfee.app>",
         to: [to],
         subject,
         html: htmlBody,
@@ -300,43 +321,56 @@ Claim it here: ${claimUrl}
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[settle-promises] Resend API error:', response.status, errorText);
+      console.error(
+        "[settle-promises] Resend API error:",
+        response.status,
+        errorText,
+      );
       return false;
     }
 
     const result = await response.json();
-    console.log('[settle-promises] Claim notification email sent:', result.id);
+    console.log("[settle-promises] Claim notification email sent:", result.id);
     return true;
   } catch (error) {
-    console.error('[settle-promises] Claim email send error:', error);
+    console.error("[settle-promises] Claim email send error:", error);
     return false;
   }
 }
 
 interface SettlementResult {
   promiseId: string;
-  action: 'completed' | 'failed' | 'expired' | 'pending_partner' | 'charged' | 'charge_failed' | 'requires_action' | 'no_payment_method' | 'skipped';
+  action:
+    | "completed"
+    | "failed"
+    | "expired"
+    | "pending_partner"
+    | "charged"
+    | "charge_failed"
+    | "requires_action"
+    | "no_payment_method"
+    | "skipped";
   message: string;
   paymentIntentId?: string;
 }
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return handleCorsOptions();
   }
 
   // Accept both GET (for cron) and POST (for manual trigger)
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
   }
 
   // Optional: Verify cron secret for security
-  const cronSecret = Deno.env.get('SETTLEMENT_CRON_SECRET');
+  const cronSecret = Deno.env.get("SETTLEMENT_CRON_SECRET");
   if (cronSecret) {
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get("Authorization");
     if (authHeader !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 });
+      return new Response("Unauthorized", { status: 401 });
     }
   }
 
@@ -351,22 +385,32 @@ Deno.serve(async (req: Request) => {
     // STEP 1: Find promises that need settlement (past settle_at)
     // =========================================================================
     const { data: promisesToSettle, error: settleError } = await supabase
-      .from('promises')
-      .select('*')
-      .eq('status', 'active')
-      .lt('settle_at', now.toISOString())
+      .from("promises")
+      .select("*")
+      .eq("status", "active")
+      .lt("settle_at", now.toISOString())
       .limit(BATCH_SIZE);
 
     if (settleError) {
-      console.error('[settle-promises] Error fetching promises to settle:', settleError);
+      console.error(
+        "[settle-promises] Error fetching promises to settle:",
+        settleError,
+      );
       throw settleError;
     }
 
-    console.log(`[settle-promises] Found ${promisesToSettle?.length ?? 0} promises to settle`);
+    console.log(
+      `[settle-promises] Found ${promisesToSettle?.length ?? 0} promises to settle`,
+    );
 
     // Process each promise
     for (const promise of (promisesToSettle ?? []) as Promise[]) {
-      const result = await processPromiseSettlement(promise, supabase, stripe, now);
+      const result = await processPromiseSettlement(
+        promise,
+        supabase,
+        stripe,
+        now,
+      );
       results.push(result);
     }
 
@@ -374,18 +418,23 @@ Deno.serve(async (req: Request) => {
     // STEP 2: Retry failed payments that are due
     // =========================================================================
     const { data: paymentsToRetry, error: retryError } = await supabase
-      .from('promises')
-      .select('*')
-      .eq('payment_status', 'failed')
-      .lt('payment_next_retry_at', now.toISOString())
+      .from("promises")
+      .select("*")
+      .eq("payment_status", "failed")
+      .lt("payment_next_retry_at", now.toISOString())
       .limit(BATCH_SIZE);
 
     if (retryError) {
-      console.error('[settle-promises] Error fetching payments to retry:', retryError);
+      console.error(
+        "[settle-promises] Error fetching payments to retry:",
+        retryError,
+      );
       throw retryError;
     }
 
-    console.log(`[settle-promises] Found ${paymentsToRetry?.length ?? 0} payments to retry`);
+    console.log(
+      `[settle-promises] Found ${paymentsToRetry?.length ?? 0} payments to retry`,
+    );
 
     // Retry each failed payment
     for (const promise of (paymentsToRetry ?? []) as Promise[]) {
@@ -401,19 +450,23 @@ Deno.serve(async (req: Request) => {
       results,
     };
 
-    console.log('[settle-promises] Settlement complete:', JSON.stringify(summary, null, 2));
+    console.log(
+      "[settle-promises] Settlement complete:",
+      JSON.stringify(summary, null, 2),
+    );
 
     return new Response(JSON.stringify(summary), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    console.error('[settle-promises] Error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    console.error("[settle-promises] Error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
@@ -431,9 +484,9 @@ async function processPromiseSettlement(
   // =========================================================================
   // PARTNER VERIFICATION HANDLING
   // =========================================================================
-  if (promise.verification_type === 'partner') {
+  if (promise.verification_type === "partner") {
     // Check if we're still waiting for partner response
-    if (promise.partner_state === 'awaiting') {
+    if (promise.partner_state === "awaiting") {
       const partnerDeadline = promise.partner_deadline_at
         ? new Date(promise.partner_deadline_at)
         : null;
@@ -442,13 +495,15 @@ async function processPromiseSettlement(
       if (partnerDeadline && partnerDeadline > now) {
         return {
           promiseId: promise.id,
-          action: 'pending_partner',
+          action: "pending_partner",
           message: `Waiting for partner response until ${partnerDeadline.toISOString()}`,
         };
       }
 
       // Partner deadline passed - apply timeout logic
-      console.log(`[settle-promises] Partner deadline expired for promise: ${promise.id}`);
+      console.log(
+        `[settle-promises] Partner deadline expired for promise: ${promise.id}`,
+      );
 
       if (promise.stake >= HIGH_STAKES_THRESHOLD) {
         // High stakes: default to FAILED (prevent gaming)
@@ -456,35 +511,40 @@ async function processPromiseSettlement(
           promise,
           supabase,
           stripe,
-          'partner_expired_high_stakes',
+          "partner_expired_high_stakes",
         );
       } else {
         // Low stakes: benefit of the doubt, mark as completed
         return await markPromiseCompleted(
           promise,
           supabase,
-          'partner_expired_low_stakes',
+          "partner_expired_low_stakes",
         );
       }
     }
 
     // Partner already approved - mark completed
-    if (promise.partner_state === 'approved') {
-      return await markPromiseCompleted(promise, supabase, 'partner_approved');
+    if (promise.partner_state === "approved") {
+      return await markPromiseCompleted(promise, supabase, "partner_approved");
     }
 
     // Partner rejected - mark failed
-    if (promise.partner_state === 'rejected') {
-      return await markPromiseFailed(promise, supabase, stripe, 'partner_rejected');
+    if (promise.partner_state === "rejected") {
+      return await markPromiseFailed(
+        promise,
+        supabase,
+        stripe,
+        "partner_rejected",
+      );
     }
   }
 
   // =========================================================================
   // STANDARD PROMISE SETTLEMENT (no verification submitted = failed)
   // =========================================================================
-  
+
   // Promise deadline + grace period has passed with no completion
-  return await markPromiseFailed(promise, supabase, stripe, 'deadline_passed');
+  return await markPromiseFailed(promise, supabase, stripe, "deadline_passed");
 }
 
 /**
@@ -498,28 +558,36 @@ async function markPromiseCompleted(
   const now = new Date().toISOString();
 
   const { error } = await supabase
-    .from('promises')
+    .from("promises")
     .update({
-      status: 'completed',
+      status: "completed",
       completed_at: now,
-      partner_state: promise.partner_state === 'awaiting' ? 'expired' : promise.partner_state,
+      partner_state:
+        promise.partner_state === "awaiting"
+          ? "expired"
+          : promise.partner_state,
     })
-    .eq('id', promise.id);
+    .eq("id", promise.id);
 
   if (error) {
-    console.error(`[settle-promises] Error marking promise ${promise.id} as completed:`, error);
+    console.error(
+      `[settle-promises] Error marking promise ${promise.id} as completed:`,
+      error,
+    );
     return {
       promiseId: promise.id,
-      action: 'skipped',
+      action: "skipped",
       message: `Failed to update: ${error.message}`,
     };
   }
 
-  console.log(`[settle-promises] Promise ${promise.id} marked as completed (${reason})`);
+  console.log(
+    `[settle-promises] Promise ${promise.id} marked as completed (${reason})`,
+  );
 
   return {
     promiseId: promise.id,
-    action: 'completed',
+    action: "completed",
     message: `Marked completed: ${reason}`,
   };
 }
@@ -537,30 +605,38 @@ async function markPromiseFailed(
 
   // Update promise status to failed
   const { error: updateError } = await supabase
-    .from('promises')
+    .from("promises")
     .update({
-      status: 'failed',
+      status: "failed",
       failed_at: now,
-      partner_state: promise.partner_state === 'awaiting' ? 'expired' : promise.partner_state,
+      partner_state:
+        promise.partner_state === "awaiting"
+          ? "expired"
+          : promise.partner_state,
     })
-    .eq('id', promise.id);
+    .eq("id", promise.id);
 
   if (updateError) {
-    console.error(`[settle-promises] Error marking promise ${promise.id} as failed:`, updateError);
+    console.error(
+      `[settle-promises] Error marking promise ${promise.id} as failed:`,
+      updateError,
+    );
     return {
       promiseId: promise.id,
-      action: 'skipped',
+      action: "skipped",
       message: `Failed to update: ${updateError.message}`,
     };
   }
 
-  console.log(`[settle-promises] Promise ${promise.id} marked as failed (${reason})`);
+  console.log(
+    `[settle-promises] Promise ${promise.id} marked as failed (${reason})`,
+  );
 
   // If no stake, we're done
   if (promise.stake <= 0) {
     return {
       promiseId: promise.id,
-      action: 'failed',
+      action: "failed",
       message: `Marked failed (no stake): ${reason}`,
     };
   }
@@ -579,43 +655,43 @@ async function handleFreePassSettlement(
 ): Promise<SettlementResult> {
   // Get user's push token for notification
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('expo_push_token')
-    .eq('id', promise.user_id)
+    .from("profiles")
+    .select("expo_push_token")
+    .eq("id", promise.user_id)
     .single();
 
   const pushToken = profile?.expo_push_token ?? null;
 
   // Mark payment as succeeded (no charge applied)
   await supabase
-    .from('promises')
+    .from("promises")
     .update({
-      payment_status: 'succeeded',
+      payment_status: "succeeded",
       payment_client_secret: null,
     })
-    .eq('id', promise.id);
+    .eq("id", promise.id);
 
-  console.log(`[settle-promises] Free pass applied for promise ${promise.id}, no charge`);
+  console.log(
+    `[settle-promises] Free pass applied for promise ${promise.id}, no charge`,
+  );
 
   // Send push notification
   const body = pickRandom(FREE_PASS_NOTIFICATIONS.saved);
-  await sendPushNotification(
-    pushToken,
-    'Free Pass Used',
-    body,
-    { promiseId: promise.id, type: 'free_pass_used' },
-  );
+  await sendPushNotification(pushToken, "Free Pass Used", body, {
+    promiseId: promise.id,
+    type: "free_pass_used",
+  });
 
   return {
     promiseId: promise.id,
-    action: 'charged',
-    message: 'Free pass applied - no charge',
+    action: "charged",
+    message: "Free pass applied - no charge",
   };
 }
 
 /**
  * Charge user for a failed promise using off-session payment
- * 
+ *
  * WALLET-FIRST LOGIC:
  * 1. If wallet balance >= total amount: debit wallet only, skip Stripe charge
  * 2. If wallet balance > 0 but < total: debit wallet, charge card for remainder
@@ -631,27 +707,35 @@ async function chargeForFailedPromise(
   // FREE PASS: Skip all charges if promise uses a free pass
   // ─────────────────────────────────────────────────────────────
   if (promise.uses_free_pass) {
-    console.log(`[settle-promises] Promise ${promise.id} uses free pass, skipping charge`);
+    console.log(
+      `[settle-promises] Promise ${promise.id} uses free pass, skipping charge`,
+    );
     return await handleFreePassSettlement(promise, supabase);
   }
 
   // Get user's payment info, push token, and wallet balance
   const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('stripe_customer_id, default_payment_method_id, expo_push_token, balance_cents')
-    .eq('id', promise.user_id)
+    .from("profiles")
+    .select(
+      "stripe_customer_id, default_payment_method_id, expo_push_token, balance_cents",
+    )
+    .eq("id", promise.user_id)
     .single();
 
   if (profileError || !profile) {
-    console.error(`[settle-promises] Error fetching profile for user ${promise.user_id}:`, profileError);
+    console.error(
+      `[settle-promises] Error fetching profile for user ${promise.user_id}:`,
+      profileError,
+    );
     return {
       promiseId: promise.id,
-      action: 'no_payment_method',
-      message: 'User profile not found',
+      action: "no_payment_method",
+      message: "User profile not found",
     };
   }
 
-  const { stripe_customer_id, default_payment_method_id, balance_cents } = profile as Profile & { balance_cents: number };
+  const { stripe_customer_id, default_payment_method_id, balance_cents } =
+    profile as Profile & { balance_cents: number };
   const pushToken = (profile as Profile).expo_push_token;
   const walletBalance = balance_cents ?? 0;
 
@@ -662,12 +746,14 @@ async function chargeForFailedPromise(
   const amountInCents = stakeCents + sponsorCents;
   const totalAmount = amountInCents / 100; // For display/logging
 
-  console.log(`[settle-promises] Promise ${promise.id}: total=$${totalAmount}, wallet=${walletBalance}c`);
+  console.log(
+    `[settle-promises] Promise ${promise.id}: total=$${totalAmount}, wallet=${walletBalance}c`,
+  );
 
   // ─────────────────────────────────────────────────────────────
   // WALLET-FIRST: Try to cover as much as possible from wallet
   // ─────────────────────────────────────────────────────────────
-  
+
   let walletDebitAmount = 0;
   let cardChargeAmount = amountInCents;
 
@@ -675,41 +761,61 @@ async function chargeForFailedPromise(
     // Wallet covers everything - no card charge needed
     walletDebitAmount = amountInCents;
     cardChargeAmount = 0;
-    console.log(`[settle-promises] Wallet covers full amount (${walletBalance}c >= ${amountInCents}c)`);
+    console.log(
+      `[settle-promises] Wallet covers full amount (${walletBalance}c >= ${amountInCents}c)`,
+    );
   } else if (walletBalance > 0) {
     // Partial wallet coverage - charge card for remainder
     walletDebitAmount = walletBalance;
     cardChargeAmount = amountInCents - walletBalance;
-    console.log(`[settle-promises] Partial wallet: using ${walletDebitAmount}c from wallet, ${cardChargeAmount}c from card`);
+    console.log(
+      `[settle-promises] Partial wallet: using ${walletDebitAmount}c from wallet, ${cardChargeAmount}c from card`,
+    );
   }
 
   // Debit wallet if there's anything to debit
   if (walletDebitAmount > 0) {
-    const { data: debitResult, error: debitError } = await supabase.rpc('debit_wallet_with_log', {
-      target_user_id: promise.user_id,
-      amount_cents: walletDebitAmount,
-      tx_type: 'stake',
-      promise_id: promise.id,
-      description_text: `Failed promise settlement: "${promise.text.substring(0, 50)}..."`,
-    });
+    const { data: debitResult, error: debitError } = await supabase.rpc(
+      "debit_wallet_with_log",
+      {
+        target_user_id: promise.user_id,
+        amount_cents: walletDebitAmount,
+        tx_type: "stake",
+        promise_id: promise.id,
+        description_text: `Failed promise settlement: "${promise.text.substring(0, 50)}..."`,
+      },
+    );
 
     if (debitError || debitResult === -1) {
       // Wallet debit failed (race condition - balance changed)
-      console.error(`[settle-promises] Wallet debit failed for promise ${promise.id}:`, debitError);
+      console.error(
+        `[settle-promises] Wallet debit failed for promise ${promise.id}:`,
+        debitError,
+      );
       // Fall back to full card charge
       walletDebitAmount = 0;
       cardChargeAmount = amountInCents;
     } else {
-      console.log(`[settle-promises] Wallet debited: ${walletDebitAmount}c, new balance: ${debitResult}c`);
+      console.log(
+        `[settle-promises] Wallet debited: ${walletDebitAmount}c, new balance: ${debitResult}c`,
+      );
     }
   }
 
   // If wallet covered everything, we're done
   if (cardChargeAmount === 0) {
-    await handlePaymentSuccess(promise, supabase, null, attemptNumber, amountInCents, pushToken, walletDebitAmount);
+    await handlePaymentSuccess(
+      promise,
+      supabase,
+      null,
+      attemptNumber,
+      amountInCents,
+      pushToken,
+      walletDebitAmount,
+    );
     return {
       promiseId: promise.id,
-      action: 'charged',
+      action: "charged",
       message: `Payment succeeded (wallet only: ${formatAmount(walletDebitAmount)})`,
     };
   }
@@ -720,95 +826,120 @@ async function chargeForFailedPromise(
 
   // No payment method - can't charge card portion
   if (!stripe_customer_id || !default_payment_method_id) {
-    console.log(`[settle-promises] No payment method for promise ${promise.id}`);
-    
+    console.log(
+      `[settle-promises] No payment method for promise ${promise.id}`,
+    );
+
     // If we debited wallet but can't charge card, the wallet debit already happened
     // We should NOT refund it - the user still owes the remainder
     // Update promise to reflect partial payment
     await supabase
-      .from('promises')
+      .from("promises")
       .update({
-        payment_status: walletDebitAmount > 0 ? 'partial' : 'abandoned',
+        payment_status: walletDebitAmount > 0 ? "partial" : "abandoned",
       })
-      .eq('id', promise.id);
+      .eq("id", promise.id);
 
     return {
       promiseId: promise.id,
-      action: 'no_payment_method',
-      message: walletDebitAmount > 0 
-        ? `Partial payment: ${formatAmount(walletDebitAmount)} from wallet, ${formatAmount(cardChargeAmount)} still owed (no card)`
-        : 'No payment method on file',
+      action: "no_payment_method",
+      message:
+        walletDebitAmount > 0
+          ? `Partial payment: ${formatAmount(walletDebitAmount)} from wallet, ${formatAmount(cardChargeAmount)} still owed (no card)`
+          : "No payment method on file",
     };
   }
 
   try {
     // Create off-session PaymentIntent for remaining amount
-    console.log(`[settle-promises] Creating PaymentIntent for promise ${promise.id}, card amount: $${cardChargeAmount / 100} (of total $${totalAmount})`);
+    console.log(
+      `[settle-promises] Creating PaymentIntent for promise ${promise.id}, card amount: $${cardChargeAmount / 100} (of total $${totalAmount})`,
+    );
 
     // Use idempotency key to prevent duplicate charges from cron retries
     const idempotencyKey = `settle-promise-${promise.id}-attempt-${attemptNumber}`;
-    
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: cardChargeAmount,
-      currency: 'usd',
-      customer: stripe_customer_id,
-      payment_method: default_payment_method_id,
-      off_session: true,
-      confirm: true,
-      metadata: {
-        promise_id: promise.id,
-        user_id: promise.user_id,
-        attempt_number: String(attemptNumber),
-        wallet_portion_cents: String(walletDebitAmount),
-        card_portion_cents: String(cardChargeAmount),
-        total_amount_cents: String(amountInCents),
-      },
-      description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."${walletDebitAmount > 0 ? ` (${formatAmount(walletDebitAmount)} from wallet)` : ''}`,
-    }, {
-      idempotencyKey,
-    });
 
-    console.log(`[settle-promises] PaymentIntent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: cardChargeAmount,
+        currency: "usd",
+        customer: stripe_customer_id,
+        payment_method: default_payment_method_id,
+        off_session: true,
+        confirm: true,
+        metadata: {
+          promise_id: promise.id,
+          user_id: promise.user_id,
+          attempt_number: String(attemptNumber),
+          wallet_portion_cents: String(walletDebitAmount),
+          card_portion_cents: String(cardChargeAmount),
+          total_amount_cents: String(amountInCents),
+        },
+        description: `OopsFee: Failed promise "${promise.text.substring(0, 50)}..."${walletDebitAmount > 0 ? ` (${formatAmount(walletDebitAmount)} from wallet)` : ""}`,
+      },
+      {
+        idempotencyKey,
+      },
+    );
+
+    console.log(
+      `[settle-promises] PaymentIntent created: ${paymentIntent.id}, status: ${paymentIntent.status}`,
+    );
 
     // Handle different payment statuses
-    if (paymentIntent.status === 'succeeded') {
-      await handlePaymentSuccess(promise, supabase, paymentIntent.id, attemptNumber, amountInCents, pushToken, walletDebitAmount);
+    if (paymentIntent.status === "succeeded") {
+      await handlePaymentSuccess(
+        promise,
+        supabase,
+        paymentIntent.id,
+        attemptNumber,
+        amountInCents,
+        pushToken,
+        walletDebitAmount,
+      );
       return {
         promiseId: promise.id,
-        action: 'charged',
-        message: walletDebitAmount > 0 
-          ? `Payment succeeded (wallet: ${formatAmount(walletDebitAmount)}, card: ${formatAmount(cardChargeAmount)})`
-          : 'Payment succeeded',
+        action: "charged",
+        message:
+          walletDebitAmount > 0
+            ? `Payment succeeded (wallet: ${formatAmount(walletDebitAmount)}, card: ${formatAmount(cardChargeAmount)})`
+            : "Payment succeeded",
         paymentIntentId: paymentIntent.id,
       };
     }
 
-    if (paymentIntent.status === 'requires_action') {
-      await handlePaymentRequiresAction(promise, supabase, paymentIntent, attemptNumber, cardChargeAmount, pushToken);
+    if (paymentIntent.status === "requires_action") {
+      await handlePaymentRequiresAction(
+        promise,
+        supabase,
+        paymentIntent,
+        attemptNumber,
+        cardChargeAmount,
+        pushToken,
+      );
       return {
         promiseId: promise.id,
-        action: 'requires_action',
-        message: 'Payment requires user action (SCA)',
+        action: "requires_action",
+        message: "Payment requires user action (SCA)",
         paymentIntentId: paymentIntent.id,
       };
     }
 
     // Any other status is treated as pending
     await supabase
-      .from('promises')
+      .from("promises")
       .update({
-        payment_status: 'pending',
+        payment_status: "pending",
         payment_retry_count: attemptNumber,
       })
-      .eq('id', promise.id);
+      .eq("id", promise.id);
 
     return {
       promiseId: promise.id,
-      action: 'charged',
+      action: "charged",
       message: `Payment status: ${paymentIntent.status}`,
       paymentIntentId: paymentIntent.id,
     };
-
   } catch (err: unknown) {
     // Handle Stripe errors
     const stripeError = err as {
@@ -818,47 +949,57 @@ async function chargeForFailedPromise(
       raw?: { code?: string; message?: string };
     };
 
-    console.error(`[settle-promises] Payment failed for promise ${promise.id}:`, stripeError);
+    console.error(
+      `[settle-promises] Payment failed for promise ${promise.id}:`,
+      stripeError,
+    );
 
     // Log the failed payment attempt (store card charge amount, not total)
-    await supabase.from('payments').insert({
+    await supabase.from("payments").insert({
       promise_id: promise.id,
       amount: cardChargeAmount, // Amount we tried to charge to card
-      currency: 'usd',
-      status: 'failed',
+      currency: "usd",
+      status: "failed",
       attempt_number: attemptNumber,
-      error_code: stripeError.code || stripeError.raw?.code || 'unknown',
-      error_message: stripeError.message || stripeError.raw?.message || 'Unknown error',
+      error_code: stripeError.code || stripeError.raw?.code || "unknown",
+      error_message:
+        stripeError.message || stripeError.raw?.message || "Unknown error",
     });
 
     // Send push notification for failed payment
     const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeFailed)
-      .replace('${amount}', formatAmount(cardChargeAmount))
+      .replace("${amount}", formatAmount(cardChargeAmount))
       .replace('"${promise}"', `"${promise.text.substring(0, 30)}..."`);
-    await sendPushNotification(
-      pushToken,
-      'Payment Failed',
-      body,
-      { promiseId: promise.id, type: 'settlement_failed' },
-    );
+    await sendPushNotification(pushToken, "Payment Failed", body, {
+      promiseId: promise.id,
+      type: "settlement_failed",
+    });
 
     // Schedule retry or mark as abandoned
     // Note: Wallet portion already debited, only card portion needs retry
-    await handlePaymentFailure(promise, supabase, attemptNumber, stripeError, pushToken, cardChargeAmount);
+    await handlePaymentFailure(
+      promise,
+      supabase,
+      attemptNumber,
+      stripeError,
+      pushToken,
+      cardChargeAmount,
+    );
 
     return {
       promiseId: promise.id,
-      action: 'charge_failed',
-      message: walletDebitAmount > 0
-        ? `Card charge failed (${formatAmount(cardChargeAmount)}). Wallet already debited: ${formatAmount(walletDebitAmount)}`
-        : (stripeError.message || 'Payment failed'),
+      action: "charge_failed",
+      message:
+        walletDebitAmount > 0
+          ? `Card charge failed (${formatAmount(cardChargeAmount)}). Wallet already debited: ${formatAmount(walletDebitAmount)}`
+          : stripeError.message || "Payment failed",
     };
   }
 }
 
 /**
  * Handle successful payment
- * 
+ *
  * @param walletDebitAmount - Amount already debited from wallet (0 if none)
  */
 async function handlePaymentSuccess(
@@ -872,48 +1013,54 @@ async function handlePaymentSuccess(
 ): Promise<void> {
   // Update promise
   await supabase
-    .from('promises')
+    .from("promises")
     .update({
-      payment_status: 'succeeded',
+      payment_status: "succeeded",
       payment_client_secret: null,
     })
-    .eq('id', promise.id);
+    .eq("id", promise.id);
 
   // Log the successful payment (only if there was a card charge)
   const cardChargeAmount = totalAmountInCents - walletDebitAmount;
   if (paymentIntentId && cardChargeAmount > 0) {
-    await supabase.from('payments').insert({
+    await supabase.from("payments").insert({
       promise_id: promise.id,
       amount: cardChargeAmount, // Only the card portion
-      currency: 'usd',
+      currency: "usd",
       stripe_payment_intent_id: paymentIntentId,
-      status: 'succeeded',
+      status: "succeeded",
       attempt_number: attemptNumber,
     });
   }
 
-  console.log(`[settle-promises] Payment succeeded for promise ${promise.id} (total: ${totalAmountInCents}c, wallet: ${walletDebitAmount}c, card: ${cardChargeAmount}c)`);
+  console.log(
+    `[settle-promises] Payment succeeded for promise ${promise.id} (total: ${totalAmountInCents}c, wallet: ${walletDebitAmount}c, card: ${cardChargeAmount}c)`,
+  );
 
   // Send push notification to user
-  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeSuccess)
-    .replace('${amount}', formatAmount(totalAmountInCents));
-  await sendPushNotification(
-    pushToken,
-    'Promise Failed',
-    body,
-    { promiseId: promise.id, type: 'settlement_charged' },
+  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.chargeSuccess).replace(
+    "${amount}",
+    formatAmount(totalAmountInCents),
   );
+  await sendPushNotification(pushToken, "Promise Failed", body, {
+    promiseId: promise.id,
+    type: "settlement_charged",
+  });
 
   // ─────────────────────────────────────────────────────────────
   // FRIEND PAYOUT: Handle in-app friends first, then external claims
   // ─────────────────────────────────────────────────────────────
-  if (promise.money_destination === 'friend') {
+  if (promise.money_destination === "friend") {
     if (promise.friend_user_id) {
       // In-app friend: credit wallet directly
       await handleInAppFriendPayout(promise, supabase, totalAmountInCents);
     } else if (promise.friend_claim_id) {
       // External friend: claim email flow
-      await handleFriendClaimNotification(promise, supabase, totalAmountInCents);
+      await handleFriendClaimNotification(
+        promise,
+        supabase,
+        totalAmountInCents,
+      );
     }
   }
 }
@@ -927,68 +1074,83 @@ async function handleInAppFriendPayout(
   supabase: ReturnType<typeof createAdminClient>,
   amountInCents: number,
 ): Promise<void> {
-  console.log(`[settle-promises] Processing in-app friend payout for promise ${promise.id}, friend: ${promise.friend_user_id}`);
+  console.log(
+    `[settle-promises] Processing in-app friend payout for promise ${promise.id}, friend: ${promise.friend_user_id}`,
+  );
 
   if (!promise.friend_user_id) {
-    console.error(`[settle-promises] No friend_user_id set for promise ${promise.id}`);
+    console.error(
+      `[settle-promises] No friend_user_id set for promise ${promise.id}`,
+    );
     return;
   }
 
   // 1. Get promiser's display name/username for notification
   const { data: promiserProfile } = await supabase
-    .from('profiles')
-    .select('display_name, username')
-    .eq('id', promise.user_id)
+    .from("profiles")
+    .select("display_name, username")
+    .eq("id", promise.user_id)
     .single();
 
-  const userName = promiserProfile?.username 
-    ? `@${promiserProfile.username}` 
-    : promiserProfile?.display_name || 'Someone';
+  const userName = promiserProfile?.username
+    ? `@${promiserProfile.username}`
+    : promiserProfile?.display_name || "Someone";
 
   // 2. Get friend's push token for notification
   const { data: friendProfile, error: friendProfileError } = await supabase
-    .from('profiles')
-    .select('id, expo_push_token')
-    .eq('id', promise.friend_user_id)
+    .from("profiles")
+    .select("id, expo_push_token")
+    .eq("id", promise.friend_user_id)
     .single();
 
   if (friendProfileError || !friendProfile) {
-    console.error(`[settle-promises] Friend profile not found for ${promise.friend_user_id}:`, friendProfileError);
+    console.error(
+      `[settle-promises] Friend profile not found for ${promise.friend_user_id}:`,
+      friendProfileError,
+    );
     // Friend may have deleted account - money goes to OopsFee (graceful degradation)
     return;
   }
 
   // 3. Credit friend's wallet via RPC with transaction logging
-  const { data: creditResult, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
-    target_user_id: promise.friend_user_id,
-    amount_cents: amountInCents,
-    tx_type: 'credit',
-    promise_id: promise.id,
-    claim_id: null,
-    description_text: `Won from ${userName}'s failed promise`,
-  });
+  const { data: creditResult, error: creditError } = await supabase.rpc(
+    "credit_wallet_with_log",
+    {
+      target_user_id: promise.friend_user_id,
+      amount_cents: amountInCents,
+      tx_type: "credit",
+      promise_id: promise.id,
+      claim_id: null,
+      description_text: `Won from ${userName}'s failed promise`,
+    },
+  );
 
   if (creditError) {
-    console.error(`[settle-promises] Error crediting wallet for ${promise.friend_user_id}:`, creditError);
+    console.error(
+      `[settle-promises] Error crediting wallet for ${promise.friend_user_id}:`,
+      creditError,
+    );
     // Log failure but don't throw - this is a secondary operation
     return;
   }
 
-  console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${promise.friend_user_id}, new balance: ${creditResult}c`);
+  console.log(
+    `[settle-promises] Wallet credited: ${amountInCents} cents to user ${promise.friend_user_id}, new balance: ${creditResult}c`,
+  );
 
   // 4. Send push notification to friend
   const amountDisplay = formatAmount(amountInCents);
   const notificationBody = pickRandom(FRIEND_PAYOUT_NOTIFICATIONS.payout)
-    .replace('${userName}', userName)
-    .replace('${amount}', amountDisplay);
+    .replace("${userName}", userName)
+    .replace("${amount}", amountDisplay);
 
   await sendPushNotification(
     friendProfile.expo_push_token,
-    '💰 You got paid!',
+    "💰 You got paid!",
     notificationBody,
-    { 
-      type: 'friend_payout', 
-      amount: amountInCents, 
+    {
+      type: "friend_payout",
+      amount: amountInCents,
       promiseId: promise.id,
       fromUserId: promise.user_id,
     },
@@ -1005,17 +1167,24 @@ async function handleFriendClaimNotification(
   supabase: ReturnType<typeof createAdminClient>,
   amountInCents: number,
 ): Promise<void> {
-  console.log(`[settle-promises] Processing friend claim for promise ${promise.id}`);
+  console.log(
+    `[settle-promises] Processing friend claim for promise ${promise.id}`,
+  );
 
   // 1. Fetch the friend claim record
   const { data: claim, error: claimError } = await supabase
-    .from('friend_claims')
-    .select('id, friend_email, friend_phone, friend_name, claim_token, claim_status')
-    .eq('id', promise.friend_claim_id)
+    .from("friend_claims")
+    .select(
+      "id, friend_email, friend_phone, friend_name, claim_token, claim_status",
+    )
+    .eq("id", promise.friend_claim_id)
     .single();
 
   if (claimError || !claim) {
-    console.error(`[settle-promises] Friend claim not found for promise ${promise.id}:`, claimError);
+    console.error(
+      `[settle-promises] Friend claim not found for promise ${promise.id}:`,
+      claimError,
+    );
     return;
   }
 
@@ -1023,64 +1192,81 @@ async function handleFriendClaimNotification(
 
   // 2. Get user's display name for notifications
   const { data: promiserProfile } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', promise.user_id)
+    .from("profiles")
+    .select("display_name")
+    .eq("id", promise.user_id)
     .single();
 
-  const userName = promiserProfile?.display_name || 'Someone';
+  const userName = promiserProfile?.display_name || "Someone";
 
   // 3. Check if friend is an in-app user (has a profile with matching email)
   if (friendClaim.friend_email) {
     const { data: friendProfile, error: friendProfileError } = await supabase
-      .from('profiles')
-      .select('id, expo_push_token')
-      .eq('email', friendClaim.friend_email)
+      .from("profiles")
+      .select("id, expo_push_token")
+      .eq("email", friendClaim.friend_email)
       .single();
 
     if (!friendProfileError && friendProfile) {
       // ─────────────────────────────────────────────────────────────
       // IN-APP FRIEND: Credit wallet directly, skip external payout
       // ─────────────────────────────────────────────────────────────
-      console.log(`[settle-promises] Friend ${friendClaim.friend_email} is an in-app user (${friendProfile.id}), crediting wallet`);
+      console.log(
+        `[settle-promises] Friend ${friendClaim.friend_email} is an in-app user (${friendProfile.id}), crediting wallet`,
+      );
 
       // Credit wallet via RPC with transaction logging
-      const { data: creditResult, error: creditError } = await supabase.rpc('credit_wallet_with_log', {
-        target_user_id: friendProfile.id,
-        amount_cents: amountInCents,
-        tx_type: 'credit',
-        promise_id: promise.id,
-        claim_id: friendClaim.id,
-        description_text: `Won from ${userName}'s failed promise`,
-      });
+      const { data: creditResult, error: creditError } = await supabase.rpc(
+        "credit_wallet_with_log",
+        {
+          target_user_id: friendProfile.id,
+          amount_cents: amountInCents,
+          tx_type: "credit",
+          promise_id: promise.id,
+          claim_id: friendClaim.id,
+          description_text: `Won from ${userName}'s failed promise`,
+        },
+      );
 
       if (creditError) {
-        console.error(`[settle-promises] Error crediting wallet for ${friendProfile.id}:`, creditError);
+        console.error(
+          `[settle-promises] Error crediting wallet for ${friendProfile.id}:`,
+          creditError,
+        );
         // Fall through to external payout flow as fallback
       } else {
         // Update friend claim: mark as transferred (no external payout needed)
         const { error: updateError } = await supabase
-          .from('friend_claims')
+          .from("friend_claims")
           .update({
             amount_cents: amountInCents,
-            claim_status: 'transferred',
-            payout_method: 'wallet',
+            claim_status: "transferred",
+            payout_method: "wallet",
           })
-          .eq('id', friendClaim.id);
+          .eq("id", friendClaim.id);
 
         if (updateError) {
-          console.error(`[settle-promises] Error updating friend claim ${friendClaim.id}:`, updateError);
+          console.error(
+            `[settle-promises] Error updating friend claim ${friendClaim.id}:`,
+            updateError,
+          );
         }
 
-        console.log(`[settle-promises] Wallet credited: ${amountInCents} cents to user ${friendProfile.id}, new balance: ${creditResult}c`);
+        console.log(
+          `[settle-promises] Wallet credited: ${amountInCents} cents to user ${friendProfile.id}, new balance: ${creditResult}c`,
+        );
 
         // Send push notification to friend
         const amountDisplay = formatAmount(amountInCents);
         await sendPushNotification(
           friendProfile.expo_push_token,
-          '💰 You got paid!',
+          "💰 You got paid!",
           `${userName} broke their promise. ${amountDisplay} added to your wallet!`,
-          { type: 'wallet_credit', amount: amountInCents, promiseId: promise.id },
+          {
+            type: "wallet_credit",
+            amount: amountInCents,
+            promiseId: promise.id,
+          },
         );
 
         return; // Done - wallet credited, no external payout needed
@@ -1093,24 +1279,31 @@ async function handleFriendClaimNotification(
   // ─────────────────────────────────────────────────────────────
 
   // Calculate claim expiration (7 days from now)
-  const claimExpiresAt = new Date(Date.now() + CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  const claimExpiresAt = new Date(
+    Date.now() + CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+  );
 
   // Update friend claim: set amount, status, and expiration
   const { error: updateError } = await supabase
-    .from('friend_claims')
+    .from("friend_claims")
     .update({
       amount_cents: amountInCents,
-      claim_status: 'notified',
+      claim_status: "notified",
       claim_expires_at: claimExpiresAt.toISOString(),
     })
-    .eq('id', friendClaim.id);
+    .eq("id", friendClaim.id);
 
   if (updateError) {
-    console.error(`[settle-promises] Error updating friend claim ${friendClaim.id}:`, updateError);
+    console.error(
+      `[settle-promises] Error updating friend claim ${friendClaim.id}:`,
+      updateError,
+    );
     return;
   }
 
-  console.log(`[settle-promises] Friend claim ${friendClaim.id} updated: amount=${amountInCents}, expires=${claimExpiresAt.toISOString()}`);
+  console.log(
+    `[settle-promises] Friend claim ${friendClaim.id} updated: amount=${amountInCents}, expires=${claimExpiresAt.toISOString()}`,
+  );
 
   const claimUrl = `${APP_URL}/claim/${friendClaim.claim_token}`;
 
@@ -1126,9 +1319,13 @@ async function handleFriendClaimNotification(
       expiresAt: claimExpiresAt,
     });
 
-    console.log(`[settle-promises] Claim email sent to ${friendClaim.friend_email}: ${emailSent}`);
+    console.log(
+      `[settle-promises] Claim email sent to ${friendClaim.friend_email}: ${emailSent}`,
+    );
   } else {
-    console.log(`[settle-promises] No email for friend claim ${friendClaim.id}, skipping email notification`);
+    console.log(
+      `[settle-promises] No email for friend claim ${friendClaim.id}, skipping email notification`,
+    );
   }
 
   // TODO: Add SMS notification via Twilio if friend_phone is set
@@ -1147,35 +1344,37 @@ async function handlePaymentRequiresAction(
 ): Promise<void> {
   // Store client secret for app to complete payment
   await supabase
-    .from('promises')
+    .from("promises")
     .update({
-      payment_status: 'requires_action',
+      payment_status: "requires_action",
       payment_client_secret: paymentIntent.client_secret,
       payment_retry_count: attemptNumber,
     })
-    .eq('id', promise.id);
+    .eq("id", promise.id);
 
   // Log the payment attempt (store amount in cents)
-  await supabase.from('payments').insert({
+  await supabase.from("payments").insert({
     promise_id: promise.id,
     amount: amountInCents,
-    currency: 'usd',
+    currency: "usd",
     stripe_payment_intent_id: paymentIntent.id,
-    status: 'requires_action',
+    status: "requires_action",
     attempt_number: attemptNumber,
   });
 
-  console.log(`[settle-promises] Payment requires action for promise ${promise.id}`);
+  console.log(
+    `[settle-promises] Payment requires action for promise ${promise.id}`,
+  );
 
   // Send push notification - user needs to authenticate
-  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.requiresAction)
-    .replace('${amount}', formatAmount(amountInCents));
-  await sendPushNotification(
-    pushToken,
-    'Action Required',
-    body,
-    { promiseId: promise.id, type: 'settlement_requires_action' },
+  const body = pickRandom(SETTLEMENT_NOTIFICATIONS.requiresAction).replace(
+    "${amount}",
+    formatAmount(amountInCents),
   );
+  await sendPushNotification(pushToken, "Action Required", body, {
+    promiseId: promise.id,
+    type: "settlement_requires_action",
+  });
 }
 
 /**
@@ -1191,35 +1390,36 @@ async function handlePaymentFailure(
 ): Promise<void> {
   if (attemptNumber >= MAX_RETRIES) {
     // All retries exhausted - mark as abandoned
-    console.log(`[settle-promises] All retries exhausted for promise ${promise.id}`);
+    console.log(
+      `[settle-promises] All retries exhausted for promise ${promise.id}`,
+    );
 
     await supabase
-      .from('promises')
+      .from("promises")
       .update({
-        payment_status: 'abandoned',
+        payment_status: "abandoned",
         payment_client_secret: null,
       })
-      .eq('id', promise.id);
+      .eq("id", promise.id);
 
     // Block user from creating new staked promises
     await supabase
-      .from('profiles')
+      .from("profiles")
       .update({
         payment_blocked: true,
         failed_payment_count: 1, // Increment would require RPC
       })
-      .eq('id', promise.user_id);
+      .eq("id", promise.user_id);
 
     // Send push notification for abandoned payment
-    const body = pickRandom(SETTLEMENT_NOTIFICATIONS.paymentAbandoned)
-      .replace('${amount}', formatAmount(amountInCents));
-    await sendPushNotification(
-      pushToken,
-      'Account Restricted',
-      body,
-      { promiseId: promise.id, type: 'settlement_abandoned' },
+    const body = pickRandom(SETTLEMENT_NOTIFICATIONS.paymentAbandoned).replace(
+      "${amount}",
+      formatAmount(amountInCents),
     );
-
+    await sendPushNotification(pushToken, "Account Restricted", body, {
+      promiseId: promise.id,
+      type: "settlement_abandoned",
+    });
   } else {
     // Schedule next retry
     const nextRetryIndex = attemptNumber; // 0-indexed: after attempt 1, use index 1
@@ -1231,13 +1431,13 @@ async function handlePaymentFailure(
     );
 
     await supabase
-      .from('promises')
+      .from("promises")
       .update({
-        payment_status: 'failed',
+        payment_status: "failed",
         payment_retry_count: attemptNumber,
         payment_next_retry_at: nextRetryAt.toISOString(),
       })
-      .eq('id', promise.id);
+      .eq("id", promise.id);
   }
 }
 
@@ -1249,9 +1449,10 @@ async function retryPayment(
   supabase: ReturnType<typeof createAdminClient>,
   stripe: ReturnType<typeof createStripeClient>,
 ): Promise<SettlementResult> {
-  console.log(`[settle-promises] Retrying payment for promise: ${promise.id}, attempt: ${(promise.payment_retry_count ?? 0) + 1}`);
+  console.log(
+    `[settle-promises] Retrying payment for promise: ${promise.id}, attempt: ${(promise.payment_retry_count ?? 0) + 1}`,
+  );
 
   const attemptNumber = (promise.payment_retry_count ?? 0) + 1;
   return await chargeForFailedPromise(promise, supabase, stripe, attemptNumber);
 }
-

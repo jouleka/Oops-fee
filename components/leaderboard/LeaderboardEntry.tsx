@@ -5,12 +5,23 @@
  * Special styling for current user and top 3 positions
  */
 
-import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, Text, View } from 'react-native';
-import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, Text, View } from "react-native";
+import Animated, {
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
-import { Colors } from '@/constants/theme';
-import { type GloryMetric, type ShameMetric, type GlobalMetric, formatMetricValue, formatRankChange } from '@/lib/leaderboard/api';
+import { Colors } from "@/constants/theme";
+import {
+  type GloryMetric,
+  type ShameMetric,
+  type GlobalMetric,
+  formatMetricValue,
+  formatRankChange,
+} from "@/lib/leaderboard/api";
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -40,27 +51,27 @@ interface LeaderboardEntryProps {
 // ─────────────────────────────────────────────────────────────
 
 const RANK_MEDALS: Record<number, string> = {
-  1: '🥇',
-  2: '🥈',
-  3: '🥉',
+  1: "🥇",
+  2: "🥈",
+  3: "🥉",
 };
 
 const SHAME_MEDALS: Record<number, string> = {
-  1: '💀',
-  2: '☠️',
-  3: '🪦',
+  1: "💀",
+  2: "☠️",
+  3: "🪦",
 };
 
 const PODIUM_GRADIENTS: Record<number, [string, string]> = {
-  1: ['#FFD700', '#B8860B'], // Gold
-  2: ['#C0C0C0', '#808080'], // Silver
-  3: ['#CD7F32', '#8B4513'], // Bronze
+  1: ["#FFD700", "#B8860B"], // Gold
+  2: ["#C0C0C0", "#808080"], // Silver
+  3: ["#CD7F32", "#8B4513"], // Bronze
 };
 
 const SHAME_GRADIENTS: Record<number, [string, string]> = {
-  1: [Colors.danger, '#8B0000'], // Dark red
-  2: ['#DC143C', '#8B0000'],
-  3: ['#B22222', '#800000'],
+  1: [Colors.danger, "#8B0000"], // Dark red
+  2: ["#DC143C", "#8B0000"],
+  3: ["#B22222", "#800000"],
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -114,7 +125,9 @@ export function LeaderboardEntry({
 
   return (
     <Animated.View
-      entering={FadeInUp.delay(50 + index * 40).duration(280).springify()}
+      entering={FadeInUp.delay(50 + index * 40)
+        .duration(280)
+        .springify()}
       style={animStyle}
     >
       <Pressable
@@ -124,20 +137,24 @@ export function LeaderboardEntry({
         disabled={!onPress}
         className={`flex-row items-center gap-3 py-3 px-4 rounded-lg border ${
           entry.is_current_user
-            ? 'bg-imessage-dim border-imessage/40'
+            ? "bg-imessage-dim border-imessage/40"
             : isPodium
-              ? 'bg-card border-border-focus'
-              : 'bg-card border-border active:bg-card-hover'
+              ? "bg-card border-border-focus"
+              : "bg-card border-border active:bg-card-hover"
         }`}
       >
         {/* Rank */}
-        <View className={`items-center justify-center ${isPodium ? 'w-9' : 'w-10'}`}>
+        <View
+          className={`items-center justify-center ${isPodium ? "w-9" : "w-10"}`}
+        >
           {isPodium ? (
-            <Text className="text-[22px] text-center">{medals[entry.rank]}</Text>
+            <Text className="text-[22px] text-center">
+              {medals[entry.rank]}
+            </Text>
           ) : (
             <Text
               className={`text-body-semibold font-mono ${
-                entry.is_current_user ? 'text-imessage' : 'text-text-tertiary'
+                entry.is_current_user ? "text-imessage" : "text-text-tertiary"
               }`}
             >
               #{entry.rank}
@@ -147,7 +164,16 @@ export function LeaderboardEntry({
 
         {/* Avatar */}
         {isPodium ? (
-          <LinearGradient colors={gradients[entry.rank]} className="w-10 h-10 rounded-full items-center justify-center">
+          <LinearGradient
+            colors={gradients[entry.rank]}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <Text className="text-sm font-bold text-white tracking-wide">
               {getInitials(entry.display_name, entry.username)}
             </Text>
@@ -155,7 +181,7 @@ export function LeaderboardEntry({
         ) : (
           <View
             className={`w-10 h-10 rounded-full items-center justify-center ${
-              entry.is_current_user ? 'bg-imessage' : 'bg-system-gray-4'
+              entry.is_current_user ? "bg-imessage" : "bg-system-gray-4"
             }`}
           >
             <Text className="text-sm font-bold text-white tracking-wide">
@@ -169,7 +195,7 @@ export function LeaderboardEntry({
           <View className="flex-row items-center gap-2">
             <Text
               className={`text-body-semibold shrink ${
-                entry.is_current_user ? 'text-imessage' : 'text-white'
+                entry.is_current_user ? "text-imessage" : "text-white"
               }`}
               numberOfLines={1}
             >
@@ -193,21 +219,21 @@ export function LeaderboardEntry({
           <Text
             className={`text-body-semibold font-mono ${
               isShameMode
-                ? 'text-danger'
+                ? "text-danger"
                 : entry.is_current_user
-                  ? 'text-imessage'
-                  : 'text-success'
+                  ? "text-imessage"
+                  : "text-success"
             }`}
           >
             {formattedValue}
           </Text>
           <Text
             className={`text-[11px] ${
-              changeInfo.color === 'green'
-                ? 'text-success'
-                : changeInfo.color === 'red'
-                  ? 'text-danger'
-                  : 'text-text-muted'
+              changeInfo.color === "green"
+                ? "text-success"
+                : changeInfo.color === "red"
+                  ? "text-danger"
+                  : "text-text-muted"
             }`}
           >
             {changeInfo.text}
