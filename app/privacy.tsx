@@ -193,7 +193,7 @@ function WebPrivacyPolicy() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-white mb-4">9. International Users</h2>
             <p className="text-neutral-300 leading-relaxed">
-              Our services are hosted in the United States. If you access OopsFee from outside the US, please be aware that your information may be transferred to, stored, and processed in the US where our servers are located. By using our service, you consent to this transfer.
+              Our services use cloud infrastructure that may process and store data in various locations globally. By using OopsFee, you consent to the transfer and processing of your information in accordance with this Privacy Policy.
             </p>
           </section>
 

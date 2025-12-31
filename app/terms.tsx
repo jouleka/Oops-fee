@@ -224,9 +224,9 @@ function WebTermsOfService() {
               Any disputes arising from these Terms or your use of the App shall be resolved through:
             </p>
             <ul className="list-disc list-inside text-neutral-300 space-y-2">
-              <li>Informal negotiation for 30 days</li>
-              <li>Binding arbitration if negotiation fails</li>
-              <li>Arbitration shall be conducted in accordance with AAA rules</li>
+              <li>Informal negotiation for 30 days by contacting us at the email below</li>
+              <li>If negotiation fails, disputes may be resolved through mediation or arbitration</li>
+              <li>You retain the right to bring claims in small claims court where applicable</li>
             </ul>
           </section>
 
@@ -252,7 +252,7 @@ function WebTermsOfService() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold text-white mb-4">15. Governing Law</h2>
             <p className="text-neutral-300 leading-relaxed">
-              These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, United States, without regard to its conflict of law principles.
+              These Terms shall be governed by and construed in accordance with applicable laws. Any disputes shall be resolved through the dispute resolution process outlined in Section 12.
             </p>
           </section>
 

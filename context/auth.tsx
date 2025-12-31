@@ -88,12 +88,16 @@ export interface AuthActions {
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
   /** Verify email OTP code */
   verifyEmailOtp: (email: string, code: string) => Promise<{ error: string | null }>;
+  /** Sign in with email + password (for test accounts) */
+  signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   /** Sign out */
   signOut: () => Promise<void>;
   /** Refresh profile from server */
   refreshProfile: () => Promise<void>;
   /** Set username via edge function */
   setUsername: (username: string) => Promise<{ success: boolean; error?: string }>;
+  /** Delete account and all associated data */
+  deleteAccount: () => Promise<{ success: boolean; error?: string; walletBalance?: number }>;
 }
 
 export type AuthContextType = AuthState & AuthActions;
@@ -107,107 +111,6 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // ─────────────────────────────────────────────────────────────
 // Push Token Registration
 // ─────────────────────────────────────────────────────────────
-
-// Username validation regex: 3-20 chars, alphanumeric + underscores, must start with letter
-const USERNAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
-
-/**
- * Generate a valid username base from email or display name.
- * Sanitizes and ensures it matches username format requirements.
- */
-function generateUsernameBase(email: string | undefined, displayName: string | null): string {
-  // Try email prefix first
-  if (email) {
-    const emailPrefix = email.split('@')[0].toLowerCase();
-    // Remove invalid characters, keep only alphanumeric and underscores
-    const sanitized = emailPrefix.replace(/[^a-z0-9_]/g, '');
-    // Ensure it starts with a letter
-    const withLetter = sanitized.replace(/^[0-9_]+/, '');
-    if (withLetter.length >= 3 && withLetter.length <= 20 && USERNAME_REGEX.test(withLetter)) {
-      return withLetter;
-    }
-    // If too short, pad with numbers
-    if (withLetter.length >= 1 && withLetter.length < 3) {
-      const padded = `${withLetter}${Math.floor(Math.random() * 900) + 100}`;
-      if (USERNAME_REGEX.test(padded)) {
-        return padded;
-      }
-    }
-  }
-
-  // Try display name
-  if (displayName) {
-    const clean = displayName.toLowerCase().replace(/[^a-z0-9_\s]/g, '').trim();
-    const parts = clean.split(/\s+/);
-    if (parts[0] && parts[0].length >= 3 && USERNAME_REGEX.test(parts[0])) {
-      return parts[0];
-    }
-    // Combine first name with initial of last name
-    if (parts.length > 1 && parts[0] && parts[1]) {
-      const combo = parts[0] + parts[1][0];
-      if (combo.length >= 3 && USERNAME_REGEX.test(combo)) {
-        return combo;
-      }
-    }
-  }
-
-  // Fallback: generate random username
-  const adjectives = ['swift', 'brave', 'calm', 'bold', 'keen', 'wise'];
-  const nouns = ['user', 'maker', 'doer', 'keeper', 'finder'];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 999) + 1;
-  return `${adj}${noun}${num}`;
-}
-
-/**
- * Auto-generate and set a username for a new user.
- * Tries to generate from email/display name and checks availability.
- */
-async function autoGenerateUsername(
-  email: string | undefined,
-  displayName: string | null
-): Promise<void> {
-  try {
-    const baseUsername = generateUsernameBase(email, displayName);
-    let username = baseUsername;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    while (attempts < maxAttempts) {
-      // Try to set the username via edge function
-      const response = await supabase.functions.invoke('set-username', {
-        body: { username },
-      });
-
-      if (response.error) {
-        console.log('[Auth] Username set failed:', response.error.message);
-        // If it's a conflict (taken), try with a number suffix
-        username = `${baseUsername}${Math.floor(Math.random() * 9999) + 1}`;
-        attempts++;
-        continue;
-      }
-
-      const data = response.data;
-      if (data.success) {
-        console.log('[Auth] Auto-generated username:', data.username);
-        return;
-      } else if (data.error === 'Username is already taken') {
-        // Try with a number suffix
-        username = `${baseUsername}${Math.floor(Math.random() * 9999) + 1}`;
-        attempts++;
-        continue;
-      } else {
-        console.log('[Auth] Username set error:', data.error);
-        return;
-      }
-    }
-
-    console.log('[Auth] Failed to auto-generate username after', maxAttempts, 'attempts');
-  } catch (e) {
-    console.error('[Auth] Error auto-generating username:', e);
-  }
-}
 
 /**
  * Check for and claim any pending friend invite token stored during signup.
@@ -382,20 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(newData as Profile);
             // Register push token for new profile
             registerPushToken(userId);
-            // Auto-generate username for new user
-            autoGenerateUsername(user?.email, displayName).then(() => {
-              // Refresh profile to get the new username
-              supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single()
-                .then(({ data: refreshedData }) => {
-                  if (refreshedData) {
-                    setProfile(refreshedData as Profile);
-                  }
-                });
-            });
+            // Note: Username is now auto-generated by DB trigger (handle_new_user)
             // Claim any pending invite (for users who signed up via invite link)
             claimPendingInviteToken();
           }
@@ -476,6 +366,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: err.message || 'Failed to set username' };
     }
   }, [session?.user?.id, refreshProfile]);
+
+  // ─────────────────────────────────────────────────────────────
+  // Delete Account
+  // ─────────────────────────────────────────────────────────────
+
+  const deleteAccount = useCallback(async (): Promise<{ success: boolean; error?: string; walletBalance?: number }> => {
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+      const response = await supabase.functions.invoke('delete-account');
+
+      if (response.error) {
+        return { success: false, error: response.error.message || 'Failed to delete account' };
+      }
+
+      const data = response.data;
+      if (data.error) {
+        // Check if it's a wallet balance error
+        if (data.wallet_balance !== undefined) {
+          return { success: false, error: data.error, walletBalance: data.wallet_balance };
+        }
+        return { success: false, error: data.error };
+      }
+
+      if (data.success) {
+        // Clear local state - user is now deleted
+        setSession(null);
+        setProfile(null);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Unknown error' };
+    } catch (e) {
+      const err = e as { message?: string };
+      return { success: false, error: err.message || 'Failed to delete account' };
+    }
+  }, [session?.user?.id]);
 
   // ─────────────────────────────────────────────────────────────
   // Apple Sign-In
@@ -613,6 +542,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, []);
 
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }, []);
+
   // ─────────────────────────────────────────────────────────────
   // Sign Out
   // ─────────────────────────────────────────────────────────────
@@ -678,9 +620,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       sendEmailOtp,
       verifyEmailOtp,
+      signInWithPassword,
       signOut,
       refreshProfile,
       setUsername,
+      deleteAccount,
     }),
     [
       session,
@@ -693,9 +637,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       sendEmailOtp,
       verifyEmailOtp,
+      signInWithPassword,
       signOut,
       refreshProfile,
       setUsername,
+      deleteAccount,
     ]
   );
 

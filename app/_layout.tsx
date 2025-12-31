@@ -101,6 +101,7 @@ export default function RootLayout() {
               <Stack.Screen name="landing" options={{ animation: 'fade' }} />
               <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="terms" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="delete-account" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="(mobile)" options={{ headerShown: false }} />
               <Stack.Screen name="s/[token]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="claim/[token]" options={{ animation: 'slide_from_right' }} />

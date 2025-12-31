@@ -28,7 +28,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppleAuthAvailable, useAuth } from "@/context/auth";
 
-type SignInStep = "initial" | "email-input" | "email-verify";
+type SignInStep = "initial" | "email-input" | "email-verify" | "test-password";
+
+// Test account for app store review (bypasses OTP)
+const TEST_EMAIL = "review@oopsfee.app";
+const isTestEmail = (email: string) => email.trim().toLowerCase() === TEST_EMAIL;
 
 function hapticLight() {
   Haptics.selectionAsync().catch(() => {});
@@ -46,6 +50,7 @@ export default function SignInScreen() {
     signInWithGoogle,
     sendEmailOtp,
     verifyEmailOtp,
+    signInWithPassword,
     isAuthenticated,
   } = useAuth();
   const appleAuthAvailable = useAppleAuthAvailable();
@@ -53,6 +58,7 @@ export default function SignInScreen() {
   const [step, setStep] = useState<SignInStep>("initial");
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,6 +114,13 @@ export default function SignInScreen() {
       return;
     }
 
+    // Test account - skip OTP, go to password step
+    if (isTestEmail(email)) {
+      hapticMedium();
+      setStep("test-password");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     hapticMedium();
@@ -121,6 +134,27 @@ export default function SignInScreen() {
     }
     setIsLoading(false);
   }, [email, sendEmailOtp]);
+
+  // Test account password handler
+  const handleTestPasswordSignIn = useCallback(async () => {
+    if (!password.trim()) {
+      setError("Enter the test password.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    hapticMedium();
+    const result = await signInWithPassword(email.trim().toLowerCase(), password);
+
+    if (result.error) {
+      setError(result.error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setIsLoading(false);
+  }, [email, password, signInWithPassword]);
 
   const handleVerifyEmailOtp = useCallback(async () => {
     if (otpCode.length < 6) {
@@ -144,9 +178,10 @@ export default function SignInScreen() {
 
   const handleBack = useCallback(() => {
     hapticLight();
-    if (step === "email-verify") {
+    if (step === "email-verify" || step === "test-password") {
       setStep("email-input");
       setOtpCode("");
+      setPassword("");
     } else if (step === "email-input") {
       setStep("initial");
       setEmail("");
@@ -191,6 +226,7 @@ export default function SignInScreen() {
               {step === "initial" && "Sign in"}
               {step === "email-input" && "Your email"}
               {step === "email-verify" && "Enter code"}
+              {step === "test-password" && "Test account"}
             </Text>
             <Text className="text-body text-text-secondary">
               {step === "initial" &&
@@ -199,6 +235,8 @@ export default function SignInScreen() {
                 "We'll email you a magic code. Check your inbox."}
               {step === "email-verify" &&
                 `Sent to ${email}. Check your inbox (and spam).`}
+              {step === "test-password" &&
+                "Enter the test account password."}
             </Text>
           </Animated.View>
 
@@ -419,6 +457,65 @@ export default function SignInScreen() {
                 <Text className="text-body text-imessage">
                   Didn&apos;t get it? Resend code
                 </Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {/* Test account password step */}
+          {step === "test-password" && (
+            <Animated.View
+              entering={FadeInDown.duration(300)}
+              layout={Layout.springify()}
+              className="gap-3"
+            >
+              <Text className="text-label text-text-muted ml-1 uppercase tracking-wider">
+                PASSWORD
+              </Text>
+              <Text className="text-caption text-text-tertiary ml-1 -mt-2">
+                This is a test account for app review.
+              </Text>
+
+              <View className="bg-card rounded-xl border border-border p-4">
+                <TextInput
+                  className="text-white text-center py-3 text-lg"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter password"
+                  placeholderTextColor="rgba(255, 255, 255, 0.30)"
+                  secureTextEntry
+                  autoFocus
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <Pressable
+                onPress={handleTestPasswordSignIn}
+                disabled={isLoading || !password.trim()}
+                className={`h-14 rounded-full overflow-hidden shadow-lg active:scale-[0.99] ${!password.trim() || isLoading ? "opacity-60" : ""}`}
+              >
+                <LinearGradient
+                  colors={
+                    !password.trim() || isLoading
+                      ? ["#3A3A3C", "#2C2C2E"]
+                      : ["#0B93F6", "#0A7FD4"]
+                  }
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 24,
+                  }}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text className="text-body-semibold text-white font-rounded">
+                      Sign in
+                    </Text>
+                  )}
+                </LinearGradient>
               </Pressable>
             </Animated.View>
           )}

@@ -60,6 +60,7 @@ export default function ProfileScreen() {
     user,
     profile,
     signOut,
+    deleteAccount,
     isLoading,
     paymentState,
     walletState,
@@ -132,6 +133,65 @@ export default function ProfileScreen() {
   const handleSignIn = () => {
     hapticMedium();
     router.push("/auth/sign-in");
+  };
+
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    // First confirmation
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action is permanent and cannot be undone.\n\n⚠️ Active promises will be cancelled\n⚠️ Wallet balance must be withdrawn first",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: () => {
+            // Second confirmation for safety
+            Alert.alert(
+              "Final Confirmation",
+              "This will permanently delete your account and all your data. Are you absolutely sure?",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Yes, Delete My Account",
+                  style: "destructive",
+                  onPress: async () => {
+                    hapticMedium();
+                    setIsDeletingAccount(true);
+                    
+                    const result = await deleteAccount();
+                    
+                    setIsDeletingAccount(false);
+                    
+                    if (result.success) {
+                      Alert.alert(
+                        "Account Deleted",
+                        "Your account has been successfully deleted.",
+                        [{ text: "OK", onPress: () => router.replace("/(mobile)/home") }]
+                      );
+                    } else if (result.walletBalance) {
+                      Alert.alert(
+                        "Withdraw Balance First",
+                        `You have ${formatCents(result.walletBalance)} in your wallet. Please withdraw your balance before deleting your account.`,
+                        [{ text: "OK" }]
+                      );
+                    } else {
+                      Alert.alert(
+                        "Error",
+                        result.error || "Failed to delete account. Please try again or contact support.",
+                        [{ text: "OK" }]
+                      );
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   // Show username as primary identifier, fallback to email prefix
@@ -470,7 +530,7 @@ export default function ProfileScreen() {
             {/* Legal Links */}
             <Animated.View
               entering={FadeInDown.delay(200).duration(300)}
-              className="flex-row justify-center gap-lg pt-md pb-xl"
+              className="flex-row justify-center gap-lg pt-md"
             >
               <Link href={"/privacy" as Href} asChild>
                 <Pressable className="active:opacity-70">
@@ -487,6 +547,22 @@ export default function ProfileScreen() {
                   </Text>
                 </Pressable>
               </Link>
+            </Animated.View>
+
+            {/* Delete Account Button */}
+            <Animated.View
+              entering={FadeInDown.delay(220).duration(300)}
+              className="items-center pb-xl"
+            >
+              <Pressable 
+                onPress={handleDeleteAccount}
+                disabled={isDeletingAccount}
+                className={`active:opacity-70 py-sm ${isDeletingAccount ? 'opacity-50' : ''}`}
+              >
+                <Text className="text-caption text-danger underline">
+                  {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                </Text>
+              </Pressable>
             </Animated.View>
 
             {/* Wallet Modals */}
