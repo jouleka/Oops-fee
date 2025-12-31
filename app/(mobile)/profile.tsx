@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { Link, router, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -467,6 +467,28 @@ export default function ProfileScreen() {
               </Pressable>
             </Animated.View>
 
+            {/* Legal Links */}
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(300)}
+              className="flex-row justify-center gap-lg pt-md pb-xl"
+            >
+              <Link href={"/privacy" as Href} asChild>
+                <Pressable className="active:opacity-70">
+                  <Text className="text-caption text-text-tertiary">
+                    Privacy Policy
+                  </Text>
+                </Pressable>
+              </Link>
+              <Text className="text-caption text-text-muted">•</Text>
+              <Link href={"/terms" as Href} asChild>
+                <Pressable className="active:opacity-70">
+                  <Text className="text-caption text-text-tertiary">
+                    Terms of Service
+                  </Text>
+                </Pressable>
+              </Link>
+            </Animated.View>
+
             {/* Wallet Modals */}
             <TopUpModal
               visible={showTopUp}
@@ -593,6 +615,28 @@ function GuestState({ onSignIn }: { onSignIn: () => void }) {
             <Text className="text-white underline">Sign in</Text>
           </Text>
         </Pressable>
+      </Animated.View>
+
+      {/* Legal Links */}
+      <Animated.View
+        entering={FadeIn.delay(450).duration(300)}
+        className="flex-row justify-center gap-lg pb-xl"
+      >
+        <Link href={"/privacy" as Href} asChild>
+          <Pressable className="active:opacity-70">
+            <Text className="text-caption text-text-tertiary">
+              Privacy Policy
+            </Text>
+          </Pressable>
+        </Link>
+        <Text className="text-caption text-text-muted">•</Text>
+        <Link href={"/terms" as Href} asChild>
+          <Pressable className="active:opacity-70">
+            <Text className="text-caption text-text-tertiary">
+              Terms of Service
+            </Text>
+          </Pressable>
+        </Link>
       </Animated.View>
     </>
   );

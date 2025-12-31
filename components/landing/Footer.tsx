@@ -3,13 +3,10 @@
  * Clean, minimal with links
  */
 
+import { Link, type Href } from 'expo-router';
+
 export function Footer() {
   const currentYear = new Date().getFullYear();
-
-  const handleLinkClick = (link: string) => {
-    // For now, these could link to actual pages or modals
-    console.log(`Navigate to: ${link}`);
-  };
 
   return (
     <footer className="relative border-t border-neutral-800 bg-abyss-900">
@@ -28,24 +25,24 @@ export function Footer() {
 
           {/* Navigation links */}
           <nav className="flex flex-wrap items-center justify-center gap-8">
-            <button
-              onClick={() => handleLinkClick('privacy')}
+            <Link
+              href={'/privacy' as Href}
               className="text-neutral-400 hover:text-white text-sm transition-colors duration-200"
             >
               Privacy Policy
-            </button>
-            <button
-              onClick={() => handleLinkClick('terms')}
+            </Link>
+            <Link
+              href={'/terms' as Href}
               className="text-neutral-400 hover:text-white text-sm transition-colors duration-200"
             >
               Terms of Service
-            </button>
-            <button
-              onClick={() => handleLinkClick('support')}
+            </Link>
+            <a
+              href="mailto:support@oopsfee.app"
               className="text-neutral-400 hover:text-white text-sm transition-colors duration-200"
             >
               Support
-            </button>
+            </a>
             <a
               href="https://twitter.com/oopsfee"
               target="_blank"

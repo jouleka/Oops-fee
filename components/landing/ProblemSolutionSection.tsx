@@ -10,11 +10,11 @@ import { useEffect, useRef, useState } from 'react';
 // ─────────────────────────────────────────────────────────────
 
 const FAILED_RESOLUTIONS = [
-  { date: 'Jan 1, 2024', resolution: 'Go to the gym 4x a week', failedAt: 'Day 12' },
-  { date: 'Feb 14, 2024', resolution: 'Quit smoking for good', failedAt: 'Day 6' },
-  { date: 'Mar 1, 2024', resolution: 'Learn to cook healthy meals', failedAt: 'Day 3' },
-  { date: 'Apr 15, 2024', resolution: 'Wake up at 6am every day', failedAt: 'Day 2' },
-  { date: 'May 1, 2024', resolution: 'Read 30 minutes daily', failedAt: 'Day 8' },
+  { date: 'Jan 1, 2025', resolution: 'Go to the gym 4x a week', failedAt: 'Day 12' },
+  { date: 'Feb 14, 2025', resolution: 'Quit smoking for good', failedAt: 'Day 6' },
+  { date: 'Mar 1, 2025', resolution: 'Learn to cook healthy meals', failedAt: 'Day 3' },
+  { date: 'Apr 15, 2025', resolution: 'Wake up at 6am every day', failedAt: 'Day 2' },
+  { date: 'May 1, 2025', resolution: 'Read 30 minutes daily', failedAt: 'Day 8' },
 ];
 
 // ─────────────────────────────────────────────────────────────

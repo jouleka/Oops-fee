@@ -44,7 +44,7 @@ function FloatingMoney({
 }
 
 export function CTASection() {
-  const [moneyBills, setMoneyBills] = useState<Array<{ id: number; delay: number; left: string; size: 'sm' | 'md' | 'lg'; duration: number }>>([]);
+  const [moneyBills, setMoneyBills] = useState<{ id: number; delay: number; left: string; size: 'sm' | 'md' | 'lg'; duration: number }[]>([]);
   const [isVisible, setIsVisible] = useState(false);
   const [glitchActive, setGlitchActive] = useState(false);
 
