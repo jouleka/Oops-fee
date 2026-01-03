@@ -178,7 +178,7 @@ export function useConversationPlayback() {
     dispatch({ type: 'SKIP_TO_END' });
   }, []);
 
-  // Start conversation
+  // Start conversation - only run once on mount
   useEffect(() => {
     if (shouldSkipIntroThisSession) {
       skipToEnd();
@@ -189,7 +189,22 @@ export function useConversationPlayback() {
       showNextMessage();
     }, 500);
     return () => clearTimeout(timer);
-  }, [skipToEnd, showNextMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ensure CTA shows when all messages are visible
+  useEffect(() => {
+    if (
+      state.visibleCount >= CONVERSATION.length &&
+      !state.conversationComplete &&
+      !state.showCTA
+    ) {
+      const timer = setTimeout(() => {
+        dispatch({ type: 'SHOW_CTA' });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.visibleCount, state.conversationComplete, state.showCTA]);
 
   // Start sending (CTA press)
   const startSending = useCallback(async () => {

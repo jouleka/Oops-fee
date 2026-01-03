@@ -5,7 +5,6 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
-import { formatCents } from '@/lib/wallet/api';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -139,8 +138,8 @@ export function formatMetricValue(value: number, metric: GloryMetric | ShameMetr
       return `${value}%`;
     case 'money_saved':
     case 'money_lost':
-      // Values are stored in cents, convert to dollars
-      return formatCents(value);
+      // Values are stored in dollars (stake column is in dollars)
+      return `$${value.toLocaleString()}`;
     case 'current_streak':
     case 'longest_streak':
     case 'current_losing_streak':

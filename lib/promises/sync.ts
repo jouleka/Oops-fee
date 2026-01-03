@@ -286,11 +286,17 @@ export function subscribeToPromiseChanges(
         }
       }
     )
-    .subscribe((status) => {
+    .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         console.log('[sync] Subscribed to promise changes');
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('[sync] Channel error');
+        // This can happen due to network issues, especially on emulators
+        // The channel will auto-reconnect, so we just log at debug level
+        console.log('[sync] Channel error (will auto-reconnect):', err?.message || 'unknown');
+      } else if (status === 'TIMED_OUT') {
+        console.log('[sync] Channel timed out, will retry');
+      } else if (status === 'CLOSED') {
+        console.log('[sync] Channel closed');
       }
     });
   

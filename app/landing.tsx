@@ -224,7 +224,7 @@ function NativeOnboarding() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 0.5,
     borderBottomColor: '#2c2c2e',
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
   headerCenter: {
     flex: 1,
@@ -264,9 +264,11 @@ const styles = StyleSheet.create({
   },
   messagesWrapper: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   messages: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   messagesContent: {
     padding: 16,
@@ -311,7 +313,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(44,44,46,0.92)',
+    backgroundColor: '#2c2c2e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
@@ -322,7 +324,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   scrollToBottomText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 18,
     fontWeight: '700',
     marginTop: -1,

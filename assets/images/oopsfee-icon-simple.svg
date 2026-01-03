@@ -1,0 +1,18 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Deep Navy -->
+  <rect width="1024" height="1024" fill="#070B16"/>
+  
+  <!-- The "Broken Promise" Coin -->
+  <!-- A solid circle split by a jagged path (The "Oops" moment) -->
+  <mask id="crack-mask">
+    <rect width="1024" height="1024" fill="white"/>
+    <!-- The Crack: A lightning-style zig-zag cutting through -->
+    <path d="M540 -50 L460 380 L620 520 L420 1074" stroke="black" stroke-width="80" stroke-linecap="square" stroke-linejoin="round"/>
+  </mask>
+
+  <!-- Coin Circle with Mask Applied -->
+  <circle cx="512" cy="512" r="400" fill="#0b93f6" mask="url(#crack-mask)"/>
+  
+  <!-- Optional: Subtle "Slot" or eye detail to imply a face? 
+       No, keeping it strictly geometric/symbolic like X.com -->
+</svg>

@@ -1,0 +1,73 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Deep Navy/Black as per brief -->
+  <rect width="1024" height="1024" fill="#070B16"/>
+  
+  <!-- Defs for Gradients and Filters -->
+  <defs>
+    <!-- 3D Coin Gradient -->
+    <radialGradient id="coinBody" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(380 380) rotate(45) scale(800)">
+      <stop stop-color="#60B5FF"/>
+      <stop offset="1" stop-color="#005691"/>
+    </radialGradient>
+    
+    <!-- Edge Highlight -->
+    <linearGradient id="edgeLight" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="black" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <!-- Sweat Drop Gradient -->
+    <linearGradient id="sweat" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop stop-color="#E0F2FF"/>
+      <stop offset="1" stop-color="#8AC9FF"/>
+    </linearGradient>
+
+    <!-- Drop Shadow for Coin -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="20"/>
+      <feOffset dx="0" dy="20" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- The Worried Coin (Concept A) -->
+  <g filter="url(#shadow)">
+    <!-- Main Body -->
+    <circle cx="512" cy="512" r="400" fill="url(#coinBody)"/>
+    
+    <!-- Coin Edge/Rim Highlight for 3D feel -->
+    <circle cx="512" cy="512" r="390" stroke="url(#edgeLight)" stroke-width="10" fill="none"/>
+    <circle cx="512" cy="512" r="340" stroke="#004370" stroke-width="5" stroke-opacity="0.3" fill="none"/>
+  </g>
+
+  <!-- Face Features -->
+  <g transform="translate(0, 50)">
+    <!-- Left Eye -->
+    <circle cx="380" cy="450" r="70" fill="white"/>
+    <circle cx="380" cy="450" r="25" fill="#070B16"/>
+    <!-- Eye Highlight -->
+    <circle cx="395" cy="435" r="8" fill="white"/>
+
+    <!-- Right Eye -->
+    <circle cx="644" cy="450" r="70" fill="white"/>
+    <circle cx="644" cy="450" r="25" fill="#070B16"/>
+    <!-- Eye Highlight -->
+    <circle cx="659" cy="435" r="8" fill="white"/>
+
+    <!-- Worried Eyebrows (Slanted Up) -->
+    <path d="M300 350 Q380 320 440 350" stroke="#070B16" stroke-width="25" stroke-linecap="round" fill="none"/>
+    <path d="M584 350 Q644 320 724 350" stroke="#070B16" stroke-width="25" stroke-linecap="round" fill="none"/>
+
+    <!-- Mouth (Squiggly/Nervous) -->
+    <path d="M460 620 Q512 650 564 620" stroke="#070B16" stroke-width="20" stroke-linecap="round" fill="none"/>
+    
+    <!-- Sweat Drop (The "Oops" element) -->
+    <path d="M750 350 C750 350 720 420 720 450 C720 475 740 495 765 495 C790 495 810 475 810 450 C810 420 780 350 780 350" fill="url(#sweat)" stroke="#ffffff" stroke-width="2"/>
+  </g>
+</svg>

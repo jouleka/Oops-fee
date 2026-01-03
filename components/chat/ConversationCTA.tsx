@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { REPLY_TEXT } from '@/constants/conversation';
@@ -14,79 +14,66 @@ export function ConversationCTA({ onStart, onShare, onLayout, bottomInset }: Con
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
-      style={styles.ctaContainer}
       onLayout={(e) => onLayout(e.nativeEvent.layout.height)}
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#1c1c1e',
+        borderTopWidth: 1,
+        borderTopColor: '#3a3a3c',
+        paddingTop: 12,
+        paddingHorizontal: 12,
+        paddingBottom: bottomInset + 12,
+      }}
     >
-      <View style={[styles.ctaInner, { paddingBottom: bottomInset + 12 }]}>
+      {/* Input bar row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {/* Text input field */}
         <Pressable
           onPress={onStart}
-          style={({ pressed }) => [styles.responseButton, pressed && styles.responseButtonPressed]}
+          style={{
+            flex: 1,
+            backgroundColor: '#2c2c2e',
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: '#48484a',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            marginRight: 10,
+          }}
         >
-          <Text style={styles.responseButtonText}>{REPLY_TEXT}</Text>
+          <Text style={{ color: '#ffffff', fontSize: 16 }}>{REPLY_TEXT}</Text>
         </Pressable>
 
+        {/* Send button */}
         <Pressable
-          onPress={onShare}
-          style={({ pressed }) => [styles.altButton, pressed && styles.altButtonPressed]}
+          onPress={onStart}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: '#0b93f6',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Text style={styles.altButtonText}>Send to friend who needs this</Text>
+          <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '700', marginTop: -2 }}>↑</Text>
         </Pressable>
-
-        <Text style={styles.bottomNote}>
-          {"No card required. Until you break a promise.\nThen... well."}
-        </Text>
       </View>
+
+      {/* Share link */}
+      <Pressable onPress={onShare} style={{ alignItems: 'center', paddingVertical: 10 }}>
+        <Text style={{ color: '#0b93f6', fontSize: 14, fontWeight: '500' }}>
+          Send to friend who needs this
+        </Text>
+      </Pressable>
+
+      {/* Disclaimer */}
+      <Text style={{ color: '#8e8e93', fontSize: 11, textAlign: 'center', lineHeight: 16 }}>
+        {"No card required. Until you break a promise.\nThen... well."}
+      </Text>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  ctaContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#000',
-    borderTopWidth: 0.5,
-    borderTopColor: '#2c2c2e',
-  },
-  ctaInner: {
-    padding: 16,
-    gap: 10,
-  },
-  responseButton: {
-    backgroundColor: '#0b93f6',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 22,
-    alignItems: 'center',
-  },
-  responseButtonPressed: {
-    backgroundColor: '#0a84e0',
-    transform: [{ scale: 0.98 }],
-  },
-  responseButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  altButton: {
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  altButtonPressed: {
-    opacity: 0.7,
-  },
-  altButtonText: {
-    color: '#0b93f6',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  bottomNote: {
-    fontSize: 11,
-    color: '#48484a',
-    textAlign: 'center',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-});

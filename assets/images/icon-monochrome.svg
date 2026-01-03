@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Monochrome version - white on transparent for Android 13+ themed icons -->
+  
+  <!-- "oops" text -->
+  <text x="256" y="300" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="180" 
+        font-weight="900" 
+        fill="#FFFFFF" 
+        text-anchor="middle" 
+        letter-spacing="-8">
+    oops
+  </text>
+  
+  <!-- Smiley face -->
+  <text x="256" y="400" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="100" 
+        font-weight="700" 
+        fill="#FFFFFF" 
+        text-anchor="middle"
+        transform="rotate(90 256 400)">
+    )
+  </text>
+</svg>

@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 18,
+    overflow: 'hidden',
   },
   sent: {
     alignSelf: 'flex-end',
@@ -125,9 +126,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   sentText: {
-    color: '#fff',
+    color: '#ffffff',
   },
   receivedText: {
-    color: '#fff',
+    color: '#ffffff',
   },
 });

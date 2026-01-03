@@ -1,0 +1,97 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="500" fill="#070B16"/>
+  
+  <!-- Subtle gradient overlay -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0b93f6;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#070B16;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bgGradient)"/>
+  
+  <!-- Main "oops" text - left side -->
+  <text x="80" y="280" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="180" 
+        font-weight="900" 
+        fill="#BFFF00" 
+        letter-spacing="-6">
+    oops
+  </text>
+  
+  <!-- Smile under oops -->
+  <text x="260" y="360" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="80" 
+        font-weight="700" 
+        fill="#BFFF00"
+        transform="rotate(90 260 360)">
+    )
+  </text>
+  
+  <!-- Tagline - right side -->
+  <text x="540" y="200" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="32" 
+        font-weight="600" 
+        fill="#FFFFFF"
+        opacity="0.9">
+    Put money on your promises.
+  </text>
+  
+  <text x="540" y="250" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="32" 
+        font-weight="600" 
+        fill="#FFFFFF"
+        opacity="0.9">
+    Break them, pay up.
+  </text>
+  
+  <!-- Subtext -->
+  <text x="540" y="320" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="20" 
+        font-weight="400" 
+        fill="#FFFFFF"
+        opacity="0.5">
+    The accountability app that charges you
+  </text>
+  <text x="540" y="350" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="20" 
+        font-weight="400" 
+        fill="#FFFFFF"
+        opacity="0.5">
+    when you break promises to yourself.
+  </text>
+  
+  <!-- Dollar signs floating (decorative) -->
+  <text x="900" y="100" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="40" 
+        font-weight="700" 
+        fill="#BFFF00"
+        opacity="0.3">
+    $
+  </text>
+  <text x="950" y="180" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="30" 
+        font-weight="700" 
+        fill="#BFFF00"
+        opacity="0.2">
+    $
+  </text>
+  <text x="880" y="400" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="50" 
+        font-weight="700" 
+        fill="#BFFF00"
+        opacity="0.15">
+    $
+  </text>
+  
+</svg>

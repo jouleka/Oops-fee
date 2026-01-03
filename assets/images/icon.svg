@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background square (iOS applies its own rounded corners) -->
+  <rect width="512" height="512" fill="#070B16"/>
+  
+  <!-- "oops" text -->
+  <text x="256" y="300" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="180" 
+        font-weight="900" 
+        fill="#BFFF00" 
+        text-anchor="middle" 
+        letter-spacing="-8">
+    oops
+  </text>
+  
+  <!-- Smiley face - horizontal parenthesis (rotated) -->
+  <text x="256" y="400" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="100" 
+        font-weight="700" 
+        fill="#BFFF00" 
+        text-anchor="middle"
+        transform="rotate(90 256 400)">
+    )
+  </text>
+</svg>
