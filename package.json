@@ -65,8 +65,14 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.8.13",
+    "brace-expansion": "1.1.18",
+    "postcss": "$postcss",
+    "ws": "7.5.11"
   },
   "private": true
 }
