@@ -72,6 +72,7 @@
     "@xmldom/xmldom": "0.8.13",
     "brace-expansion": "1.1.18",
     "postcss": "$postcss",
+    "uuid": "11.1.1",
     "ws": "7.5.11"
   },
   "private": true
