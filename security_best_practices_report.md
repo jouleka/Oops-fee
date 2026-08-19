@@ -46,6 +46,10 @@ The public endpoints previously fell back to a repository-known salt; one expres
 
 Several scheduled handlers previously made cron authentication optional and treated missing configuration as authorization to continue. Cron authentication is now shared, uses a timing-safe comparison, returns 503 when no approved secret is configured, and returns 401 on mismatch (`supabase/functions/_shared/request-security.ts:28-70`). Every scheduled service-role handler calls it before database work; for example, settlement does so at `supabase/functions/settle-promises/index.ts:500-512`. The deployment configuration explicitly disables platform JWT verification only because these handlers enforce their separate cron Bearer credential (`supabase/config.toml:95-116`).
 
+### SEC-007 — Username suggestions used insecure randomness
+
+CodeQL flagged the numeric username-suggestion suffix because it used `Math.random()` in an identity-related flow. Suggestions now derive the suffix from Expo Crypto's UUID generator (`app/(mobile)/setup-username.tsx:123-128`). Database uniqueness checks remain authoritative; this change removes predictable client-side suggestion generation as well.
+
 ## Informational observations
 
 - Native Supabase sessions use Expo SecureStore when possible (`lib/supabase/client.ts:41-68`).

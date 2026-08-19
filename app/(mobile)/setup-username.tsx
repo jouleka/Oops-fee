@@ -5,6 +5,7 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Crypto from "expo-crypto";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -120,9 +121,10 @@ function generateSuggestions(displayName: string | null | undefined): string[] {
     }
   }
 
-  // First name + random number
+  // First name + cryptographically random number
   if (parts[0]) {
-    const num = Math.floor(Math.random() * 99) + 1;
+    const randomValue = Number.parseInt(Crypto.randomUUID().slice(0, 8), 16);
+    const num = (randomValue % 99) + 1;
     suggestions.push(`${parts[0]}${num}`);
   }
 
