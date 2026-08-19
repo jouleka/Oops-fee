@@ -4,15 +4,15 @@
 
 The current tree and complete Git history were reviewed for credentials and private keys. No live credential was found. Two scanner matches are narrowly ignored because they are documented placeholders, not secrets. The app uses Supabase Row Level Security, verifies authenticated users before privileged user actions, and verifies Stripe and PayPal webhook signatures.
 
-One IP-hashing configuration bug was remediated during this review. Two residual risks remain: an upstream `image-size` denial-of-service advisory with no patched release, and process-local throttling on public share endpoints. Neither is a reason to expose credentials or rewrite repository history, but both should remain visible to maintainers.
+One IP-hashing configuration bug was remediated during this review. One residual application risk remains: process-local throttling on public share endpoints. The unpatched upstream `image-size` advisories are mitigated in Metro by disabling the affected parsers.
 
 ## High severity
 
-### SEC-001 — Upstream image parser denial of service has no patched release
+### SEC-001 — Upstream image parser denial of service is mitigated
 
 `image-size` is present transitively in the Expo development/build toolchain (`package-lock.json:9102`). GitHub reports two high-severity infinite-loop advisories affecting versions through 2.0.2 and currently lists no patched version. `npm audit` expands the same transitive issue across Expo/Metro packages and suggests incompatible framework downgrades rather than a safe patch.
 
-Impact is limited primarily to developer or CI processing of attacker-controlled image files; it is not an application runtime image parser imported by OopsFee code. Do not process untrusted repository assets in privileged build environments. Keep Dependabot enabled and upgrade when Expo ships a compatible patched dependency. Do not force an Expo downgrade or incompatible major upgrade solely to silence the alert.
+Impact is limited primarily to developer or CI processing of attacker-controlled image files; it is not an application runtime image parser imported by OopsFee code. `metro.config.js` now disables the affected HEIF, ICNS, JPEG 2000, and JPEG XL parser families before Metro loads assets. OopsFee contains no assets in those formats, so common PNG, JPEG, SVG, and WebP handling is unaffected. Keep Dependabot enabled and remove the mitigation when Expo ships a compatible patched dependency. Do not force an Expo downgrade or incompatible major upgrade solely to silence the version-based audit result.
 
 ## Medium severity
 

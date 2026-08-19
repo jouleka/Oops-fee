@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint"
+    "check": "npm run typecheck && npm run lint && npm run security:check-image-parsers",
+    "security:check-image-parsers": "node scripts/check-image-parser-policy.js"
   },
   "dependencies": {
     "@bacons/apple-targets": "^3.0.6",
