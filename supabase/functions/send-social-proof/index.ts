@@ -16,13 +16,10 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireCronAuthorization } from '../_shared/request-security.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const cronSecret = Deno.env.get('SOCIAL_PROOF_CRON_SECRET') || Deno.env.get('SETTLEMENT_CRON_SECRET');
-
-// If no cron secret is configured, allow unauthenticated access (for pg_cron internal calls)
-const SKIP_AUTH = !cronSecret;
 
 // ─────────────────────────────────────────────────────────────
 // NOTIFICATION COPY
@@ -105,17 +102,11 @@ async function sendPushNotifications(messages: PushMessage[]): Promise<void> {
 // ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  // Verify cron secret (skip if no secret configured - for pg_cron internal calls)
-  if (!SKIP_AUTH) {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      console.error('[send-social-proof] Unauthorized request');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+  const authError = requireCronAuthorization(req, [
+    'SOCIAL_PROOF_CRON_SECRET',
+    'SETTLEMENT_CRON_SECRET',
+  ]);
+  if (authError) return authError;
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -273,4 +264,3 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
-

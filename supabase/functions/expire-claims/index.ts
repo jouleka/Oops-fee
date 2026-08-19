@@ -14,6 +14,7 @@
  */
 
 import { corsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { requireCronAuthorization } from "../_shared/request-security.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -168,14 +169,8 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // Optional: Verify cron secret for security (reuses same secret as settle-promises)
-  const cronSecret = Deno.env.get("SETTLEMENT_CRON_SECRET");
-  if (cronSecret) {
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
+  const authError = requireCronAuthorization(req, ["SETTLEMENT_CRON_SECRET"]);
+  if (authError) return authError;
 
   try {
     const supabase = createAdminClient();

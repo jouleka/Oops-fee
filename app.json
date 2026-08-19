@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "oops-fee",
+    "name": "OopsFee",
     "slug": "oops-fee",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -111,7 +111,9 @@
           "urlScheme": "oopsfee",
           "enableGooglePay": true
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

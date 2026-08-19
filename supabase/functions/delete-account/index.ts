@@ -58,7 +58,7 @@ serve(async (req: Request) => {
     // Step 1: Check wallet balance - must be zero or withdrawn
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .select('wallet_balance')
+      .select('balance_cents')
       .eq('id', userId)
       .single();
 
@@ -70,7 +70,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const walletBalance = profile?.wallet_balance || 0;
+    const walletBalance = profile?.balance_cents || 0;
     if (walletBalance > 0) {
       return new Response(
         JSON.stringify({ 
@@ -185,4 +185,3 @@ serve(async (req: Request) => {
     );
   }
 });
-

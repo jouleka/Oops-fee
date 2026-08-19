@@ -11,6 +11,7 @@
  */
 
 import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { hashClientIp } from '../_shared/request-security.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 
 // Rate limiting: 30 requests per minute per IP
@@ -32,15 +33,6 @@ function checkRateLimit(ipHash: string): boolean {
 
   entry.count++;
   return true;
-}
-
-// SHA256 hash for IP addresses
-async function hashIP(ip: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(ip + Deno.env.get('IP_SALT') ?? 'oopsfee-salt');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // SHA256 hash for token lookup
@@ -87,10 +79,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     // 1. Rate limit by IP
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      req.headers.get('x-real-ip') ||
-      'unknown';
-    const ipHash = await hashIP(clientIP);
+    const ipHash = await hashClientIp(req);
 
     if (!checkRateLimit(ipHash)) {
       return new Response(
@@ -248,9 +237,8 @@ Deno.serve(async (req: Request) => {
     });
   } catch (error: unknown) {
     console.error('[get-share-context] Error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Internal server error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -258,4 +246,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-

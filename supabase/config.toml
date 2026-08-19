@@ -63,7 +63,7 @@ ip_version = "IPv4"
 [analytics]
 enabled = false
 
-# Edge Functions - disable JWT verification for public endpoints
+# Public share/claim endpoints authenticate with high-entropy URL tokens.
 [functions.submit-sponsor]
 verify_jwt = false
 
@@ -76,6 +76,32 @@ verify_jwt = false
 [functions.get-share-context]
 verify_jwt = false
 
+[functions.get-claim-context]
+verify_jwt = false
+
+[functions.claim-payout-to-card]
+verify_jwt = false
+
+[functions.paypal-payout]
+verify_jwt = false
+
+# Provider webhooks verify the provider signature in the handler.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.paypal-webhook]
+verify_jwt = false
+
+# Scheduled functions require their configured cron Bearer secret and fail closed.
+[functions.settle-promises]
+verify_jwt = false
+
+[functions.expire-claims]
+verify_jwt = false
+
+[functions.refresh-leaderboard-stats]
+verify_jwt = false
+
 [functions.send-reengagement]
 verify_jwt = false
 
@@ -85,3 +111,5 @@ verify_jwt = false
 [functions.send-behavioral-insights]
 verify_jwt = false
 
+[functions.send-leaderboard-digest]
+verify_jwt = false

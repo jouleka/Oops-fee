@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+/build/
 
 # Native
 .kotlin/
@@ -33,10 +34,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
-.env.prod
-.env.production
+# local environment files (only the documented template is public)
+.env
+.env.*
+!.env.example
+
+# Supabase local state
+.supabase/
 
 # typescript
 *.tsbuildinfo

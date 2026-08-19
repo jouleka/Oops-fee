@@ -14,6 +14,7 @@
  */
 
 import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { requireCronAuthorization } from '../_shared/request-security.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 
 Deno.serve(async (req: Request) => {
@@ -27,14 +28,8 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // Verify cron secret for security (reuses same secret as other cron jobs)
-  const cronSecret = Deno.env.get('SETTLEMENT_CRON_SECRET');
-  if (cronSecret) {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-  }
+  const authError = requireCronAuthorization(req, ['SETTLEMENT_CRON_SECRET']);
+  if (authError) return authError;
 
   const startTime = Date.now();
 
@@ -81,4 +76,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-

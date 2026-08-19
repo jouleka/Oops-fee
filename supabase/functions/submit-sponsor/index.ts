@@ -12,6 +12,7 @@
  */
 
 import { corsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { hashClientIp } from '../_shared/request-security.ts';
 import { createAdminClient } from '../_shared/supabase.ts';
 
 // Rate limiting: 5 per minute per IP per promise
@@ -209,10 +210,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4. Get client IP and check rate limit
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      req.headers.get('x-real-ip') ||
-      'unknown';
-    const ipHash = await sha256(clientIP + (Deno.env.get('IP_SALT') ?? 'oopsfee-salt'));
+    const ipHash = await hashClientIp(req);
     const rateLimitKey = `sponsor:${ipHash}:${shareLink.promise_id}`;
 
     if (!checkRateLimit(rateLimitKey)) {
@@ -333,9 +331,8 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error: unknown) {
     console.error('[submit-sponsor] Error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Internal server error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -343,4 +340,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-

@@ -1,0 +1,3 @@
+# Reviewed placeholders, not credentials. Keep these exact fingerprints narrow.
+d18c4822f816541942a6ff583e34932f070ddab9:lib/supabase/client.ts:generic-api-key:25
+ac170787dd8022f3daf683550f75a0d94643f449:supabase/migrations/005_settlement_cron.sql:curl-auth-header:51

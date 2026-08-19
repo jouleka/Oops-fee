@@ -204,6 +204,8 @@ export function useConversationPlayback() {
       }, 500);
       return () => clearTimeout(timer);
     }
+
+    return undefined;
   }, [state.visibleCount, state.conversationComplete, state.showCTA]);
 
   // Start sending (CTA press)
