@@ -22,7 +22,7 @@
     "@stripe/stripe-react-native": "^0.57.2",
     "@supabase/supabase-js": "^2.88.0",
     "autoprefixer": "^10.4.23",
-    "daisyui": "^5.5.14",
+    "daisyui": "^5.7.17",
     "expo": "~54.0.37",
     "expo-apple-authentication": "~8.0.8",
     "expo-auth-session": "~7.0.11",
