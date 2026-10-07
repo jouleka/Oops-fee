@@ -1,0 +1,22 @@
+diff --git a/node_modules/micromatch/index.js b/node_modules/micromatch/index.js
+index cb9d9ef..58ac874 100644
+--- a/node_modules/micromatch/index.js
++++ b/node_modules/micromatch/index.js
+@@ -1,8 +1,7 @@
+ 'use strict';
+ 
+ const util = require('util');
+-const braces = require('braces');
+-const picomatch = require('picomatch');
++const { braces, picomatch, assertPattern } = require('@oopsfee/glob-compat');
+ const utils = require('picomatch/lib/utils');
+ 
+ const isEmptyString = v => v === '' || v === './';
+@@ -450,6 +449,7 @@ micromatch.parse = (patterns, options) => {
+ 
+ micromatch.braces = (pattern, options) => {
+   if (typeof pattern !== 'string') throw new TypeError('Expected a string');
++  assertPattern(pattern);
+   if ((options && options.nobrace === true) || !hasBraces(pattern)) {
+     return [pattern];
+   }

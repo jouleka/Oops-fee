@@ -29,7 +29,7 @@ The client is built with Expo and React Native. Supabase provides authentication
 
 ### Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24.21.0 or the latest patched Node 24 LTS (Node 22.23.3 or a newer patched Node 22 is also supported)
 - npm
 - Expo tooling through `npx`
 - A Supabase project for authenticated and backend flows
@@ -60,7 +60,8 @@ See [supabase/README.md](supabase/README.md) for database and Edge Function setu
 | `npm run web` | Start the web app |
 | `npm run typecheck` | Run TypeScript checks |
 | `npm run lint` | Run Expo ESLint |
-| `npm run check` | Run typechecking and linting |
+| `npm run check` | Run typechecking, linting, image-parser policy and security regressions |
+| `npm audit --audit-level=low` | Check the complete locked dependency graph for known advisories |
 
 ## Project layout
 

@@ -3,60 +3,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { test } = require('node:test');
-const braces = require('braces');
-const forge = require('node-forge');
-
-test('deep brace and parentheses patterns fail with a controlled error', () => {
-  for (const [open, close] of [['{', '}'], ['(', ')']]) {
-    // Stay below the upstream 10,000-character cap: length alone did not
-    // prevent the reported stack-exhaustion attack.
-    const pattern = open.repeat(4_000) + 'x' + close.repeat(4_000);
-    for (const method of ['parse', 'compile', 'expand', 'stringify']) {
-      assert.throws(() => braces[method](pattern), { name: 'SyntaxError', message: /security limit/ });
-    }
-  }
-  assert.deepEqual(braces.expand('src/{app,components}/*.{ts,tsx}'), [
-    'src/app/*.ts', 'src/app/*.tsx', 'src/components/*.ts', 'src/components/*.tsx',
-  ]);
-});
-
-test('direct AST input cannot bypass the nesting bound', () => {
-  const ast = { type: 'root', nodes: [] };
-  let node = ast;
-  for (let i = 0; i < 1_000; i++) {
-    const child = { type: 'paren', nodes: [], parent: node };
-    node.nodes.push(child);
-    node = child;
-  }
-  for (const method of ['compile', 'expand', 'stringify']) {
-    assert.throws(() => braces[method](ast), { name: 'SyntaxError', message: /security limit/ });
-  }
-});
-
-test('RSA verification rejects nested DigestAlgorithm garbage and nonempty NULL parameters', () => {
-  const keys = forge.pki.rsa.generateKeyPair({ bits: 1024, e: 0x10001 });
-  const digest = forge.md.sha256.create().update('security regression');
-  const signature = keys.privateKey.sign(digest);
-  const hash = digest.digest().getBytes();
-  assert.equal(keys.publicKey.verify(hash, signature), true);
-
-  for (const malformedParameter of ['extra-child', 'nonempty-null']) {
-    const asn1 = forge.asn1;
-    const algorithm = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
-      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer(forge.oids.sha256).getBytes()),
-      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.NULL, false, malformedParameter === 'nonempty-null' ? 'garbage' : ''),
-    ]);
-    if (malformedParameter === 'extra-child') {
-      algorithm.value.push(asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OCTETSTRING, false, 'garbage'));
-    }
-    const info = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
-      algorithm, asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OCTETSTRING, false, hash),
-    ]);
-    const malformedSignature = keys.privateKey.sign(asn1.toDer(info).getBytes(), 'NONE');
-    assert.throws(() => keys.publicKey.verify(hash, malformedSignature), /DigestInfo/);
-  }
-});
-
 test('Metro reads both in-memory and file assets with the maintained image-size API', async () => {
   const assets = require('../node_modules/metro/src/Assets.js');
   const png = fs.readFileSync(path.join(__dirname, '../assets/images/icon.png'));

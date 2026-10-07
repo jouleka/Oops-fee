@@ -1,0 +1,13 @@
+diff --git a/node_modules/chokidar/index.js b/node_modules/chokidar/index.js
+index 8752893..2b4da90 100644
+--- a/node_modules/chokidar/index.js
++++ b/node_modules/chokidar/index.js
+@@ -8,7 +8,7 @@ const readdirp = require('readdirp');
+ const anymatch = require('anymatch').default;
+ const globParent = require('glob-parent');
+ const isGlob = require('is-glob');
+-const braces = require('braces');
++const { braces } = require('@oopsfee/glob-compat');
+ const normalizePath = require('normalize-path');
+ 
+ const NodeFsHandler = require('./lib/nodefs-handler');

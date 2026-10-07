@@ -1,0 +1,14 @@
+{
+  "name": "@oopsfee/glob-compat",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.cjs",
+  "description": "Bounded Expo tooling adapters for maintained Picomatch and brace-expansion",
+  "dependencies": {
+    "brace-expansion": "5.0.12",
+    "js-yaml": "4.3.2",
+    "micromatch": "4.0.8",
+    "picomatch": "4.0.7"
+  },
+  "engines": { "node": "^22.23.3 || ^24.21.0" }
+}
