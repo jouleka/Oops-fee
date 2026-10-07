@@ -3,7 +3,7 @@ const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..');
 const verification = String.raw`
-  require('./metro.config');
+  require('./scripts/image-parser-policy').disableUnsafeImageTypes();
   const fs = require('node:fs');
   const { imageSize } = require('image-size');
 
@@ -41,6 +41,8 @@ const verification = String.raw`
 const result = spawnSync(process.execPath, ['-e', verification], {
   cwd: projectRoot,
   encoding: 'utf8',
+  // Test the same policy Metro calls without including unrelated bundler
+  // initialization in the parser's execution limit.
   timeout: 2_000,
 });
 
