@@ -18,7 +18,10 @@ and production-only installations whenever a parent dependency changes.
 
 The glob adapter caps input at 10,000 characters, combined brace/parenthesis
 nesting at 128, expansion at 1,000 results, and combined expansion output at
-1,000,000 characters. It computes expansion budgets before calling the
+1,000,000 characters. It also rejects repeated single-branch extglobs
+whose body contains a star (`+(*a)`, `*(a*)`), which Picomatch through 4.0.7
+compiles to exponentially backtracking expressions (GHSA-fc5q-39xc-vjpf, no
+patched release). It computes expansion budgets before calling the
 maintained library, including numeric ranges and cartesian products. Options
 cannot disable these limits. Workspace APIs validate all returned patterns
 before root shortcuts and cap a manifest's glob list at 1,000. JSON/YAML parse

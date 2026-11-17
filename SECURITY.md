@@ -77,3 +77,34 @@ not the full historical Forge or braces APIs. See [security/README.md](security/
 for the caller inventory and maintenance scope. Web and native JavaScript
 exports do not replace Android/iOS device builds or real platform signing
 validation. No advisory is dismissed or ignored to obtain a clean audit.
+
+## Dependency updates (November 2026)
+
+Overrides move transitive tooling to the first patched releases:
+
+- undici 6.29.1 for Expo CLI (GHSA-2m5v-pch6-74hx, GHSA-xjj6-f33q-929c,
+  GHSA-qrxm-fqhp-jwvm, GHSA-4qv8-2p9j-2685, GHSA-9fm3-97px-rjf6).
+- decode-uri-component 0.5.1 (GHSA-qr28-fpjm-wq7f).
+- glob 9.x-13.x callers use glob 14.0.6 (GHSA-3g3m-2fjr-6pw4) and minimatch
+  7.x-10.x callers use minimatch 11.0.9 (GHSA-g3hv-75wg-m249). No patched 10.x
+  or 13.x line exists. Every installed caller (Expo CLI, config, config-plugins,
+  fingerprint, metro-config, apple-targets, typescript-estree) only uses
+  `glob`, `globSync`, `sync`, `globStream` and `minimatch`/`Minimatch#match`,
+  which glob 14 and minimatch 11 keep; regression tests exercise each caller.
+  glob 7 and minimatch 3 are outside the advisory ranges and are unchanged.
+
+### Known open advisory: Picomatch GHSA-fc5q-39xc-vjpf
+
+Every published Picomatch release (through 4.0.7) is affected and there is no
+patched release; an Expo SDK upgrade would not change this because Metro,
+Jest, Chokidar, fdir/tinyglobby and Expo CLI all depend on Picomatch. Until an
+upstream release ships, `npm audit` reports Picomatch and the packages that
+depend on it, and the CI audit step fails.
+
+Mitigation: the `@oopsfee/glob-compat` adapter, which every patched
+Micromatch call (Metro, Tailwind, fast-glob) passes through, rejects repeated
+single-branch extglobs containing a star, such as `+(*a)`, before they reach
+Picomatch. All glob patterns in this project's tooling come from repository
+configuration rather than untrusted input. When a patched Picomatch is
+published, override both the 2.x and 4.x lines to it and update the
+glob-compat pin.
