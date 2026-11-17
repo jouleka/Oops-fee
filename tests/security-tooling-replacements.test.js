@@ -65,6 +65,31 @@ test('hostile glob inputs stop before recursion or excessive numeric/cartesian e
   assert.equal(result.status, 0);
 });
 
+test('repeated single-branch wildcard extglobs are rejected before Picomatch backtracks', () => {
+  // GHSA-fc5q-39xc-vjpf has no patched Picomatch release; the adapter guards
+  // every Micromatch/Tailwind/Metro call that is routed through it.
+  for (const pattern of ['+(*a)', '*(a*)', 'src/**/+(*.ts)', '*(*)', '+(a/*)']) {
+    for (const method of ['isMatch', 'makeRe', 'matcher', 'parse']) {
+      const args = method === 'isMatch' ? ['aaaa', pattern] : [pattern];
+      assert.throws(() => micromatch[method](...args), /extglob repetition exceeds security limit/);
+    }
+    assert.throws(() => glob.picomatch(pattern), /security limit/);
+  }
+  assert.equal(micromatch.isMatch('src/app/index.tsx', 'src/**/*.@(ts|tsx)'), true);
+  assert.equal(micromatch.isMatch('aaa', '+(a)'), true);
+  assert.equal(micromatch.isMatch('ab', '+(a|b)'), true);
+  assert.equal(micromatch.isMatch('types/index.ts', '**/!(*.d).ts'), true);
+  assert.doesNotThrow(() => micromatch.makeRe(String.raw`\+(\*a)`));
+  assert.equal(micromatch.isMatch('*x', '[*(]x'), true);
+  const result = spawnSync(process.execPath, ['-e', `
+    const mm = require('micromatch');
+    try { mm.isMatch('a'.repeat(40) + 'b', '+(*a)'); process.exit(1); }
+    catch (error) { if (!(error instanceof SyntaxError)) throw error; }
+  `], { cwd: path.join(__dirname, '..'), timeout: 2_000 });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0);
+});
+
 test('Chokidar watches brace-expanded files and ignores nonmatching files', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'oopsfee-glob-'));
   const watcher = require('chokidar').watch(`${directory.replaceAll('\\', '/')}/{one,two}/*.{ts,tsx}`, { ignoreInitial: false });

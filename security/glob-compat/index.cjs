@@ -31,6 +31,44 @@ function assertPattern(pattern) {
     if (char === ')') parens = Math.max(0, parens - 1);
     if (braces + parens > MAX_DEPTH) throw new SyntaxError('Glob nesting exceeds security limit');
   }
+  assertExtglobRepeats(pattern);
+}
+
+// GHSA-fc5q-39xc-vjpf: Picomatch <= 4.0.7 (no patched release) compiles a
+// repeated single-branch extglob whose body contains a star, such as `+(*a)`
+// or `*(a*)`, into nested unbounded quantifiers with exponential backtracking.
+// Reject that construct before it reaches the maintained matcher. Alternations
+// (`+(a|*b)`) are already handled upstream by analyzeRepeatedExtglob.
+function assertExtglobRepeats(pattern) {
+  let bracket = false;
+  let quote = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i];
+    if (char === '\\') { i++; continue; }
+    if (quote) { if (char === quote) quote = ''; continue; }
+    if (char === '"' || char === "'" || char === '`') { quote = char; continue; }
+    if (char === '[') { bracket = true; continue; }
+    if (char === ']') { bracket = false; continue; }
+    if (bracket || (char !== '*' && char !== '+') || pattern[i + 1] !== '(') continue;
+    let depth = 0;
+    let branches = 1;
+    let star = false;
+    let innerBracket = false;
+    for (let j = i + 1; j < pattern.length; j++) {
+      const inner = pattern[j];
+      if (inner === '\\') { j++; continue; }
+      if (inner === '[') { innerBracket = true; continue; }
+      if (inner === ']') { innerBracket = false; continue; }
+      if (innerBracket) continue;
+      if (inner === '(') depth++;
+      else if (inner === ')' && --depth === 0) break;
+      else if (inner === '|' && depth === 1) branches++;
+      else if (inner === '*') star = true;
+    }
+    if (branches === 1 && star) {
+      throw new SyntaxError('Glob extglob repetition exceeds security limit');
+    }
+  }
 }
 
 function assertPatterns(patterns, options) {
