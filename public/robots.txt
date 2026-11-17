@@ -1,0 +1,11 @@
+# https://oopsfee.app/robots.txt
+# All crawlers (search engines and AI assistants) are welcome on public pages.
+User-agent: *
+Allow: /
+# Private, per-user links and app-only/auth screens (no public content).
+Disallow: /s/
+Disallow: /invite/
+Disallow: /claim/
+Disallow: /auth/
+
+Sitemap: https://oopsfee.app/sitemap.xml

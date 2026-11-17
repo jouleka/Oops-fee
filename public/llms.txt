@@ -1,0 +1,39 @@
+# OopsFee
+
+> OopsFee is an accountability app for iOS and Android that makes you put money where your mouth is: you make a promise, stake real money on it, and complete it with proof before the deadline — or lose the stake.
+
+OopsFee is built on loss aversion: losing $25 hurts more than gaining $25 feels good. Willpower alone rarely works because there are no consequences for breaking promises to yourself; OopsFee adds a real financial consequence.
+
+## How it works
+
+1. Make your promise: type it or record it with your voice, pick a deadline, and choose how you will prove completion.
+2. Set your stakes: for example $5, $25 or $100 — whatever is uncomfortable enough to make you follow through.
+3. Prove it or lose it: complete with photo proof, friend verification, or health data. No proof by the deadline means the stake is lost.
+
+## Features
+
+- Voice commitment: record yourself making the promise and hear your own voice if you try to quit.
+- Photo proof: take a real photo at completion (no gallery picks).
+- Friend verification: assign a friend as a witness who confirms whether you did it.
+- The Graveyard: every broken promise gets a tombstone showing how long it lasted and how much was lost.
+- Escalating stakes: after a failed promise the next one costs 2x, then 4x.
+- Reminders and notifications that get more pointed as the deadline approaches.
+- Sponsor my failure: share a promise and friends can add money to your stake.
+- "I told you so": friends write a roast message you only see if you fail.
+- Friend activity, leaderboards, and iOS and Android home-screen widgets.
+- Sign in with email, Apple, or Google. Payment methods are handled with Stripe; payouts via PayPal or card.
+
+## Key facts
+
+- Platforms: iOS and Android mobile app (the website is a marketing and legal site).
+- Users must be at least 18 years old and have a valid payment method to use stakes.
+- Fees: OopsFee may charge service fees for some transactions (for example wallet withdrawals); applicable fees are disclosed before the transaction.
+- Website: https://oopsfee.app
+- Support: support@oopsfee.app · Privacy: privacy@oopsfee.app · Legal: legal@oopsfee.app
+
+## Pages
+
+- [Home](https://oopsfee.app/): what OopsFee is and how it works
+- [Privacy Policy](https://oopsfee.app/privacy): how personal data is collected, used and protected
+- [Terms of Service](https://oopsfee.app/terms): rules for promises with financial stakes, payments and fees
+- [Delete your account](https://oopsfee.app/delete-account): how to delete an OopsFee account and its data
