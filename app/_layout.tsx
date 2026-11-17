@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
+import { SeoHead } from '@/components/seo/SeoHead';
 import { AuthProvider } from '@/context/auth';
 import { PromiseStoreProvider } from '@/context/promise-store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -96,6 +97,7 @@ export default function RootLayout() {
       <AuthProvider>
         <PromiseStoreProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <SeoHead />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" options={{ animation: 'fade' }} />
               <Stack.Screen name="landing" options={{ animation: 'fade' }} />

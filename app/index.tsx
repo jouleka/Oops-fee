@@ -15,15 +15,14 @@ import { Colors } from '@/constants/theme';
 const ONBOARDING_KEY = '@oopsfee:has_completed_onboarding';
 
 export default function Index() {
-  const [isLoading, setIsLoading] = useState(true);
+  // On web there is nothing to load: render the landing page immediately so it is
+  // included in the pre-rendered static HTML (SEO) instead of a spinner.
+  const [isLoading, setIsLoading] = useState(Platform.OS !== 'web');
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   useEffect(() => {
     // Skip AsyncStorage check on web - we always show marketing page
-    if (Platform.OS === 'web') {
-      setIsLoading(false);
-      return;
-    }
+    if (Platform.OS === 'web') return;
     checkOnboardingStatus();
   }, []);
 
